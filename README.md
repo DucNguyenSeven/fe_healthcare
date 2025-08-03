@@ -1,36 +1,27 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# HealthCare Frontend
 
-## Getting Started
+## Commit Rules
 
-First, run the development server:
+Một commit message phải đúng format như sau:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+<type>(<scope>): message
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Trong đó:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- `<type>`: là loại của commit, có thể là:
+    - `feat`: Thêm một chức năng mới
+    - `fix`: Sửa một lỗi
+    - `docs`: Sửa lỗi hoặc thêm mới về tài liệu (ví dụ README.md)
+    - `style`: Sửa lỗi hoặc thêm mới về code style frontend
+    - `refactor`: Sửa lỗi hoặc thêm mới về code mà không ảnh hưởng đến chức năng
+    - `perf`: Sửa lỗi hoặc thêm mới về hiệu suất
+    - `test`: Sửa lỗi hoặc thêm mới về test
+    - `bug`: Push code có lỗi hoặc chưa hoàn thiện cho người khác hỗ trợ
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- `<scope>`: là mô tả về phạm vi các file hoặc module bị ảnh hưởng bởi commit
+    - Ví dụ: `login`, `database`, `wiki`, ...
 
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- `message`: là nội dung của commit, mô tả về những thay đổi cụ thể
+    - Ví dụ: `fix bug login`, `add new feature login`, `update README.md`, ...
