@@ -1,9 +1,9 @@
-import medicalRecordIcon from '../../../assets/icons/medical-record.svg';
-import appointmentIcon from '../../../assets/icons/appointment.svg';
-import monitoringIcon from '../../../assets/icons/monitoring.svg';
-import medicationIcon from '../../../assets/icons/medication.svg';
-import educationIcon from '../../../assets/icons/education.svg';
-import supportIcon from '../../../assets/icons/support.svg';
+import medicalRecordIcon from '@/assets/icons/medical-record.svg';
+import appointmentIcon from '@/assets/icons/appointment.svg';
+import monitoringIcon from '@/assets/icons/monitoring.svg';
+import medicationIcon from '@/assets/icons/medication.svg';
+import educationIcon from '@/assets/icons/education.svg';
+import supportIcon from '@/assets/icons/support.svg';
 
 export interface Feature {
   id: number;

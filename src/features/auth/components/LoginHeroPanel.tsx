@@ -1,6 +1,6 @@
 import React from 'react';
 import { Box, Typography } from '@mui/material';
-import heroImage from '../../../../assets/images/login_hero_doctor_patient.png';
+import heroImage from '@/assets/images/login_hero_doctor_patient.png';
 
 const HeroPanel = () => {
   return (
