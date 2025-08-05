@@ -28,6 +28,10 @@ export const theme = createTheme({
     h3: {
       fontWeight: 600,
     },
+    body2: {
+      fontSize: 14,
+      lineHeight: 1.55,
+    },
   },
   components: {
     MuiButton: {

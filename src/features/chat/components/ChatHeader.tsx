@@ -6,9 +6,10 @@ import ArrowBackIosNewIcon from '@mui/icons-material/ArrowBackIosNew';
 
 interface ChatHeaderProps {
   onBack?: () => void;
+  loading?: boolean;
 }
 
-export const ChatHeader: React.FC<ChatHeaderProps> = ({ onBack }) => {
+export const ChatHeader: React.FC<ChatHeaderProps> = ({ onBack, loading = false }) => {
   return (
     <Box
       sx={{
@@ -53,7 +54,7 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({ onBack }) => {
             fontSize: { xs: '0.75rem', sm: '0.875rem' }
           }}
         >
-          Người bạn đồng hành chăm sóc sức khỏe cá nhân của bạn
+          {loading ? 'AI đang trả lời...' : 'Người bạn đồng hành chăm sóc sức khỏe cá nhân của bạn'}
         </Typography>
       </Box>
 
