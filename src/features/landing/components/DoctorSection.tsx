@@ -4,8 +4,8 @@ import {
   Typography,
   Box,
 } from '@mui/material';
-import DoctorCard from '../../components/common/DoctorCard';
-import { doctorList } from '../../data/global/doctor.data';
+import DoctorCard from '../../../components/common/DoctorCard';
+import { doctorList } from '../../../data/global/doctor.data';
 
 interface DoctorSectionProps {
   id?: string;

@@ -4,8 +4,8 @@ import {
   Typography,
   Box,
 } from '@mui/material';
-import FeedbackCard from '../../components/common/FeedbackCard';
-import { feedbackData, Feedback } from '../../data/global/feedback.data';
+import FeedbackCard from '../../../components/common/FeedbackCard';
+import { feedbackData, Feedback } from '../../../data/global/feedback.data';
 
 interface FeedbackSectionProps {
   id?: string;

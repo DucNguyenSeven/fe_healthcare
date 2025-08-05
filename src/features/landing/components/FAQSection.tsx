@@ -7,8 +7,8 @@ import {
   Box,
   Stack,
 } from '@mui/material';
-import FAQItem from '../../components/common/FAQItem';
-import { faqData, FAQ } from '../../data/landing/faq.data';
+import FAQItem from '../../../components/common/FAQItem';
+import { faqData, FAQ } from '../data/faq.data';
 
 interface FAQSectionProps {
   id?: string;

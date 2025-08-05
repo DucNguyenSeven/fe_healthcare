@@ -10,7 +10,7 @@ import {
   Stack,
 } from '@mui/material';
 import Image from 'next/image';
-import { features, Feature } from '../../data/landing/features.data';
+import { features, Feature } from '../data/features.data';
 
 interface FeatureSectionProps {
   id?: string;

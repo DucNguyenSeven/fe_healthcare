@@ -18,7 +18,7 @@ import {
   Email,
   LocationOn,
 } from '@mui/icons-material';
-import { footerLinks, contactInfo, socialLinks, bottomBarLinks } from '../../data/global/footer.data';
+import { footerLinks, contactInfo, socialLinks, bottomBarLinks } from '../../../data/global/footer.data';
 import { useRouter } from 'next/navigation';
 
 const FooterSection: React.FC = () => {
