@@ -1,3 +1,4 @@
-export { LoginPage } from '../login';
-export { RegisterPage } from '../register';
-export { ForgotPasswordPage } from '../forgot-password'; 
+// Auth pages exports
+export { default as LoginPage } from './LoginPage';
+export { default as RegisterPage } from './RegisterPage';
+export { default as ForgotPasswordPage } from './ForgotPasswordPage'; 

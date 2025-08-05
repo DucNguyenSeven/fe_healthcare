@@ -1,4 +1,4 @@
-import ForgotPasswordPage from '../../features/auth/forgot-password/ForgotPasswordPage';
+import { ForgotPasswordPage } from '../../features/auth';
 
 export default function ForgotPassword() {
   return <ForgotPasswordPage />;

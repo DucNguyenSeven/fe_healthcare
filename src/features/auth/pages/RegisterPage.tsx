@@ -2,16 +2,29 @@
 
 import React, { useState } from 'react';
 import { Box, useTheme, useMediaQuery } from '@mui/material';
-import ForgotFormPanel from './components/ForgotFormPanel';
-import ForgotHeroPanel from './components/ForgotHeroPanel';
+import { RegisterFormPanel, RegisterHeroPanel } from '../components';
 
 interface FormData {
   email: string;
+  phone: string;
+  fullName: string;
+  dateOfBirth: Date | null;
+  gender: string;
+  address: string;
+  password: string;
+  agreeToTerms: boolean;
 }
 
-const ForgotPasswordPage: React.FC = () => {
+const RegisterPage: React.FC = () => {
   const [formData, setFormData] = useState<FormData>({
     email: '',
+    phone: '',
+    fullName: '',
+    dateOfBirth: null,
+    gender: '',
+    address: '',
+    password: '',
+    agreeToTerms: false,
   });
 
   const theme = useTheme();
@@ -20,14 +33,14 @@ const ForgotPasswordPage: React.FC = () => {
   const handleInputChange = (field: keyof FormData) => (event: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
       ...formData,
-      [field]: event.target.value,
+      [field]: field === 'agreeToTerms' ? event.target.checked : event.target.value,
     });
   };
 
   const handleSubmit = (event: React.SyntheticEvent): void => {
     event.preventDefault();
-    // TODO: Implement forgot password logic
-    console.log('Forgot password attempt:', formData);
+    // TODO: Implement registration logic
+    console.log('Registration attempt:', formData);
   };
 
   return (
@@ -40,7 +53,7 @@ const ForgotPasswordPage: React.FC = () => {
         overflow: 'hidden',
       }}
     >
-      {/* Left Panel - Forgot Password Form */}
+      {/* Left Panel - Register Form */}
       <Box
         sx={{
           flex: isMobile ? 1 : { md: '0 0 50%' },
@@ -55,7 +68,7 @@ const ForgotPasswordPage: React.FC = () => {
           overflow: 'hidden',
         }}
       >
-        <ForgotFormPanel
+        <RegisterFormPanel
           formData={formData}
           onInputChange={handleInputChange}
           onSubmit={handleSubmit}
@@ -71,11 +84,11 @@ const ForgotPasswordPage: React.FC = () => {
             order: { md: 2 },
           }}
         >
-          <ForgotHeroPanel />
+          <RegisterHeroPanel />
         </Box>
       )}
     </Box>
   );
 };
 
-export default ForgotPasswordPage; 
+export default RegisterPage; 

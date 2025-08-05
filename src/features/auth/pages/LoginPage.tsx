@@ -2,8 +2,7 @@
 
 import React, { useState } from 'react';
 import { Box, useTheme, useMediaQuery } from '@mui/material';
-import LoginFormPanel from './components/LoginFormPanel';
-import LoginHeroPanel from './components/LoginHeroPanel';
+import { LoginFormPanel, LoginHeroPanel } from '../components';
 
 interface FormData {
   email: string;
