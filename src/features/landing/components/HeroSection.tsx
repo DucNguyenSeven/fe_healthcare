@@ -142,7 +142,9 @@ const HeroSection: React.FC<HeroSectionProps> = ({ id = 'home' }) => {
                 px: { xs: 2.5, md: 3 },
                 fontSize: { xs: '0.9rem', md: '1rem' },
                 fontWeight: 600,
-                minWidth: { xs: '100%', sm: 'auto' },
+                width: { xs: '200px', sm: 'auto' },
+                minWidth: { xs: '200px', sm: 'auto' },
+                alignSelf: { xs: 'center', sm: 'flex-start' },
                 backgroundColor: 'primary.main',
                 '&:hover': {
                   backgroundColor: 'primary.dark',
