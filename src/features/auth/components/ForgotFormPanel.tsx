@@ -18,10 +18,7 @@ import {
   Person
 } from '@mui/icons-material';
 import { useRouter } from 'next/navigation';
-
-interface ForgotFormData {
-  email: string;
-}
+import { ForgotFormData } from '../../../types';
 
 interface ForgotFormPanelProps {
   formData?: ForgotFormData

@@ -3,15 +3,10 @@
 import React, { useState } from 'react';
 import { Box, useTheme, useMediaQuery } from '@mui/material';
 import { LoginFormPanel, LoginHeroPanel } from '../components';
-
-interface FormData {
-  email: string;
-  password: string;
-  rememberMe: boolean;
-}
+import { LoginFormData } from '../../../types';
 
 const LoginPage: React.FC = () => {
-  const [formData, setFormData] = useState<FormData>({
+  const [formData, setFormData] = useState<LoginFormData>({
     email: '',
     password: '',
     rememberMe: false,
@@ -20,7 +15,7 @@ const LoginPage: React.FC = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
-  const handleInputChange = (field: keyof FormData) => (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInputChange = (field: keyof LoginFormData) => (event: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
       ...formData,
       [field]: field === 'rememberMe' ? event.target.checked : event.target.value,

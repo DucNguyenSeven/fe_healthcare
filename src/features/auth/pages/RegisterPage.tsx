@@ -3,37 +3,22 @@
 import React, { useState } from 'react';
 import { Box, useTheme, useMediaQuery } from '@mui/material';
 import { RegisterFormPanel, RegisterHeroPanel } from '../components';
-
-interface FormData {
-  email: string;
-  phone: string;
-  fullName: string;
-  dateOfBirth: Date | null;
-  gender: string;
-  address: string;
-  password: string;
-  agreeToTerms: boolean;
-}
+import { RegisterFormData } from '../../../types';
 
 const RegisterPage: React.FC = () => {
-  const [formData, setFormData] = useState<FormData>({
-    email: '',
-    phone: '',
-    fullName: '',
-    dateOfBirth: null,
-    gender: '',
-    address: '',
+  const [formData, setFormData] = useState<RegisterFormData>({
+    emailOrPhone: '',
     password: '',
-    agreeToTerms: false,
+    confirmPassword: '',
   });
 
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
-  const handleInputChange = (field: keyof FormData) => (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInputChange = (field: keyof RegisterFormData) => (event: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
       ...formData,
-      [field]: field === 'agreeToTerms' ? event.target.checked : event.target.value,
+      [field]: event.target.value,
     });
   };
 

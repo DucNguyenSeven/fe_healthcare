@@ -3,20 +3,17 @@
 import React, { useState } from 'react';
 import { Box, useTheme, useMediaQuery } from '@mui/material';
 import { ForgotFormPanel, ForgotHeroPanel } from '../components';
-
-interface FormData {
-  email: string;
-}
+import { ForgotFormData } from '../../../types';
 
 const ForgotPasswordPage: React.FC = () => {
-  const [formData, setFormData] = useState<FormData>({
+  const [formData, setFormData] = useState<ForgotFormData>({
     email: '',
   });
 
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
-  const handleInputChange = (field: keyof FormData) => (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInputChange = (field: keyof ForgotFormData) => (event: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
       ...formData,
       [field]: event.target.value,

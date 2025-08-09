@@ -24,12 +24,7 @@ import {
   VisibilityOff 
 } from '@mui/icons-material';
 import { useRouter } from 'next/navigation';
-
-interface LoginFormData {
-  email: string;
-  password: string;
-  rememberMe: boolean;
-}
+import { LoginFormData } from '../../../types';
 
 interface LoginFormPanelProps {
   formData?: LoginFormData

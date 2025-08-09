@@ -19,12 +19,7 @@ import {
   VisibilityOff 
 } from '@mui/icons-material';
 import { useRouter } from 'next/navigation';
-
-interface RegisterFormData {
-  emailOrPhone: string;
-  password: string;
-  confirmPassword: string;
-}
+import { RegisterFormData } from '../../../types';
 
 interface RegisterFormPanelProps {
   formData?: RegisterFormData
