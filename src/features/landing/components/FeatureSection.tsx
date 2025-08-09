@@ -8,9 +8,12 @@ import {
   Stack,
   useTheme,
   useMediaQuery,
+  Card,
+  CardContent,
 } from '@mui/material';
+import Image from 'next/image';
 import { features } from '../data/features.data';
-import MobileFeatureSlider from './MobileFeatureSlider';
+import MobileSlider from './MobileSlider';
 import DesktopFeatureGrid from './DesktopFeatureGrid';
 
 interface FeatureSectionProps {
@@ -20,6 +23,60 @@ interface FeatureSectionProps {
 const FeatureSection: React.FC<FeatureSectionProps> = ({ id = 'services' }) => {
   const theme = useTheme();
   const isMdUp = useMediaQuery(theme.breakpoints.up('md'));
+
+  const renderFeatureCard = (feature: any) => (
+    <Card
+      sx={{
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        transition: 'all 0.3s ease-in-out',
+        minHeight: '280px',
+        position: 'relative',
+      }}
+    >
+      <CardContent sx={{ p: 3, flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
+        <Stack spacing={2} sx={{ height: '100%' }}>
+          <Box
+            sx={{
+              width: 60,
+              height: 60,
+              borderRadius: 2,
+              backgroundColor: 'primary.light',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              mb: 2,
+              flexShrink: 0,
+            }}
+          >
+            <Image
+              src={feature.icon}
+              alt={feature.title}
+              width={32}
+              height={32}
+              style={{ filter: 'brightness(0) invert(1)' }}
+            />
+          </Box>
+          <Typography variant="h6" sx={{ fontWeight: 600, color: 'text.primary', fontSize: '1.1rem', flexShrink: 0 }}>
+            {feature.title}
+          </Typography>
+          <Typography variant="body2" sx={{ 
+            color: 'text.secondary', 
+            lineHeight: 1.6, 
+            flexGrow: 1, 
+            overflow: 'hidden',
+            display: '-webkit-box',
+            WebkitLineClamp: 4,
+            WebkitBoxOrient: 'vertical',
+            textOverflow: 'ellipsis',
+          }}>
+            {feature.description}
+          </Typography>
+        </Stack>
+      </CardContent>
+    </Card>
+  );
 
   return (
     <Box
@@ -65,7 +122,11 @@ const FeatureSection: React.FC<FeatureSectionProps> = ({ id = 'services' }) => {
           {isMdUp ? (
             <DesktopFeatureGrid features={features} />
           ) : (
-            <MobileFeatureSlider features={features} />
+            <MobileSlider 
+              items={features} 
+              renderItem={renderFeatureCard}
+              ariaLabel="Feature carousel"
+            />
           )}
         </Stack>
       </Container>

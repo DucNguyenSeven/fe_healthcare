@@ -1,17 +1,141 @@
+'use client';
+
 import React from 'react';
 import {
   Container,
   Typography,
   Box,
+  useTheme,
+  useMediaQuery,
+  Card,
+  CardContent,
+  Stack,
+  Avatar,
+  Rating,
 } from '@mui/material';
+import PersonIcon from '@mui/icons-material/Person';
 import FeedbackCard from '../../../components/common/FeedbackCard';
 import { feedbackData, Feedback } from '../../../data/global/feedback.data';
+import MobileSlider from './MobileSlider';
 
 interface FeedbackSectionProps {
   id?: string;
 }
 
 const FeedbackSection: React.FC<FeedbackSectionProps> = ({ id = 'reviews' }) => {
+  const theme = useTheme();
+  const isMdUp = useMediaQuery(theme.breakpoints.up('md'));
+
+  const renderFeedbackCard = (feedback: Feedback) => (
+    <Card
+      sx={{
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        transition: 'all 0.3s ease-in-out',
+        minHeight: '280px',
+        maxHeight: '320px',
+        borderRadius: 3,
+        overflow: 'hidden',
+      }}
+    >
+      <CardContent sx={{ 
+        p: 3, 
+        flexGrow: 1, 
+        display: 'flex', 
+        flexDirection: 'column',
+        '&:last-child': {
+          pb: 3,
+        },
+      }}>
+        <Stack spacing={2} sx={{ height: '100%', width: '100%' }}>
+          {/* Header with Avatar, Name, Title, and Rating */}
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: 2,
+            }}
+          >
+            <Avatar
+              src={feedback.avatar || undefined}
+              sx={{
+                width: 56,
+                height: 56,
+                backgroundColor: 'primary.main',
+                color: 'white',
+                fontSize: '1.5rem',
+              }}
+            >
+              {feedback.avatar ? null : <PersonIcon />}
+            </Avatar>
+            
+            <Box sx={{ flexGrow: 1 }}>
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                sx={{
+                  display: 'block',
+                  mb: 0.5,
+                  fontSize: '0.75rem',
+                }}
+              >
+                {feedback.title}
+              </Typography>
+              
+              <Typography
+                variant="h6"
+                component="h3"
+                sx={{
+                  fontWeight: 600,
+                  color: 'text.primary',
+                  mb: 1,
+                  fontSize: '1rem',
+                  lineHeight: 1.2,
+                }}
+              >
+                {feedback.name}
+              </Typography>
+              
+              <Rating
+                value={feedback.rating}
+                readOnly
+                size="small"
+                sx={{
+                  '& .MuiRating-iconFilled': {
+                    color: '#ffc107',
+                  },
+                  '& .MuiRating-iconEmpty': {
+                    color: '#e0e0e0',
+                  },
+                }}
+              />
+            </Box>
+          </Box>
+
+          {/* Feedback Content */}
+          <Typography
+            variant="body2"
+            color="text.secondary"
+            sx={{
+              lineHeight: 1.6,
+              flexGrow: 1,
+              fontSize: '0.85rem',
+              fontStyle: 'italic',
+              overflow: 'hidden',
+              display: '-webkit-box',
+              WebkitLineClamp: 6,
+              WebkitBoxOrient: 'vertical',
+              textAlign: 'justify',
+            }}
+          >
+            &quot;{feedback.feedback}&quot;
+          </Typography>
+        </Stack>
+      </CardContent>
+    </Card>
+  );
+
   return (
     <Box
       id={id}
@@ -64,42 +188,49 @@ const FeedbackSection: React.FC<FeedbackSectionProps> = ({ id = 'reviews' }) => 
           </Typography>
         </Box>
 
-        {/* Feedback Grid */}
-        <Box
-          sx={{
-            display: 'grid',
-            gridTemplateColumns: {
-              xs: '1fr',
-              sm: 'repeat(2, 1fr)',
-              lg: 'repeat(4, 1fr)',
-            },
-            gap: { xs: 2.5, sm: 3, md: 3 },
-            alignItems: 'stretch',
-            justifyContent: 'center',
-            maxWidth: '100%',
-            mb: { xs: 3, md: 4 },
-          }}
-        >
-          {feedbackData.map((feedback: Feedback) => (
-            <Box
-              key={feedback.id}
-              sx={{
-                display: 'flex',
-                height: '100%',
-                minHeight: '280px',
-                maxHeight: '320px',
-              }}
-            >
-              <FeedbackCard
-                name={feedback.name}
-                title={feedback.title}
-                avatar={feedback.avatar || undefined}
-                feedback={feedback.feedback}
-                rating={feedback.rating}
-              />
-            </Box>
-          ))}
-        </Box>
+        {/* Feedback Grid/Slider */}
+        {isMdUp ? (
+          <Box
+            sx={{
+              display: 'grid',
+              gridTemplateColumns: {
+                md: 'repeat(2, 1fr)',
+                lg: 'repeat(4, 1fr)',
+              },
+              gap: { md: 3, lg: 3 },
+              alignItems: 'stretch',
+              justifyContent: 'center',
+              maxWidth: '100%',
+              mb: { xs: 3, md: 4 },
+            }}
+          >
+            {feedbackData.map((feedback: Feedback) => (
+              <Box
+                key={feedback.id}
+                sx={{
+                  display: 'flex',
+                  height: '100%',
+                  minHeight: '280px',
+                  maxHeight: '320px',
+                }}
+              >
+                <FeedbackCard
+                  name={feedback.name}
+                  title={feedback.title}
+                  avatar={feedback.avatar || undefined}
+                  feedback={feedback.feedback}
+                  rating={feedback.rating}
+                />
+              </Box>
+            ))}
+          </Box>
+        ) : (
+          <MobileSlider 
+            items={feedbackData} 
+            renderItem={renderFeedbackCard}
+            ariaLabel="Feedback carousel"
+          />
+        )}
       </Container>
     </Box>
   );

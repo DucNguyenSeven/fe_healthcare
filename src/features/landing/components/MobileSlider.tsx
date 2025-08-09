@@ -1,25 +1,25 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, ReactNode } from 'react';
 import {
   Box,
-  Card,
-  CardContent,
-  Stack,
-  Typography,
   IconButton,
 } from '@mui/material';
-import Image from 'next/image';
-import { Feature } from '../data/features.data';
 import { useMobileSlider } from '@/hooks/useMobileSlider';
 
-interface MobileFeatureSliderProps {
-  features: Feature[];
+interface MobileSliderProps<T> {
+  items: T[];
+  renderItem: (item: T, index: number) => ReactNode;
+  ariaLabel?: string;
 }
 
-const MobileFeatureSlider: React.FC<MobileFeatureSliderProps> = ({ features }) => {
+const MobileSlider = <T extends { id?: number | string }>({ 
+  items, 
+  renderItem, 
+  ariaLabel = "Carousel" 
+}: MobileSliderProps<T>) => {
   const { containerRef } = useMobileSlider({
-    itemsCount: features.length,
+    itemsCount: items.length,
     autoScrollInterval: 3000,
     slideWidthRatio: 1.0,
     enableAutoScroll: false,
@@ -37,7 +37,7 @@ const MobileFeatureSlider: React.FC<MobileFeatureSliderProps> = ({ features }) =
       const slideWidth = el.clientWidth;
       const scrollLeft = el.scrollLeft;
       const newIndex = Math.round(scrollLeft / slideWidth);
-      setCurrentIndex(Math.min(Math.max(newIndex, 0), features.length - 1));
+      setCurrentIndex(Math.min(Math.max(newIndex, 0), items.length - 1));
     };
 
     // Initial update
@@ -46,7 +46,7 @@ const MobileFeatureSlider: React.FC<MobileFeatureSliderProps> = ({ features }) =
     // Add scroll listener
     el.addEventListener('scroll', updateCurrentIndex, { passive: true });
     return () => el.removeEventListener('scroll', updateCurrentIndex);
-  }, [containerRef, features.length]);
+  }, [containerRef, items.length]);
 
   const handlePrevious = () => {
     const el = containerRef.current;
@@ -79,8 +79,8 @@ const MobileFeatureSlider: React.FC<MobileFeatureSliderProps> = ({ features }) =
 
   return (
     <Box sx={{ width: '100%', overflow: 'visible', maxWidth: '100vw', position: 'relative' }}>
-      {/* Navigation Buttons - Only show if there are multiple features */}
-      {features.length > 1 && (
+      {/* Navigation Buttons - Only show if there are multiple items */}
+      {items.length > 1 && (
         <Box
           sx={{
             position: 'absolute',
@@ -123,7 +123,7 @@ const MobileFeatureSlider: React.FC<MobileFeatureSliderProps> = ({ features }) =
 
           {/* Next Button - Show on the right when not at last card */}
           <Box sx={{ flex: '0 0 auto' }}>
-            {currentIndex < features.length - 1 && (
+            {currentIndex < items.length - 1 && (
               <IconButton
                 onClick={handleNext}
                 sx={{
@@ -151,7 +151,7 @@ const MobileFeatureSlider: React.FC<MobileFeatureSliderProps> = ({ features }) =
       <Box
         ref={containerRef}
         role="region"
-        aria-label="Feature carousel"
+        aria-label={ariaLabel}
         sx={{
           display: 'flex',
           gap: 0,
@@ -177,8 +177,8 @@ const MobileFeatureSlider: React.FC<MobileFeatureSliderProps> = ({ features }) =
           },
         }}
       >
-        {features.map((feature: Feature) => (
-          <Box key={feature.id} sx={{ 
+        {items.map((item, index) => (
+          <Box key={item.id || index} sx={{ 
             flex: '0 0 100%', 
             scrollSnapAlign: 'start', 
             minWidth: 0, 
@@ -186,65 +186,14 @@ const MobileFeatureSlider: React.FC<MobileFeatureSliderProps> = ({ features }) =
             px: 2,
             width: '100%',
           }}>
-            <Card
-              sx={{
-                height: '100%',
-                display: 'flex',
-                flexDirection: 'column',
-                transition: 'all 0.3s ease-in-out',
-                // Remove hover effects on mobile to avoid covering navigation buttons
-                minHeight: '280px',
-                position: 'relative',
-              }}
-            >
-              <CardContent sx={{ p: 3, flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
-                <Stack spacing={2} sx={{ height: '100%' }}>
-                  <Box
-                    sx={{
-                      width: 60,
-                      height: 60,
-                      borderRadius: 2,
-                      backgroundColor: 'primary.light',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      mb: 2,
-                      flexShrink: 0,
-                    }}
-                  >
-                    <Image
-                      src={feature.icon}
-                      alt={feature.title}
-                      width={32}
-                      height={32}
-                      style={{ filter: 'brightness(0) invert(1)' }}
-                    />
-                  </Box>
-                  <Typography variant="h6" sx={{ fontWeight: 600, color: 'text.primary', fontSize: '1.1rem', flexShrink: 0 }}>
-                    {feature.title}
-                  </Typography>
-                  <Typography variant="body2" sx={{ 
-                    color: 'text.secondary', 
-                    lineHeight: 1.6, 
-                    flexGrow: 1, 
-                    overflow: 'hidden',
-                    display: '-webkit-box',
-                    WebkitLineClamp: 4,
-                    WebkitBoxOrient: 'vertical',
-                    textOverflow: 'ellipsis',
-                  }}>
-                    {feature.description}
-                  </Typography>
-                </Stack>
-              </CardContent>
-            </Card>
+            {renderItem(item, index)}
           </Box>
         ))}
       </Box>
 
       {/* Dots */}
       <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1, mt: 2 }} aria-hidden>
-        {features.map((_, i) => (
+        {items.map((_, i) => (
           <Box
             key={i}
             sx={{
@@ -260,4 +209,4 @@ const MobileFeatureSlider: React.FC<MobileFeatureSliderProps> = ({ features }) =
   );
 };
 
-export default MobileFeatureSlider;
+export default MobileSlider;
