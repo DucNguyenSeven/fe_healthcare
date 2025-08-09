@@ -16,6 +16,7 @@ export const useHeaderNavigation = () => {
     { label: 'Bác sĩ', hash: '#doctors' },
     { label: 'Đánh giá', hash: '#reviews' },
     { label: 'Câu hỏi thường gặp', hash: '#faq' },
+    { label: 'Liên hệ', hash: '#contact' },
   ];
 
   const handleScroll = (id: string): void => {

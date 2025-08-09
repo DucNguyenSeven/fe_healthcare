@@ -170,13 +170,10 @@ const DoctorSection: React.FC<DoctorSectionProps> = ({ id = 'doctors' }) => {
       sx={{
         backgroundColor: 'background.default',
         scrollMarginTop: { xs: '56px', sm: '64px' },
-        pt: { xs: 1, md: 2 },
-        pb: { xs: 8, md: 10 }, 
+        pt: { xs: 4, md: 6 },
+        pb: { xs: 4, md: 6 }, 
         overflow: 'visible',
         position: 'relative',
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
         scrollSnapAlign: 'start',
       }}
     >
@@ -185,7 +182,7 @@ const DoctorSection: React.FC<DoctorSectionProps> = ({ id = 'doctors' }) => {
         <Box
           sx={{
             textAlign: 'center',
-            mb: { xs: 3, md: 4 },
+            mb: { xs: 2, md: 3 },
           }}
         >
           <Typography

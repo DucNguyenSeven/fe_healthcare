@@ -156,7 +156,7 @@ const MobileSlider = <T extends { id?: number | string }>({
           display: 'flex',
           gap: 0,
           px: 0,
-          py: 4,
+          py: 2,
           overflowX: 'auto',
           overflowY: 'hidden',
           scrollSnapType: 'x mandatory',
@@ -182,7 +182,7 @@ const MobileSlider = <T extends { id?: number | string }>({
             flex: '0 0 100%', 
             scrollSnapAlign: 'start', 
             minWidth: 0, 
-            py: 4, 
+            py: 2, 
             px: 2,
             width: '100%',
           }}>

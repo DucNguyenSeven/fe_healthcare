@@ -82,7 +82,7 @@ const FeatureSection: React.FC<FeatureSectionProps> = ({ id = 'services' }) => {
     <Box
       id={id}
       sx={{
-        py: { xs: 6, md: 8, lg: 10 },
+        py: { xs: 4, md: 6 },
         backgroundColor: 'background.default',
         overflow: 'visible',
         width: '100%',
@@ -91,7 +91,7 @@ const FeatureSection: React.FC<FeatureSectionProps> = ({ id = 'services' }) => {
       }}
     >
       <Container maxWidth="lg" sx={{ overflow: 'visible', maxWidth: '100%' }}>
-        <Stack spacing={6} alignItems="center" sx={{ width: '100%', overflow: 'visible' }}>
+        <Stack spacing={3} alignItems="center" sx={{ width: '100%', overflow: 'visible' }}>
           {/* Section Header */}
           <Box sx={{ textAlign: 'center', maxWidth: '800px' }}>
             <Typography

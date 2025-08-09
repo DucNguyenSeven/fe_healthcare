@@ -27,13 +27,10 @@ const FAQSection: React.FC<FAQSectionProps> = ({ id = 'faq' }) => {
       sx={{
         backgroundColor: 'background.default',
         scrollMarginTop: { xs: '56px', sm: '64px' },
-        pt: { xs: 3, md: 4 },
-        pb: { xs: 2, md: 3 },
+        pt: { xs: 4, md: 6 },
+        pb: { xs: 4, md: 6 },
         overflow: 'visible',
         position: 'relative',
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
         scrollSnapAlign: 'start',
       }}
     >

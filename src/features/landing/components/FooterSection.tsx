@@ -63,10 +63,12 @@ const FooterSection: React.FC = () => {
   return (
     <Box
       component="footer"
+      id="contact"
       sx={{
         backgroundColor: '#0B1220',
         color: '#ffffff',
         py: 6,
+        scrollMarginTop: { xs: '56px', sm: '64px' },
       }}
     >
       <Container maxWidth="xl">
