@@ -195,7 +195,7 @@ const LoginFormPanel: React.FC<LoginFormPanelProps> = ({ formData, onInputChange
                     edge="end"
                     size="small"
                   >
-                    {showPassword ? <VisibilityOff /> : <Visibility />}
+                    {showPassword ? <Visibility /> : <VisibilityOff />}
                   </IconButton>
                 </InputAdornment>
               ),

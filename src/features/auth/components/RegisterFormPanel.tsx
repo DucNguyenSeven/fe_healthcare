@@ -7,17 +7,13 @@ import {
   TextField,
   Typography,
   Button,
-  Checkbox,
-  FormControlLabel,
   InputAdornment,
   IconButton,
   useTheme,
   useMediaQuery,
 } from '@mui/material';
 import { 
-  Person, 
   MailOutline, 
-  Phone, 
   LockOutlined, 
   Visibility, 
   VisibilityOff 
@@ -25,14 +21,9 @@ import {
 import { useRouter } from 'next/navigation';
 
 interface RegisterFormData {
-  fullName: string;
-  email: string;
-  phone: string;
-  dateOfBirth: Date | null;
-  gender: string;
-  address: string;
+  emailOrPhone: string;
   password: string;
-  agreeToTerms: boolean;
+  confirmPassword: string;
 }
 
 interface RegisterFormPanelProps {
@@ -43,12 +34,17 @@ interface RegisterFormPanelProps {
 
 const RegisterFormPanel: React.FC<RegisterFormPanelProps> = ({ formData, onInputChange, onSubmit }) => {
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const router = useRouter();
 
   const handleTogglePasswordVisibility = () => {
     setShowPassword(!showPassword);
+  };
+
+  const handleToggleConfirmPasswordVisibility = () => {
+    setShowConfirmPassword(!showConfirmPassword);
   };
 
   const handleLogin = () => {
@@ -150,45 +146,12 @@ const RegisterFormPanel: React.FC<RegisterFormPanelProps> = ({ formData, onInput
 
         {/* Register Form */}
         <Box component="form" onSubmit={onSubmit}>
-          {/* Full Name Field */}
+          {/* Email or Phone Field */}
           <TextField
             fullWidth
-            label="Họ và tên"
-            value={formData?.fullName || ''}
-            onChange={onInputChange?.('fullName')}
-            required
-            size="small"
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <Person sx={{ color: 'text.secondary', fontSize: isMobile ? 16 : 18 }} />
-                </InputAdornment>
-              ),
-            }}
-            sx={{
-              mb: 2,
-              '& .MuiOutlinedInput-root': {
-                borderRadius: 2,
-                '& fieldset': {
-                  borderColor: 'grey.300',
-                },
-                '&:hover fieldset': {
-                  borderColor: 'grey.400',
-                },
-                '&.Mui-focused fieldset': {
-                  borderColor: 'primary.main',
-                },
-              },
-            }}
-          />
-
-          {/* Email Field */}
-          <TextField
-            fullWidth
-            label="Email"
-            type="email"
-            value={formData?.email || ''}
-            onChange={onInputChange?.('email')}
+            label="Email hoặc số điện thoại"
+            value={formData?.emailOrPhone || ''}
+            onChange={onInputChange?.('emailOrPhone')}
             required
             size="small"
             InputProps={{
@@ -198,66 +161,6 @@ const RegisterFormPanel: React.FC<RegisterFormPanelProps> = ({ formData, onInput
                 </InputAdornment>
               ),
             }}
-            sx={{
-              mb: 2,
-              '& .MuiOutlinedInput-root': {
-                borderRadius: 2,
-                '& fieldset': {
-                  borderColor: 'grey.300',
-                },
-                '&:hover fieldset': {
-                  borderColor: 'grey.400',
-                },
-                '&.Mui-focused fieldset': {
-                  borderColor: 'primary.main',
-                },
-              },
-            }}
-          />
-
-          {/* Phone Field */}
-          <TextField
-            fullWidth
-            label="Số điện thoại"
-            type="tel"
-            value={formData?.phone || ''}
-            onChange={onInputChange?.('phone')}
-            required
-            size="small"
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <Phone sx={{ color: 'text.secondary', fontSize: isMobile ? 16 : 18 }} />
-                </InputAdornment>
-              ),
-            }}
-            sx={{
-              mb: 2,
-              '& .MuiOutlinedInput-root': {
-                borderRadius: 2,
-                '& fieldset': {
-                  borderColor: 'grey.300',
-                },
-                '&:hover fieldset': {
-                  borderColor: 'grey.400',
-                },
-                '&.Mui-focused fieldset': {
-                  borderColor: 'primary.main',
-                },
-              },
-            }}
-          />
-
-          {/* Address Field */}
-          <TextField
-            fullWidth
-            label="Địa chỉ"
-            value={formData?.address || ''}
-            onChange={onInputChange?.('address')}
-            required
-            size="small"
-            multiline
-            rows={2}
             sx={{
               mb: 2,
               '& .MuiOutlinedInput-root': {
@@ -297,7 +200,7 @@ const RegisterFormPanel: React.FC<RegisterFormPanelProps> = ({ formData, onInput
                     edge="end"
                     size="small"
                   >
-                    {showPassword ? <VisibilityOff sx={{ fontSize: isMobile ? 16 : 18 }} /> : <Visibility sx={{ fontSize: isMobile ? 16 : 18 }} />}
+                    {showPassword ? <Visibility sx={{ fontSize: isMobile ? 16 : 18 }} /> : <VisibilityOff sx={{ fontSize: isMobile ? 16 : 18 }} />}
                   </IconButton>
                 </InputAdornment>
               ),
@@ -319,29 +222,46 @@ const RegisterFormPanel: React.FC<RegisterFormPanelProps> = ({ formData, onInput
             }}
           />
 
-          {/* Terms Checkbox */}
-          <FormControlLabel
-            control={
-              <Checkbox
-                checked={formData?.agreeToTerms || false}
-                onChange={onInputChange?.('agreeToTerms') || (() => {})}
-                color="primary"
-                size="small"
-                sx={{ p: 0.5 }}
-              />
-            }
-            label={<span style={{ fontSize: isMobile ? '0.85rem' : '0.95rem', width: '100%', display: 'block' }}>Tôi đồng ý với điều khoản sử dụng</span>}
+          {/* Confirm Password Field */}
+          <TextField
+            fullWidth
+            label="Xác nhận lại mật khẩu"
+            type={showConfirmPassword ? 'text' : 'password'}
+            value={formData?.confirmPassword || ''}
+            onChange={onInputChange?.('confirmPassword')}
+            required
+            size="small"
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <LockOutlined sx={{ color: 'text.secondary', fontSize: isMobile ? 16 : 18 }} />
+                </InputAdornment>
+              ),
+              endAdornment: (
+                <InputAdornment position="end">
+                  <IconButton
+                    onClick={handleToggleConfirmPasswordVisibility}
+                    edge="end"
+                    size="small"
+                  >
+                    {showConfirmPassword ? <Visibility sx={{ fontSize: isMobile ? 16 : 18 }} /> : <VisibilityOff sx={{ fontSize: isMobile ? 16 : 18 }} />}
+                  </IconButton>
+                </InputAdornment>
+              ),
+            }}
             sx={{
-              width: '100%',
-              pl: 1,
-              ml: 0,
-              alignItems: 'center',
-              mb: 0,
-              fontSize: { xs: '0.8rem', sm: '0.95rem' },
-              '& .MuiFormControlLabel-label': {
-                fontSize: { xs: '0.8rem', sm: '0.95rem' },
-                width: '100%',
-                display: 'block',
+              mb: 2,
+              '& .MuiOutlinedInput-root': {
+                borderRadius: 2,
+                '& fieldset': {
+                  borderColor: 'grey.300',
+                },
+                '&:hover fieldset': {
+                  borderColor: 'grey.400',
+                },
+                '&.Mui-focused fieldset': {
+                  borderColor: 'primary.main',
+                },
               },
             }}
           />
