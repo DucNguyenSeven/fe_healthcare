@@ -34,7 +34,7 @@ export function useChat() {
         timestamp: new Date()
       };
       setMessages((m) => [...m, aiMessage]);
-    } catch (e) {
+    } catch (_e) { // eslint-disable-line @typescript-eslint/no-unused-vars
       const errorMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
         role: "ai", 

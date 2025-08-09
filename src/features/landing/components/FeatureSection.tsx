@@ -12,7 +12,7 @@ import {
   CardContent,
 } from '@mui/material';
 import Image from 'next/image';
-import { features } from '../data/features.data';
+import { features, Feature } from '../data/features.data';
 import MobileSlider from './MobileSlider';
 import DesktopFeatureGrid from './DesktopFeatureGrid';
 
@@ -24,7 +24,7 @@ const FeatureSection: React.FC<FeatureSectionProps> = ({ id = 'services' }) => {
   const theme = useTheme();
   const isMdUp = useMediaQuery(theme.breakpoints.up('md'));
 
-  const renderFeatureCard = (feature: any) => (
+  const renderFeatureCard = (feature: Feature) => (
     <Card
       sx={{
         height: '100%',
