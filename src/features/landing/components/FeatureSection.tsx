@@ -30,6 +30,7 @@ const FeatureSection: React.FC<FeatureSectionProps> = ({ id = 'services' }) => {
         overflow: 'visible',
         width: '100%',
         maxWidth: '100vw',
+        scrollMarginTop: { xs: '56px', sm: '64px' },
       }}
     >
       <Container maxWidth="lg" sx={{ overflow: 'visible', maxWidth: '100%' }}>
@@ -43,6 +44,7 @@ const FeatureSection: React.FC<FeatureSectionProps> = ({ id = 'services' }) => {
                 fontSize: { xs: '2rem', md: '2.5rem', lg: '3rem' },
                 mb: 2,
                 color: 'primary.main',
+                mt: 0,
               }}
             >
               Dịch vụ của chúng tôi

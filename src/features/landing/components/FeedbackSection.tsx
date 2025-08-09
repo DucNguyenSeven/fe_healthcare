@@ -17,7 +17,7 @@ const FeedbackSection: React.FC<FeedbackSectionProps> = ({ id = 'reviews' }) => 
       id={id}
       sx={{
         backgroundColor: 'background.default',
-        scrollMarginTop: { xs: '72px', md: '80px' },
+        scrollMarginTop: { xs: '56px', sm: '64px' },
         pt: { xs: 4, md: 5 },
         pb: { xs: 4, md: 5 },
         overflow: 'visible',
@@ -25,7 +25,7 @@ const FeedbackSection: React.FC<FeedbackSectionProps> = ({ id = 'reviews' }) => 
         minHeight: '100vh',
         display: 'flex',
         alignItems: 'center',
-        scrollSnapAlign: 'start',   // quan trọng
+        scrollSnapAlign: 'start',
       }}
     >
       <Container maxWidth="lg">
@@ -44,6 +44,7 @@ const FeedbackSection: React.FC<FeedbackSectionProps> = ({ id = 'reviews' }) => 
               color: 'primary.main',
               mb: 1.5,
               fontSize: { xs: '1.75rem', sm: '2rem', md: '2.25rem' },
+              mt: 0,
             }}
           >
             Phản hồi từ bệnh nhân

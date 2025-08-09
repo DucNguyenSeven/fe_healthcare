@@ -26,7 +26,7 @@ const FAQSection: React.FC<FAQSectionProps> = ({ id = 'faq' }) => {
       id={id}
       sx={{
         backgroundColor: 'background.default',
-        scrollMarginTop: { xs: '72px', md: '80px' },
+        scrollMarginTop: { xs: '56px', sm: '64px' },
         pt: { xs: 3, md: 4 },
         pb: { xs: 2, md: 3 },
         overflow: 'visible',
@@ -34,7 +34,7 @@ const FAQSection: React.FC<FAQSectionProps> = ({ id = 'faq' }) => {
         minHeight: '100vh',
         display: 'flex',
         alignItems: 'center',
-        scrollSnapAlign: 'start',   // quan trọng
+        scrollSnapAlign: 'start',
       }}
     >
       <Container maxWidth="lg">
@@ -53,6 +53,7 @@ const FAQSection: React.FC<FAQSectionProps> = ({ id = 'faq' }) => {
               color: 'primary.main',
               mb: 1,
               fontSize: { xs: '1.75rem', sm: '2rem', md: '2.25rem' },
+              mt: 0,
             }}
           >
             Câu hỏi thường gặp

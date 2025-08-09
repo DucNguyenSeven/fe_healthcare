@@ -36,6 +36,7 @@ const MobileFeatureSlider: React.FC<MobileFeatureSliderProps> = ({ features }) =
           px: 0,
           py: 4,
           overflowX: 'auto',
+          overflowY: 'hidden',
           scrollSnapType: 'x mandatory',
           WebkitOverflowScrolling: 'touch',
           scrollbarWidth: 'none',

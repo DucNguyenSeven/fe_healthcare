@@ -1,6 +1,6 @@
 import React from 'react';
 import { Box } from '@mui/material';
-import Header from '../../../layouts/Header';
+import MainLayout from '../../../layouts/MainLayout';
 import { 
   HeroSection,
   FeatureSection,
@@ -12,15 +12,16 @@ import {
 
 const LandingPage: React.FC = () => {
   return (
-    <Box sx={{ width: '100%' }}>
-      <Header />
-      <HeroSection />
-      <FeatureSection />
-      <DoctorSection />
-      <FeedbackSection />
-      <FAQSection />
-      <FooterSection />
-    </Box>
+    <MainLayout>
+      <Box sx={{ width: '100%' }}>
+        <HeroSection />
+        <FeatureSection />
+        <DoctorSection />
+        <FeedbackSection />
+        <FAQSection />
+        <FooterSection />
+      </Box>
+    </MainLayout>
   );
 };
 

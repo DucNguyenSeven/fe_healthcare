@@ -34,6 +34,7 @@ const HeroSection: React.FC<HeroSectionProps> = ({ id = 'home' }) => {
         position: 'relative',
         overflow: 'hidden',
         scrollSnapAlign: 'start',
+        scrollMarginTop: { xs: '56px', sm: '64px' },
       }}
     >
       {/* Dark overlay */}
@@ -88,6 +89,7 @@ const HeroSection: React.FC<HeroSectionProps> = ({ id = 'home' }) => {
               textShadow: '2px 2px 4px rgba(0, 0, 0, 0.6)',
               letterSpacing: '-0.02em',
               mb: { xs: 1, sm: 2 },
+              mt: 0,
             }}
           >
             Hệ thống quản lý sức khỏe thận
