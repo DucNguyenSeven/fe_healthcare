@@ -22,7 +22,7 @@ const HeroSection: React.FC<HeroSectionProps> = ({ id = 'home' }) => {
     <Box
       id={id}
       sx={{
-        width: '100vw',
+        width: '100%',
         minHeight: '100vh',
         backgroundImage: `url(${heroDoctorImage})`,
         backgroundSize: 'cover',
@@ -33,7 +33,7 @@ const HeroSection: React.FC<HeroSectionProps> = ({ id = 'home' }) => {
         justifyContent: 'center',
         position: 'relative',
         overflow: 'hidden',
-        scrollSnapAlign: 'start',   // quan trọng
+        scrollSnapAlign: 'start',
       }}
     >
       {/* Dark overlay */}
@@ -69,6 +69,7 @@ const HeroSection: React.FC<HeroSectionProps> = ({ id = 'home' }) => {
           spacing={{ xs: 2, sm: 3, md: 4 }} 
           sx={{ 
             maxWidth: { xs: '100%', sm: '90%', md: '70%', lg: '60%' },
+            width: '100%',
           }}
         >
           <Typography
