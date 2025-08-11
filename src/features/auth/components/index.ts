@@ -4,6 +4,5 @@ export { default as LoginHeroPanel } from './LoginHeroPanel';
 export { default as RegisterFormPanel } from './RegisterFormPanel';
 export { default as RegisterHeroPanel } from './RegisterHeroPanel';
 export { default as ForgotFormPanel } from './ForgotFormPanel';
-export { default as ForgotHeroPanel } from './ForgotHeroPanel';
 export { default as OTPFormPanel } from './OTPFormPanel';
 export { default as OTPHeroPanel } from './OTPHeroPanel'; 

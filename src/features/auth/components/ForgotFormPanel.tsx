@@ -47,15 +47,16 @@ const ForgotFormPanel: React.FC<ForgotFormPanelProps> = ({ formData, onInputChan
         justifyContent: 'center',
         minHeight: '100vh',
         px: 2,
+        py: { xs: 4, sm: 6, md: 8, lg: 10 }, // Tăng margin top và bottom cho màn hình lớn hơn
         width: '100%',
       }}
     >
       <Paper
         elevation={0}
         sx={{
-          p: { xs: 2, sm: 3 },
+          p: { xs: 2, sm: 3 }, // Đồng bộ padding với Login
           width: '100%',
-          maxWidth: 400,
+          maxWidth: 400, // Đồng bộ maxWidth với Login
           mx: 'auto',
           borderRadius: 4,
           backgroundColor: '#fff',
@@ -66,10 +67,10 @@ const ForgotFormPanel: React.FC<ForgotFormPanelProps> = ({ formData, onInputChan
         }}
       >
         {/* Logo */}
-        <Box sx={{ textAlign: 'center', mb: isMobile ? 1.5 : 2 }}>
+        <Box sx={{ textAlign: 'center', mb: { xs: 1.5, sm: 2 } }}>
           <Box
             sx={{
-              width: { xs: 48, sm: 56, md: 64 },
+              width: { xs: 48, sm: 56, md: 64 }, // Đồng bộ kích thước logo với Login
               height: { xs: 48, sm: 56, md: 64 },
               bgcolor: 'primary.main',
               borderRadius: '50%',
@@ -77,7 +78,7 @@ const ForgotFormPanel: React.FC<ForgotFormPanelProps> = ({ formData, onInputChan
               alignItems: 'center',
               justifyContent: 'center',
               mx: 'auto',
-              mb: isMobile ? 1 : 1.5,
+              mb: { xs: 1, sm: 1.5 },
             }}
           >
             <Typography
@@ -85,7 +86,7 @@ const ForgotFormPanel: React.FC<ForgotFormPanelProps> = ({ formData, onInputChan
               sx={{ 
                 color: 'white', 
                 fontWeight: 'bold',
-                fontSize: { xs: '1.25rem', sm: '1.5rem', md: '1.75rem' }
+                fontSize: { xs: '1.25rem', sm: '1.5rem', md: '1.75rem' } // Đồng bộ font size với Login
               }}
             >
               H+
@@ -96,7 +97,7 @@ const ForgotFormPanel: React.FC<ForgotFormPanelProps> = ({ formData, onInputChan
             sx={{ 
               color: 'primary.main', 
               fontWeight: 700,
-              fontSize: { xs: '0.875rem', sm: '1rem', md: '1.125rem' },
+              fontSize: { xs: '0.875rem', sm: '1rem', md: '1.125rem' }, // Đồng bộ font size với Login
               textTransform: 'uppercase',
             }}
           >
@@ -111,9 +112,9 @@ const ForgotFormPanel: React.FC<ForgotFormPanelProps> = ({ formData, onInputChan
           sx={{
             textAlign: 'center',
             fontWeight: 700,
-            mb: isMobile ? 1 : 1.5,
+            mb: { xs: 1, sm: 1.5 }, // Đồng bộ margin với Login
             color: 'text.primary',
-            fontSize: { xs: '1.25rem', sm: '1.5rem', md: '1.75rem' },
+            fontSize: { xs: '1.25rem', sm: '1.5rem', md: '1.75rem' }, // Đồng bộ font size với Login
           }}
         >
           Quên mật khẩu
@@ -125,15 +126,15 @@ const ForgotFormPanel: React.FC<ForgotFormPanelProps> = ({ formData, onInputChan
           sx={{
             textAlign: 'center',
             color: 'text.secondary',
-            mb: isMobile ? 2 : 3,
-            fontSize: { xs: '0.875rem', sm: '1rem' },
+            mb: { xs: 2, sm: 3 }, // Đồng bộ margin với Login
+            fontSize: { xs: '0.875rem', sm: '1rem' }, // Đồng bộ font size với Login
           }}
         >
           Nhập email của bạn để nhận hướng dẫn đặt lại mật khẩu.
         </Typography>
 
         {/* Forgot Password Form */}
-        <Box component="form" onSubmit={onSubmit}>
+        <Box component="form" onSubmit={onSubmit} sx={{ mb: { xs: 2, sm: 2 } }}>
           {/* Email Field */}
           <TextField
             fullWidth
@@ -144,29 +145,16 @@ const ForgotFormPanel: React.FC<ForgotFormPanelProps> = ({ formData, onInputChan
             value={formData?.email || ''}
             onChange={onInputChange?.('email')}
             sx={{
-              mb: 2,
+              mb: 2, // Đồng bộ margin với Login
               '& .MuiOutlinedInput-root': {
                 borderRadius: 2,
-                '& fieldset': {
-                  borderColor: 'grey.300',
-                },
-                '&:hover fieldset': {
-                  borderColor: 'grey.400',
-                },
-                '&.Mui-focused fieldset': {
-                  borderColor: 'primary.main',
-                },
               },
             }}
             required
-            size="small"
             InputProps={{
               startAdornment: (
                 <InputAdornment position="start">
-                  <MailOutline sx={{ 
-                    color: 'text.secondary', 
-                    fontSize: '1.25rem' 
-                  }} />
+                  <MailOutline color="action" />
                 </InputAdornment>
               ),
             }}
@@ -179,8 +167,9 @@ const ForgotFormPanel: React.FC<ForgotFormPanelProps> = ({ formData, onInputChan
             variant="contained"
             size="medium"
             sx={{ 
-              py: { xs: 1.25, sm: 1.5 },
-              fontSize: { xs: '0.875rem', sm: '1rem' },
+              mb: { xs: 1.5, sm: 2 }, // Đồng bộ margin với Login
+              py: { xs: 1.25, sm: 1.5 }, // Đồng bộ padding với Login
+              fontSize: { xs: '0.875rem', sm: '1rem' }, // Đồng bộ font size với Login
               fontWeight: 'bold',
               borderRadius: 2,
             }}
@@ -190,13 +179,13 @@ const ForgotFormPanel: React.FC<ForgotFormPanelProps> = ({ formData, onInputChan
         </Box>
 
         {/* Navigation Links */}
-        <Stack spacing={1} sx={{ textAlign: 'center' }}>
+        <Stack spacing={{ xs: 1.5, sm: 2 }} sx={{ textAlign: 'center' }}>
           {/* Back to Login Link */}
           <Typography 
             variant="body2" 
             sx={{ 
               color: 'text.secondary',
-              fontSize: { xs: '0.75rem', sm: '0.875rem' },
+              fontSize: { xs: '0.75rem', sm: '0.875rem' }, // Đồng bộ font size với Login
               textAlign: 'center',
             }}
           >
@@ -207,19 +196,13 @@ const ForgotFormPanel: React.FC<ForgotFormPanelProps> = ({ formData, onInputChan
                 color: 'primary.main', 
                 textDecoration: 'none',
                 fontSize: { xs: '0.75rem', sm: '0.875rem' },
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 0.5,
                 textTransform: 'none',
                 p: 0,
                 minWidth: 'auto',
-                '&:hover': {
-                  textDecoration: 'underline',
-                },
               }}
             >
-              <ArrowBack sx={{ fontSize: '0.875rem' }} />
-              Quên mật khẩu? Đăng nhập
+              <ArrowBack sx={{ fontSize: { xs: '0.9rem', sm: '1rem' } }} />
+              Quay lại đăng nhập
             </Button>
           </Typography>
 
@@ -228,7 +211,7 @@ const ForgotFormPanel: React.FC<ForgotFormPanelProps> = ({ formData, onInputChan
             variant="body2" 
             sx={{ 
               color: 'text.secondary',
-              fontSize: { xs: '0.75rem', sm: '0.875rem' },
+              fontSize: { xs: '0.75rem', sm: '0.875rem' }, // Đồng bộ font size với Login
               textAlign: 'center',
             }}
           >
@@ -239,18 +222,12 @@ const ForgotFormPanel: React.FC<ForgotFormPanelProps> = ({ formData, onInputChan
                 color: 'primary.main', 
                 textDecoration: 'none',
                 fontSize: { xs: '0.75rem', sm: '0.875rem' },
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 0.5,
                 textTransform: 'none',
                 p: 0,
                 minWidth: 'auto',
-                '&:hover': {
-                  textDecoration: 'underline',
-                },
               }}
             >
-              <Person sx={{ fontSize: '0.875rem' }} />
+              <Person sx={{ fontSize: { xs: '0.9rem', sm: '1rem' } }} />
               Không có tài khoản? Đăng ký
             </Button>
           </Typography>
