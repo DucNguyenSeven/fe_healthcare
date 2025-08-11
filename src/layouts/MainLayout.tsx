@@ -1,7 +1,7 @@
 "use client";
 
 import React from 'react';
-import { Toolbar, Box, CssBaseline } from '@mui/material';
+import { Box, CssBaseline } from '@mui/material';
 import Header from './Header';
 
 interface MainLayoutProps {
@@ -14,10 +14,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
       <CssBaseline />
       <Header />
 
-      {/* Keep exactly ONE spacer below the fixed header */}
-      <Toolbar />
-
-      {/* Main content must not force extra vertical space */}
+      {/* Main content - no spacer needed for sticky header */}
       <Box component="main" sx={{ minHeight: 'auto', overflowX: 'hidden' }}>
         {children}
       </Box>

@@ -35,7 +35,6 @@ const HeroSection: React.FC<HeroSectionProps> = ({ id = 'home' }) => {
         position: 'relative',
         overflow: 'hidden',
         scrollSnapAlign: 'start',
-        scrollMarginTop: { xs: '56px', sm: '64px' },
       }}
     >
       {/* Dark overlay */}

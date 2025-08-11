@@ -5,37 +5,18 @@ import { useRouter } from 'next/navigation';
 import { AuthApi } from '@/lib/api/user/auth';
 import { parseApiError } from '@/lib/api/errors';
 import { tokenStore } from '@/utils/auth/token';
-import { useAuthContext } from '@/contexts/AuthContext';
-import type { LoginFormData } from '@/types';
+import { useUserState } from './useUserState';
+import { UseLoginReturn, LoginCredentials, AuthState } from './types';
 
-interface UseAuthState {
-  isLoading: boolean;
-  error: string | null;
-}
-
-interface User {
-  userId: string;
-  email: string;
-  role: string;
-}
-
-interface UseAuthReturn extends UseAuthState {
-  login: (credentials: Omit<LoginFormData, 'rememberMe'>) => Promise<boolean>;
-  logout: () => void;
-  clearError: () => void;
-  isAuthenticated: boolean;
-  user: User | null;
-}
-
-export function useAuth(): UseAuthReturn {
+export function useLogin(): UseLoginReturn {
   const router = useRouter();
-  const { user, isAuthenticated, setUser } = useAuthContext();
-  const [state, setState] = useState<UseAuthState>({
+  const { setUser } = useUserState();
+  const [state, setState] = useState<AuthState>({
     isLoading: false,
     error: null,
   });
 
-  const login = useCallback(async (credentials: Omit<LoginFormData, 'rememberMe'>): Promise<boolean> => {
+  const login = useCallback(async (credentials: LoginCredentials): Promise<boolean> => {
     setState(prev => ({ ...prev, isLoading: true, error: null }));
 
     try {
@@ -98,34 +79,20 @@ export function useAuth(): UseAuthReturn {
         case 500:
           errorMessage = 'Lỗi hệ thống. Vui lòng thử lại sau';
           break;
+        default:
+          if (!errorMessage) {
+            errorMessage = 'Đã xảy ra lỗi. Vui lòng thử lại';
+          }
       }
 
-      setState(prev => ({ 
-        ...prev, 
-        isLoading: false, 
-        error: errorMessage 
+      setState(prev => ({
+        ...prev,
+        isLoading: false,
+        error: errorMessage,
       }));
+      
       return false;
     }
-  }, [router, setUser]);
-
-  const logout = useCallback(() => {
-    // Clear tokens from memory
-    tokenStore.clear();
-    
-    // Clear user info from localStorage
-    localStorage.removeItem('user');
-    
-    // Update context
-    setUser(null);
-    
-    setState({
-      isLoading: false,
-      error: null,
-    });
-    
-    // Redirect to login page
-    router.push('/login');
   }, [router, setUser]);
 
   const clearError = useCallback(() => {
@@ -134,10 +101,7 @@ export function useAuth(): UseAuthReturn {
 
   return {
     ...state,
-    isAuthenticated,
-    user,
     login,
-    logout,
     clearError,
   };
 }
