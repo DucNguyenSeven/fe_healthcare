@@ -1,5 +1,5 @@
 export async function postChat(question: string): Promise<{ answer: string }> {
-  const base = process.env.NEXT_PUBLIC_API_BASE_URL;
+  const base = process.env.NEXT_PUBLIC_CHAT_API_URL;
   const res = await fetch(`${base}/api/ai-chat/ask`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
