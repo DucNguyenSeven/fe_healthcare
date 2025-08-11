@@ -1,6 +1,5 @@
 import React from 'react';
 import { Box, Typography } from '@mui/material';
-import heroImage from '@/assets/images/register_hero_doctor_patient.png';
 
 const RegisterHeroPanel: React.FC = () => {
   return (
@@ -29,7 +28,7 @@ const RegisterHeroPanel: React.FC = () => {
       {/* Background Image */}
       <Box
         component="img"
-        src={heroImage.src}
+        src="/assets/images/register_hero_doctor_patient.png"
         alt="Healthcare professionals with patient"
         sx={{
           position: 'absolute',
