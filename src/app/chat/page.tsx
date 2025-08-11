@@ -1,5 +1,10 @@
 import ChatPage from '../../features/chat/pages/ChatPage';
+import { AuthGuard } from '../../components/common';
 
 export default function ChatRoutePage() {
-  return <ChatPage />;
+  return (
+    <AuthGuard>
+      <ChatPage />
+    </AuthGuard>
+  );
 } 

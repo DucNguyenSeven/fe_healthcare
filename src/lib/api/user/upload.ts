@@ -1,4 +1,5 @@
-// REQUIRES JWT – token forwarded from cookie access_token
+// REQUIRES JWT – handled automatically via withCredentials and axios interceptor
+import { api } from "@/lib/api/client";
 import type { UploadFile } from "@/lib/api/types";
 
 export const UploadApi = {
@@ -6,49 +7,45 @@ export const UploadApi = {
     const form = new FormData();
     form.append("file", file);
     form.append("folder", folder);
-    return fetch(`/api/user/upload/single`, { method: "POST", body: form })
-      .then(async (res) => {
-        if (!res.ok) throw new Error(`ApiError ${res.status}`);
-        return (await res.json()) as UploadFile;
-      });
+    return api.post<UploadFile>(`/api/user/upload/single`, form, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    }).then(res => res.data);
   },
 
   multiple: (files: File[], folder = "HealthCare") => {
     const form = new FormData();
     files.forEach((f) => form.append("files", f));
     form.append("folder", folder);
-    return fetch(`/api/user/upload/multiple`, { method: "POST", body: form })
-      .then(async (res) => {
-        if (!res.ok) throw new Error(`ApiError ${res.status}`);
-        return (await res.json()) as UploadFile;
-      });
+    return api.post<UploadFile>(`/api/user/upload/multiple`, form, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    }).then(res => res.data);
   },
 
   delete: (publicId: string) =>
-    fetch(`/api/user/upload/${encodeURIComponent(publicId)}`, { method: "DELETE" })
-      .then(async (res) => {
-        if (!res.ok) throw new Error(`ApiError ${res.status}`);
-        return res.text(); // "File deleted successfully"
-      }),
+    api.delete<string>(`/api/user/upload/${encodeURIComponent(publicId)}`).then(res => res.data),
 
   avatar: (file: File) => {
     const form = new FormData();
     form.append("file", file);
-    return fetch(`/api/user/upload/avatar`, { method: "POST", body: form })
-      .then(async (res) => {
-        if (!res.ok) throw new Error(`ApiError ${res.status}`);
-        return (await res.json()) as UploadFile;
-      });
+    return api.post<UploadFile>(`/api/user/upload/avatar`, form, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    }).then(res => res.data);
   },
 
   document: (file: File, category = "general") => {
     const form = new FormData();
     form.append("file", file);
     form.append("category", category);
-    return fetch(`/api/user/upload/document`, { method: "POST", body: form })
-      .then(async (res) => {
-        if (!res.ok) throw new Error(`ApiError ${res.status}`);
-        return (await res.json()) as UploadFile;
-      });
+    return api.post<UploadFile>(`/api/user/upload/document`, form, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    }).then(res => res.data);
   },
 };

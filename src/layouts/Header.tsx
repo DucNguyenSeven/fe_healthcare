@@ -15,10 +15,21 @@ import {
   ListItemText,
   useTheme,
   useMediaQuery,
+  Menu,
+  MenuItem,
+  Avatar,
+  Chip,
 } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
+import { 
+  ChatBubbleOutline, 
+  Person, 
+  LogoutOutlined, 
+  AccountCircle 
+} from '@mui/icons-material';
 import Link from 'next/link';
 import { useHeaderNavigation } from '../hooks/navigation';
+import { useAuth } from '../hooks';
 
 interface NavItem {
   label: string;
@@ -27,15 +38,32 @@ interface NavItem {
 
 const Header: React.FC = () => {
   const [mobileOpen, setMobileOpen] = useState<boolean>(false);
+  const [userMenuAnchor, setUserMenuAnchor] = useState<null | HTMLElement>(null);
   const theme = useTheme();
   // Use Drawer for screens below lg (≤1023px), desktop layout for lg and up (≥1024px)
   const isDrawer = useMediaQuery(theme.breakpoints.down('lg'));
   
   // Use navigation hook
   const { navItems, handleRegister, handleLogin } = useHeaderNavigation();
+  
+  // Use auth hook
+  const { isAuthenticated, user, logout } = useAuth();
 
   const handleDrawerToggle = (): void => {
     setMobileOpen(!mobileOpen);
+  };
+
+  const handleUserMenuOpen = (event: React.MouseEvent<HTMLElement>): void => {
+    setUserMenuAnchor(event.currentTarget);
+  };
+
+  const handleUserMenuClose = (): void => {
+    setUserMenuAnchor(null);
+  };
+
+  const handleLogout = (): void => {
+    handleUserMenuClose();
+    logout();
   };
 
   // Handle navigation with drawer close
@@ -76,47 +104,106 @@ const Header: React.FC = () => {
       </List>
       {/* CTA Buttons in Drawer */}
       <Box sx={{ p: 2, mt: 'auto' }}>
-        <Stack direction="column" spacing={2}>
-          <Button
-            variant="outlined"
-            fullWidth
-            onClick={() => {
-              setMobileOpen(false);
-              handleRegister();
-            }}
-            sx={{
-              borderColor: 'primary.main',
-              color: 'primary.main',
-              minHeight: 48,
-              fontSize: '1rem',
-              '&:hover': {
-                borderColor: 'primary.dark',
+        {isAuthenticated ? (
+          <Stack direction="column" spacing={2}>
+            <Button
+              variant="outlined"
+              fullWidth
+              component={Link}
+              href="/chat"
+              startIcon={<ChatBubbleOutline />}
+              onClick={() => setMobileOpen(false)}
+              sx={{
+                borderColor: 'primary.main',
+                color: 'primary.main',
+                minHeight: 48,
+                fontSize: '1rem',
+                textTransform: 'none',
+                '&:hover': {
+                  borderColor: 'primary.dark',
+                  backgroundColor: 'primary.main',
+                  color: 'white',
+                },
+              }}
+            >
+              Chat AI
+            </Button>
+            <Box sx={{ textAlign: 'center', py: 1 }}>
+              <Chip
+                avatar={<AccountCircle />}
+                label={user?.email || 'User'}
+                variant="outlined"
+                color="primary"
+                size="small"
+              />
+            </Box>
+            <Button
+              variant="outlined"
+              fullWidth
+              onClick={() => {
+                setMobileOpen(false);
+                handleLogout();
+              }}
+              startIcon={<LogoutOutlined />}
+              sx={{
+                borderColor: 'error.main',
+                color: 'error.main',
+                minHeight: 48,
+                fontSize: '1rem',
+                textTransform: 'none',
+                '&:hover': {
+                  borderColor: 'error.dark',
+                  backgroundColor: 'error.main',
+                  color: 'white',
+                },
+              }}
+            >
+              Đăng xuất
+            </Button>
+          </Stack>
+        ) : (
+          <Stack direction="column" spacing={2}>
+            <Button
+              variant="outlined"
+              fullWidth
+              onClick={() => {
+                setMobileOpen(false);
+                handleRegister();
+              }}
+              sx={{
+                borderColor: 'primary.main',
+                color: 'primary.main',
+                minHeight: 48,
+                fontSize: '1rem',
+                '&:hover': {
+                  borderColor: 'primary.dark',
+                  backgroundColor: 'primary.main',
+                  color: 'white',
+                },
+              }}
+            >
+              Đăng ký
+            </Button>
+            <Button
+              variant="contained"
+              fullWidth
+              onClick={() => {
+                setMobileOpen(false);
+                handleLogin();
+              }}
+              sx={{
                 backgroundColor: 'primary.main',
-                color: 'white',
-              },
-            }}
-          >
-            Đăng ký
-          </Button>
-          <Button
-            variant="contained"
-            fullWidth
-            onClick={() => {
-              setMobileOpen(false);
-              handleLogin();
-            }}
-            sx={{
-              backgroundColor: 'primary.main',
-              minHeight: 48,
-              fontSize: '1rem',
-              '&:hover': {
-                backgroundColor: 'primary.dark',
-              },
-            }}
-          >
-            Đăng nhập
-          </Button>
-        </Stack>
+                minHeight: 48,
+                fontSize: '1rem',
+                '&:hover': {
+                  backgroundColor: 'primary.dark',
+                },
+              }}
+            >
+              Đăng nhập
+            </Button>
+          </Stack>
+        )}
       </Box>
     </Box>
   );
@@ -199,44 +286,109 @@ const Header: React.FC = () => {
               </Stack>
               
               {/* Action Buttons */}
-              <Stack direction="row" spacing={2} sx={{ flexShrink: 0 }}>
-                <Button
-                  variant="outlined"
-                  onClick={handleRegister}
-                  sx={{
-                    borderColor: 'primary.main',
-                    color: 'primary.main',
-                    fontSize: '0.9rem',
-                    px: 3,
-                    py: 1,
-                    minWidth: '100px',
-                    height: '40px',
-                    '&:hover': {
-                      borderColor: 'primary.dark',
-                      backgroundColor: 'primary.main',
-                      color: 'white',
-                    },
-                  }}
-                >
-                  Đăng ký
-                </Button>
-                <Button
-                  variant="contained"
-                  onClick={handleLogin}
-                  sx={{
-                    backgroundColor: 'primary.main',
-                    fontSize: '0.9rem',
-                    px: 3,
-                    py: 1,
-                    minWidth: '100px',
-                    height: '40px',
-                    '&:hover': {
-                      backgroundColor: 'primary.dark',
-                    },
-                  }}
-                >
-                  Đăng nhập
-                </Button>
+              <Stack direction="row" spacing={2} sx={{ flexShrink: 0, alignItems: 'center' }}>
+                {isAuthenticated ? (
+                  <>
+                    <Button
+                      variant="outlined"
+                      component={Link}
+                      href="/chat"
+                      startIcon={<ChatBubbleOutline />}
+                      sx={{
+                        borderColor: 'primary.main',
+                        color: 'primary.main',
+                        fontSize: '0.9rem',
+                        px: 3,
+                        py: 1,
+                        minWidth: '120px',
+                        height: '40px',
+                        textTransform: 'none',
+                        '&:hover': {
+                          borderColor: 'primary.dark',
+                          backgroundColor: 'primary.main',
+                          color: 'white',
+                        },
+                      }}
+                    >
+                      Chat AI
+                    </Button>
+                    <IconButton
+                      onClick={handleUserMenuOpen}
+                      sx={{
+                        width: 40,
+                        height: 40,
+                        border: 2,
+                        borderColor: 'primary.main',
+                        '&:hover': {
+                          borderColor: 'primary.dark',
+                          backgroundColor: 'primary.light',
+                        },
+                      }}
+                    >
+                      <Avatar sx={{ width: 32, height: 32, bgcolor: 'primary.main' }}>
+                        <Person />
+                      </Avatar>
+                    </IconButton>
+                    <Menu
+                      anchorEl={userMenuAnchor}
+                      open={Boolean(userMenuAnchor)}
+                      onClose={handleUserMenuClose}
+                      PaperProps={{
+                        sx: { minWidth: 200, mt: 1 }
+                      }}
+                    >
+                      <MenuItem disabled>
+                        <Typography variant="body2" color="text.secondary">
+                          {user?.email}
+                        </Typography>
+                      </MenuItem>
+                      <MenuItem onClick={handleLogout}>
+                        <LogoutOutlined sx={{ mr: 1 }} />
+                        Đăng xuất
+                      </MenuItem>
+                    </Menu>
+                  </>
+                ) : (
+                  <>
+                    <Button
+                      variant="outlined"
+                      onClick={handleRegister}
+                      sx={{
+                        borderColor: 'primary.main',
+                        color: 'primary.main',
+                        fontSize: '0.9rem',
+                        px: 3,
+                        py: 1,
+                        minWidth: '100px',
+                        height: '40px',
+                        '&:hover': {
+                          borderColor: 'primary.dark',
+                          backgroundColor: 'primary.main',
+                          color: 'white',
+                        },
+                      }}
+                    >
+                      Đăng ký
+                    </Button>
+                    <Button
+                      variant="contained"
+                      onClick={handleLogin}
+                      sx={{
+                        backgroundColor: 'primary.main',
+                        fontSize: '0.9rem',
+                        px: 3,
+                        py: 1,
+                        minWidth: '100px',
+                        height: '40px',
+                        '&:hover': {
+                          backgroundColor: 'primary.dark',
+                        },
+                      }}
+                    >
+                      Đăng nhập
+                    </Button>
+                  </>
+                )}
               </Stack>
             </>
           )}

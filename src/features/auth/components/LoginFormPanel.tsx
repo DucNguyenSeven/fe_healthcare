@@ -14,6 +14,7 @@ import {
   IconButton,
   useTheme,
   useMediaQuery,
+  CircularProgress,
 } from '@mui/material';
 import { 
   Google, 
@@ -31,9 +32,10 @@ interface LoginFormPanelProps {
   onInputChange?: (field: keyof LoginFormData) => (event: React.ChangeEvent<HTMLInputElement>) => void
   onSubmit?: (event: React.SyntheticEvent) => void
   onSocialLogin?: (provider: string) => void
+  isLoading?: boolean
 }
 
-const LoginFormPanel: React.FC<LoginFormPanelProps> = ({ formData, onInputChange, onSubmit, onSocialLogin }) => {
+const LoginFormPanel: React.FC<LoginFormPanelProps> = ({ formData, onInputChange, onSubmit, onSocialLogin, isLoading = false }) => {
   const [showPassword, setShowPassword] = useState(false);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -156,6 +158,7 @@ const LoginFormPanel: React.FC<LoginFormPanelProps> = ({ formData, onInputChange
             value={formData?.email || ''}
             onChange={onInputChange?.('email')}
             required
+            disabled={isLoading}
             InputProps={{
               startAdornment: (
                 <InputAdornment position="start">
@@ -181,6 +184,7 @@ const LoginFormPanel: React.FC<LoginFormPanelProps> = ({ formData, onInputChange
             value={formData?.password || ''}
             onChange={onInputChange?.('password')}
             required
+            disabled={isLoading}
             InputProps={{
               startAdornment: (
                 <InputAdornment position="start">
@@ -193,6 +197,7 @@ const LoginFormPanel: React.FC<LoginFormPanelProps> = ({ formData, onInputChange
                     onClick={handleTogglePasswordVisibility}
                     edge="end"
                     size="small"
+                    disabled={isLoading}
                   >
                     {showPassword ? <Visibility /> : <VisibilityOff />}
                   </IconButton>
@@ -225,6 +230,7 @@ const LoginFormPanel: React.FC<LoginFormPanelProps> = ({ formData, onInputChange
                   onChange={onInputChange?.('rememberMe') || (() => {})}
                   color="primary"
                   size="small"
+                  disabled={isLoading}
                 />
               }
               label="Nhớ tôi"
@@ -252,6 +258,8 @@ const LoginFormPanel: React.FC<LoginFormPanelProps> = ({ formData, onInputChange
             fullWidth
             variant="contained"
             size="medium"
+            disabled={isLoading}
+            startIcon={isLoading ? <CircularProgress size={20} color="inherit" /> : null}
             sx={{ 
               mb: isMobile ? 1.5 : 2,
               py: { xs: 1.25, sm: 1.5 },
@@ -260,7 +268,7 @@ const LoginFormPanel: React.FC<LoginFormPanelProps> = ({ formData, onInputChange
               borderRadius: 2,
             }}
           >
-            Đăng nhập
+            {isLoading ? 'Đang đăng nhập...' : 'Đăng nhập'}
           </Button>
         </Box>
 
@@ -294,6 +302,7 @@ const LoginFormPanel: React.FC<LoginFormPanelProps> = ({ formData, onInputChange
             onClick={() => onSocialLogin?.('google')}
             startIcon={<Google />}
             size="medium"
+            disabled={isLoading}
             sx={{
               borderRadius: 2,
               borderColor: 'grey.300',
@@ -315,6 +324,7 @@ const LoginFormPanel: React.FC<LoginFormPanelProps> = ({ formData, onInputChange
             onClick={() => onSocialLogin?.('facebook')}
             startIcon={<Facebook />}
             size="medium"
+            disabled={isLoading}
             sx={{
               borderRadius: 2,
               borderColor: 'grey.300',

@@ -1,15 +1,5 @@
 import { NextRequest } from "next/server";
 
-/**
- * Generic BFF forwarder.
- * - baseUrl: service root (e.g., http://localhost:8081)
- * - prefix: service api prefix (e.g., "/api/v1" or "/api/ai-chat")
- * - pathParts: catch-all path segments from route
- * - Forwards minimal safe headers and preserves content-type
- * - Supports JSON and multipart/form-data transparently
- * - 10s timeout
- * - If cookie "access_token" exists, forwards as Authorization: Bearer <token>
- */
 export async function forward(
   req: NextRequest,
   baseUrl: string,
@@ -24,13 +14,15 @@ export async function forward(
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 10_000);
 
-  const token = req.cookies.get("access_token")?.value;
   const headers: Record<string, string> = {
     accept: req.headers.get("accept") ?? "application/json",
   };
   const contentType = req.headers.get("content-type");
   if (contentType) headers["content-type"] = contentType;
-  if (token) headers["authorization"] = `Bearer ${token}`;
+  
+  // Forward cookies for authentication
+  const cookieHeader = req.headers.get("cookie");
+  if (cookieHeader) headers["cookie"] = cookieHeader;
 
   try {
     const bodyNeeded = !["GET", "HEAD"].includes(req.method);

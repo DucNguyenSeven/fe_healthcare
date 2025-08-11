@@ -1,5 +1,6 @@
 import React from 'react';
 import ThemeRegistry from '../theme/ThemeRegistry';
+import { AuthProvider } from '../contexts/AuthContext';
 
 export const metadata = {
   title: 'Healthcare App',
@@ -15,7 +16,9 @@ export default function RootLayout({
     <html lang="vi">
       <body>
         <ThemeRegistry>
-          {children}
+          <AuthProvider>
+            {children}
+          </AuthProvider>
         </ThemeRegistry>
       </body>
     </html>

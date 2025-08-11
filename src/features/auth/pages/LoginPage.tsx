@@ -1,9 +1,25 @@
 "use client";
 
-import React, { useState } from 'react';
-import { Box, useTheme, useMediaQuery } from '@mui/material';
+import React, { useState, useEffect, Suspense } from 'react';
+import { Box, useTheme, useMediaQuery, Alert, Snackbar } from '@mui/material';
 import { LoginFormPanel, LoginHeroPanel } from '../components';
 import { LoginFormData } from '../../../types';
+import { useAuth } from '../../../hooks';
+import { useSearchParams } from 'next/navigation';
+
+// Component that handles search params and must be wrapped in Suspense
+const SuccessMessageHandler: React.FC<{ setSuccessMessage: (message: string | null) => void }> = ({ setSuccessMessage }) => {
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    const message = searchParams.get('message');
+    if (message === 'registration-success') {
+      setSuccessMessage('Đăng ký thành công! Vui lòng đăng nhập để tiếp tục.');
+    }
+  }, [searchParams, setSuccessMessage]);
+
+  return null;
+};
 
 const LoginPage: React.FC = () => {
   const [formData, setFormData] = useState<LoginFormData>({
@@ -11,9 +27,11 @@ const LoginPage: React.FC = () => {
     password: '',
     rememberMe: false,
   });
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const { login, isLoading, error, clearError } = useAuth();
 
   const handleInputChange = (field: keyof LoginFormData) => (event: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
@@ -22,10 +40,18 @@ const LoginPage: React.FC = () => {
     });
   };
 
-  const handleSubmit = (event: React.SyntheticEvent): void => {
+  const handleSubmit = async (event: React.SyntheticEvent): Promise<void> => {
     event.preventDefault();
-    // TODO: Implement login logic
-    console.log('Login attempt:', formData);
+    
+    // Basic validation
+    if (!formData.email || !formData.password) {
+      return;
+    }
+
+    await login({
+      email: formData.email,
+      password: formData.password,
+    });
   };
 
   const handleSocialLogin = (provider: string): void => {
@@ -43,6 +69,10 @@ const LoginPage: React.FC = () => {
         overflow: 'hidden',
       }}
     >
+      {/* Handle success messages from URL params */}
+      <Suspense fallback={null}>
+        <SuccessMessageHandler setSuccessMessage={setSuccessMessage} />
+      </Suspense>
       {/* Left Panel - Login Form */}
       <Box
         sx={{
@@ -63,6 +93,7 @@ const LoginPage: React.FC = () => {
           onInputChange={handleInputChange}
           onSubmit={handleSubmit}
           onSocialLogin={handleSocialLogin}
+          isLoading={isLoading}
         />
       </Box>
 
@@ -78,6 +109,30 @@ const LoginPage: React.FC = () => {
           <LoginHeroPanel />
         </Box>
       )}
+
+      {/* Error Snackbar */}
+      <Snackbar 
+        open={!!error} 
+        autoHideDuration={6000} 
+        onClose={clearError}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Alert onClose={clearError} severity="error" sx={{ width: '100%' }}>
+          {error}
+        </Alert>
+      </Snackbar>
+
+      {/* Success Snackbar */}
+      <Snackbar 
+        open={!!successMessage} 
+        autoHideDuration={8000} 
+        onClose={() => setSuccessMessage(null)}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Alert onClose={() => setSuccessMessage(null)} severity="success" sx={{ width: '100%' }}>
+          {successMessage}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };

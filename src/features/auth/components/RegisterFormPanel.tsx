@@ -11,6 +11,7 @@ import {
   IconButton,
   useTheme,
   useMediaQuery,
+  CircularProgress,
 } from '@mui/material';
 import { 
   MailOutline, 
@@ -25,9 +26,10 @@ interface RegisterFormPanelProps {
   formData?: RegisterFormData
   onInputChange?: (field: keyof RegisterFormData) => (event: React.ChangeEvent<HTMLInputElement>) => void
   onSubmit?: (event: React.SyntheticEvent) => void
+  isLoading?: boolean
 }
 
-const RegisterFormPanel: React.FC<RegisterFormPanelProps> = ({ formData, onInputChange, onSubmit }) => {
+const RegisterFormPanel: React.FC<RegisterFormPanelProps> = ({ formData, onInputChange, onSubmit, isLoading = false }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const theme = useTheme();
@@ -141,16 +143,18 @@ const RegisterFormPanel: React.FC<RegisterFormPanelProps> = ({ formData, onInput
 
         {/* Register Form */}
         <Box component="form" onSubmit={onSubmit}>
-          {/* Email or Phone Field */}
+          {/* Email Field */}
           <TextField
             fullWidth
-            id="register-email-phone"
-            name="emailOrPhone"
-            label="Email hoặc số điện thoại"
+            id="register-email"
+            name="email"
+            label="Email"
+            type="email"
             value={formData?.emailOrPhone || ''}
             onChange={onInputChange?.('emailOrPhone')}
             required
             size="small"
+            disabled={isLoading}
             InputProps={{
               startAdornment: (
                 <InputAdornment position="start">
@@ -186,6 +190,7 @@ const RegisterFormPanel: React.FC<RegisterFormPanelProps> = ({ formData, onInput
             onChange={onInputChange?.('password')}
             required
             size="small"
+            disabled={isLoading}
             InputProps={{
               startAdornment: (
                 <InputAdornment position="start">
@@ -198,6 +203,7 @@ const RegisterFormPanel: React.FC<RegisterFormPanelProps> = ({ formData, onInput
                     onClick={handleTogglePasswordVisibility}
                     edge="end"
                     size="small"
+                    disabled={isLoading}
                   >
                     {showPassword ? <Visibility sx={{ fontSize: isMobile ? 16 : 18 }} /> : <VisibilityOff sx={{ fontSize: isMobile ? 16 : 18 }} />}
                   </IconButton>
@@ -232,6 +238,7 @@ const RegisterFormPanel: React.FC<RegisterFormPanelProps> = ({ formData, onInput
             onChange={onInputChange?.('confirmPassword')}
             required
             size="small"
+            disabled={isLoading}
             InputProps={{
               startAdornment: (
                 <InputAdornment position="start">
@@ -244,6 +251,7 @@ const RegisterFormPanel: React.FC<RegisterFormPanelProps> = ({ formData, onInput
                     onClick={handleToggleConfirmPasswordVisibility}
                     edge="end"
                     size="small"
+                    disabled={isLoading}
                   >
                     {showConfirmPassword ? <Visibility sx={{ fontSize: isMobile ? 16 : 18 }} /> : <VisibilityOff sx={{ fontSize: isMobile ? 16 : 18 }} />}
                   </IconButton>
@@ -273,6 +281,8 @@ const RegisterFormPanel: React.FC<RegisterFormPanelProps> = ({ formData, onInput
             fullWidth
             variant="contained"
             size="small"
+            disabled={isLoading}
+            startIcon={isLoading ? <CircularProgress size={20} color="inherit" /> : null}
             sx={{
               mt: 0.5,
               mb: 0,
@@ -284,7 +294,7 @@ const RegisterFormPanel: React.FC<RegisterFormPanelProps> = ({ formData, onInput
               height: isMobile ? 34 : 38,
             }}
           >
-            Đăng ký
+            {isLoading ? 'Đang đăng ký...' : 'Đăng ký'}
           </Button>
         </Box>
 

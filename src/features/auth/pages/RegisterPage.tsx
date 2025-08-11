@@ -1,9 +1,10 @@
 "use client";
 
 import React, { useState } from 'react';
-import { Box, useTheme, useMediaQuery } from '@mui/material';
+import { Box, useTheme, useMediaQuery, Alert, Snackbar } from '@mui/material';
 import { RegisterFormPanel, RegisterHeroPanel } from '../components';
 import { RegisterFormData } from '../../../types';
+import { useRegister } from '../../../hooks';
 
 const RegisterPage: React.FC = () => {
   const [formData, setFormData] = useState<RegisterFormData>({
@@ -14,6 +15,7 @@ const RegisterPage: React.FC = () => {
 
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const { register, isLoading, error, clearError } = useRegister();
 
   const handleInputChange = (field: keyof RegisterFormData) => (event: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
@@ -22,10 +24,15 @@ const RegisterPage: React.FC = () => {
     });
   };
 
-  const handleSubmit = (event: React.SyntheticEvent): void => {
+  const handleSubmit = async (event: React.SyntheticEvent): Promise<void> => {
     event.preventDefault();
-    // TODO: Implement registration logic
-    console.log('Registration attempt:', formData);
+    
+    // Basic validation
+    if (!formData.emailOrPhone || !formData.password || !formData.confirmPassword) {
+      return;
+    }
+
+    await register(formData);
   };
 
   return (
@@ -57,6 +64,7 @@ const RegisterPage: React.FC = () => {
           formData={formData}
           onInputChange={handleInputChange}
           onSubmit={handleSubmit}
+          isLoading={isLoading}
         />
       </Box>
 
@@ -72,6 +80,18 @@ const RegisterPage: React.FC = () => {
           <RegisterHeroPanel />
         </Box>
       )}
+
+      {/* Error Snackbar */}
+      <Snackbar 
+        open={!!error} 
+        autoHideDuration={6000} 
+        onClose={clearError}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Alert onClose={clearError} severity="error" sx={{ width: '100%' }}>
+          {error}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };

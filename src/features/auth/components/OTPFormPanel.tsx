@@ -9,6 +9,7 @@ import {
   Button,
   useMediaQuery,
 } from '@mui/material';
+import type { Theme } from '@mui/material/styles';
 
 interface OTPFormPanelProps {
   otpValues: string[];
@@ -33,7 +34,7 @@ const OTPFormPanel: React.FC<OTPFormPanelProps> = ({
   onBackToLogin,
   onSubmit
 }) => {
-  const isMobile = useMediaQuery((theme: any) => theme.breakpoints.down('sm'));
+  const isMobile = useMediaQuery((theme: Theme) => theme.breakpoints.down('sm'));
 
   return (
     <Paper
