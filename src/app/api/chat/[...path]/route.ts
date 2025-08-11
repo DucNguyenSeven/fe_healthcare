@@ -1,0 +1,12 @@
+import { NextRequest } from "next/server";
+import { env } from "@/utils/env";
+import { forward } from "@/lib/api/proxy";
+
+function handler(req: NextRequest, { params }: { params: { path: string[] } }) {
+  return forward(req, env.chat, "/api/ai-chat", params.path);
+}
+export const GET = handler;
+export const POST = handler;
+export const PUT = handler;
+export const PATCH = handler;
+export const DELETE = handler;
