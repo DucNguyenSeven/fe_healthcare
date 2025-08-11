@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { postChat } from '../lib/api/chat';
+// import { postChat } from '../lib/api/chat'; // Comment out real API call
 
 export type ChatMessage = { 
   id: string;
@@ -30,16 +30,19 @@ export function useChat() {
     setLoading(true);
     
     try {
-      // Ensure minimum display time for typing indicator
-      const [apiResult] = await Promise.all([
-        postChat(question),
-        new Promise(resolve => setTimeout(resolve, 1500)) // Minimum 1.5 second delay for better UX
-      ]);
+      // Mock API response instead of real API call
+      const mockResponse = await new Promise<{ answer: string }>(resolve => {
+        setTimeout(() => {
+          resolve({
+            answer: `Đây là câu trả lời mẫu cho câu hỏi: "${question}". Hiện tại backend chưa sẵn sàng, vui lòng thử lại sau.`
+          });
+        }, 1500);
+      });
       
       const aiMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
         role: "ai", 
-        content: apiResult.answer,
+        content: mockResponse.answer,
         timestamp: new Date()
       };
       setMessages((m) => [...m, aiMessage]);

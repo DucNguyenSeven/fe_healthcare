@@ -9,7 +9,8 @@ import {
   Stack,
 } from '@mui/material';
 import { useRouter } from 'next/navigation';
-const heroDoctorImage = '/hero_doctor1.png';
+
+const heroDoctorImage = '/assets/images/hero_doctor1.png';
 
 interface HeroSectionProps {
   id?: string;
