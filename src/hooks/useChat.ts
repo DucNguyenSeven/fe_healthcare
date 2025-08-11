@@ -12,6 +12,10 @@ export function useChat() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loading, setLoading] = useState(false);
 
+  const clearMessages = () => {
+    setMessages([]);
+  };
+
   const sendQuestion = async (question: string) => {
     if (!question.trim()) return;
     
@@ -26,15 +30,21 @@ export function useChat() {
     setLoading(true);
     
     try {
-      const { answer } = await postChat(question);
+      // Ensure minimum display time for typing indicator
+      const [apiResult] = await Promise.all([
+        postChat(question),
+        new Promise(resolve => setTimeout(resolve, 1500)) // Minimum 1.5 second delay for better UX
+      ]);
+      
       const aiMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
         role: "ai", 
-        content: answer,
+        content: apiResult.answer,
         timestamp: new Date()
       };
       setMessages((m) => [...m, aiMessage]);
-    } catch (_e) { // eslint-disable-line @typescript-eslint/no-unused-vars
+    } catch (error) {
+      console.error('Chat API error:', error);
       const errorMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
         role: "ai", 
@@ -47,5 +57,5 @@ export function useChat() {
     }
   };
 
-  return { messages, loading, sendQuestion };
+  return { messages, loading, sendQuestion, clearMessages };
 } 

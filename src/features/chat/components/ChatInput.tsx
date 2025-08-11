@@ -5,11 +5,10 @@ import {
   Box, 
   TextareaAutosize, 
   IconButton, 
-  CircularProgress,
-  Paper
+  CircularProgress
 } from '@mui/material';
 import SendIcon from '@mui/icons-material/Send';
-import AttachFileIcon from '@mui/icons-material/AttachFile';
+import AddIcon from '@mui/icons-material/Add';
 
 interface ChatInputProps {
   onSend: (message: string) => void;
@@ -59,40 +58,46 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   return (
     <Box
       sx={{
-        p: { xs: 1, sm: 1.5 },
-        borderTop: 1,
-        borderColor: 'divider',
-        bgcolor: 'background.paper',
-        position: 'sticky',
-        bottom: 0,
-        zIndex: 10,
-        boxShadow: '0 -2px 8px rgba(0,0,0,0.1)'
+        p: { xs: 2, md: 3 },
+        bgcolor: 'white'
       }}
     >
-      <Paper
+      <Box
         sx={{
-          p: 0.5,
           display: 'flex',
-          alignItems: 'center',
-          gap: 1,
-          height: { xs: 44, sm: 48 },
-          borderRadius: { xs: 22, sm: 24 },
-          boxShadow: 2
+          alignItems: 'flex-end',
+          gap: 1.5,
+          p: 1,
+          borderRadius: 8,
+          bgcolor: '#F3F4F6',
+          border: 'none',
+          minHeight: 52
         }}
       >
         <IconButton
           onClick={onAttach}
           disabled={disabled || isLoading}
-          color="primary"
           size="small"
           sx={{
-            width: { xs: 28, sm: 32 },
-            height: { xs: 28, sm: 32 },
-            borderRadius: '50%'
+            width: 36,
+            height: 36,
+            borderRadius: '50%',
+            border: '1px solid #93C5FD',
+            bgcolor: 'white',
+            color: '#3B82F6',
+            '&:hover': {
+              bgcolor: '#F8FAFC',
+              borderColor: '#60A5FA'
+            },
+            '&:disabled': {
+              bgcolor: '#F8FAFC',
+              color: '#9CA3AF',
+              borderColor: '#D1D5DB'
+            }
           }}
           aria-label="Đính kèm tệp"
         >
-          <AttachFileIcon fontSize="small" />
+          <AddIcon fontSize="small" />
         </IconButton>
         
         <TextareaAutosize
@@ -100,42 +105,51 @@ export const ChatInput: React.FC<ChatInputProps> = ({
           value={message}
           onChange={handleChange}
           onKeyDown={handleKeyDown}
-          placeholder="Nhập tin nhắn của bạn... "
+          placeholder="Nhập tin nhắn của bạn..."
           disabled={disabled || isLoading}
           style={{
             flex: 1,
-            minHeight: 28,
+            minHeight: 20,
             maxHeight: 120,
-            padding: '6px 12px',
+            padding: '8px 12px',
             border: 'none',
-            borderRadius: '22px',
+            borderRadius: '0',
             fontSize: '14px',
             fontFamily: 'inherit',
             resize: 'none',
             outline: 'none',
             backgroundColor: 'transparent',
-            color: disabled ? '#999' : '#333'
+            color: disabled ? '#999' : '#333',
+            lineHeight: '1.4'
           }}
         />
         
         <IconButton
           onClick={handleSend}
           disabled={!message.trim() || isLoading || disabled}
-          color="primary"
           sx={{
-            width: { xs: 32, sm: 36 },
-            height: { xs: 32, sm: 36 },
-            borderRadius: '50%'
+            width: 36,
+            height: 36,
+            borderRadius: '50%',
+            bgcolor: '#1D4ED8',
+            color: 'white',
+            '&:hover': {
+              bgcolor: '#1E40AF'
+            },
+            '&:disabled': {
+              bgcolor: '#9CA3AF',
+              color: '#F3F4F6'
+            }
           }}
           aria-label="Gửi tin nhắn"
         >
           {isLoading ? (
-            <CircularProgress size={20} color="inherit" />
+            <CircularProgress size={16} color="inherit" />
           ) : (
-            <SendIcon />
+            <SendIcon fontSize="small" />
           )}
         </IconButton>
-      </Paper>
+      </Box>
     </Box>
   );
 }; 

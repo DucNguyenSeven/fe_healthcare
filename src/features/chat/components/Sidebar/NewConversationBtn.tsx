@@ -10,27 +10,28 @@ export const NewConversationBtn: React.FC<NewConversationBtnProps> = ({ onClick 
   return (
     <Box
       sx={{
-        p: 1.5,
-        pt: 1.5,
-        borderBottom: 1,
-        borderColor: 'divider',
-        position: 'sticky',
-        top: 0,
-        bgcolor: 'grey.50',
-        zIndex: 1
+        p: 2,
+        bgcolor: 'white'
       }}
     >
       <Button
         variant="contained"
-        color="primary"
         startIcon={<AddIcon />}
         onClick={onClick}
         fullWidth
         sx={{
           py: 1.5,
-          borderRadius: 2,
+          borderRadius: 6,
           textTransform: 'none',
-          fontWeight: 'medium'
+          fontWeight: 600,
+          fontSize: '0.875rem',
+          bgcolor: '#EFF6FF',
+          color: '#2563EB',
+          '&:hover': {
+            bgcolor: '#DBEAFE',
+          },
+          boxShadow: 'none',
+          border: 'none'
         }}
       >
         Cuộc trò chuyện mới

@@ -20,14 +20,14 @@ export const defaultSuggestions: SuggestionChip[] = [
     text: 'Làm thế nào để tôi truy cập hồ sơ y tế của mình?',
     category: 'general'
   },
-  {
-    id: '4',
-    text: 'Tôi nên làm gì trước cuộc hẹn?',
-    category: 'appointment'
-  },
-  {
-    id: '5',
-    text: 'Làm thế nào để tôi liên hệ với bác sĩ của mình?',
-    category: 'general'
-  }
+  // {
+  //   id: '4',
+  //   text: 'Tôi nên làm gì trước cuộc hẹn?',
+  //   category: 'appointment'
+  // },
+  // {
+  //   id: '5',
+  //   text: 'Làm thế nào để tôi liên hệ với bác sĩ của mình?',
+  //   category: 'general'
+  // }
 ]; 

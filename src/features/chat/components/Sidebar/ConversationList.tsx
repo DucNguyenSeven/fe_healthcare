@@ -7,13 +7,7 @@ import {
   Box,
   Typography
 } from '@mui/material';
-
-interface Conversation {
-  id: string;
-  title: string;
-  lastMessage?: string;
-  updatedAt: Date;
-}
+import { Conversation } from '../../../../hooks/useConversations';
 
 interface ConversationListProps {
   conversations: Conversation[];
@@ -26,79 +20,62 @@ export const ConversationList: React.FC<ConversationListProps> = ({
   currentId,
   onSelect
 }) => {
-  const formatDate = (date: Date) => {
-    const now = new Date();
-    const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60);
-    
-    if (diffInHours < 1) {
-      return 'Vừa xong';
-    } else if (diffInHours < 24) {
-      return `${Math.floor(diffInHours)}h trước`;
-    } else {
-      return date.toLocaleDateString('vi-VN');
-    }
-  };
-
   return (
-    <List sx={{ p: 0, bgcolor: 'grey.50' }}>
-      {conversations.map((conversation) => (
-        <ListItem key={conversation.id} disablePadding>
-          <ListItemButton
-            selected={currentId === conversation.id}
-            onClick={() => onSelect(conversation.id)}
-            sx={{
-              px: 1.5,
-              py: 1,
-              '&.Mui-selected': {
-                bgcolor: 'primary.main',
-                color: 'primary.contrastText',
-                '&:hover': {
-                  bgcolor: 'primary.main'
-                }
-              }
-            }}
-          >
-            <Box sx={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
+    <Box sx={{ p: 2, bgcolor: 'white' }}>
+      <Typography
+        variant="subtitle2"
+        sx={{
+          fontWeight: 700,
+          color: '#333',
+          mb: 1.5,
+          fontSize: '0.9rem'
+        }}
+      >
+        Đoạn chat
+      </Typography>
+      
+      <List sx={{ p: 0 }}>
+        {conversations.map((conversation) => (
+          <ListItem key={conversation.id} disablePadding>
+                          <ListItemButton
+                selected={currentId === conversation.id}
+                onClick={() => onSelect(conversation.id)}
+                sx={{
+                  px: 1.5,
+                  py: 1.5,
+                  borderRadius: 2,
+                  mb: 0.5,
+                  '&.Mui-selected': {
+                    bgcolor: '#F3F4F6',
+                    color: '#2563EB',
+                    '&:hover': {
+                      bgcolor: '#F3F4F6'
+                    }
+                  },
+                  '&:hover': {
+                    bgcolor: '#F9FAFB'
+                  }
+                }}
+              >
               <ListItemText
                 primary={conversation.title}
                 primaryTypographyProps={{
                   component: 'span',
                   noWrap: true,
-                  variant: 'subtitle1',
+                  variant: 'body2',
                   sx: {
-                    fontWeight: 600,
-                    color: currentId === conversation.id ? 'primary.contrastText' : 'text.primary'
+                    fontWeight: 500,
+                    color: currentId === conversation.id ? '#1976D2' : '#333',
+                    fontSize: '0.875rem',
+                    lineHeight: 1.4
                   }
                 }}
               />
-              {conversation.lastMessage && (
-                <ListItemText
-                  primary={conversation.lastMessage}
-                  primaryTypographyProps={{
-                    component: 'span',
-                    noWrap: true,
-                    variant: 'body2',
-                    sx: {
-                      color: currentId === conversation.id ? 'primary.contrastText' : 'text.secondary',
-                      lineHeight: 1.2
-                    }
-                  }}
-                />
-              )}
-              <Typography
-                variant="caption"
-                sx={{
-                  color: currentId === conversation.id ? 'primary.contrastText' : 'text.disabled',
-                  fontSize: '0.7rem',
-                  mt: 0.5
-                }}
-              >
-                {formatDate(conversation.updatedAt)}
-              </Typography>
-            </Box>
-          </ListItemButton>
-        </ListItem>
-      ))}
-    </List>
+            </ListItemButton>
+          </ListItem>
+        ))}
+
+      </List>
+    </Box>
   );
 };

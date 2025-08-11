@@ -1,86 +1,104 @@
 'use client';
 
 import React from 'react';
-import { Box, Typography, IconButton, Stack, Avatar } from '@mui/material';
-import ArrowBackIosNewIcon from '@mui/icons-material/ArrowBackIosNew';
+import { useRouter } from 'next/navigation';
+import { Box, Typography, Stack, Avatar } from '@mui/material';
+import PersonIcon from '@mui/icons-material/Person';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 
 interface ChatHeaderProps {
   onBack?: () => void;
   loading?: boolean;
 }
 
-export const ChatHeader: React.FC<ChatHeaderProps> = ({ onBack, loading = false }) => {
+export const ChatHeader: React.FC<ChatHeaderProps> = ({ onBack }) => {
+  const router = useRouter();
+
+  const handleBackClick = () => {
+    if (onBack) {
+      onBack();
+    } else {
+      router.push('/'); // Navigate to home/landing page
+    }
+  };
+
   return (
     <Box
       sx={{
-        height: { xs: 48, sm: 56 },
-        px: { xs: 1, sm: 1.5 },
-        borderBottom: 1,
-        borderColor: 'grey.100',
+        height: 64,
+        px: { xs: 2, md: 3 },
+        borderBottom: '1px solid #E5E7EB',
         bgcolor: 'white',
         display: 'flex',
         alignItems: 'center',
-        justifyContent: 'space-between'
+        justifyContent: 'space-between',
+        position: 'sticky',
+        top: 0,
+        zIndex: 10,
+        flexShrink: 0,
+        boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)'
       }}
     >
-      {/* Left: Back Button */}
-      <IconButton
-        onClick={onBack}
-        aria-label="Quay lại"
-        size="small"
-        sx={{ color: 'text.secondary' }}
-      >
-        <ArrowBackIosNewIcon fontSize="small" />
-      </IconButton>
-
-      {/* Center: Title and Subtitle */}
-      <Box sx={{ textAlign: 'center', flex: 1 }}>
-        <Typography
-          variant="h5"
-          sx={{
-            fontWeight: 700,
-            color: 'blueDark',
-            mb: 0.5,
-            fontSize: { xs: '1.1rem', sm: '1.25rem' }
+      {/* Left: back icon + logo + "Chatbot AI" */}
+      <Stack direction="row" spacing={1.5} alignItems="center">
+        <Box
+          onClick={handleBackClick}
+          sx={{ 
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            p: 0.5,
+            borderRadius: 1,
+            '&:hover': { bgcolor: 'grey.100' }
           }}
         >
-          Trợ lý AI
-        </Typography>
-        
-        <Typography
-          variant="body2"
-          sx={{
-            color: 'text.secondary',
-            fontSize: { xs: '0.75rem', sm: '0.875rem' }
+          <ArrowBackIcon sx={{ color: '#666', fontSize: '1.25rem' }} />
+        </Box>
+        <Avatar 
+          sx={{ 
+            width: 32, 
+            height: 32, 
+            bgcolor: '#1E40AF', 
+            color: 'white',
+            fontSize: '1rem',
+            fontWeight: 'bold'
           }}
         >
-          {loading ? 'AI đang trả lời...' : 'Người bạn đồng hành chăm sóc sức khỏe cá nhân của bạn'}
-        </Typography>
-      </Box>
-
-      {/* Right: User Avatar and Name */}
-      <Stack direction="row" spacing={1} alignItems="center">
-        <Avatar
-          sx={{
-            width: 28,
-            height: 28,
-            bgcolor: 'primary.main',
-            fontSize: '0.75rem',
-            fontWeight: 'medium'
-          }}
-        >
-          Đ
+          C
         </Avatar>
         <Typography
-          variant="body2"
+          variant="h6"
           sx={{
-            fontWeight: 500,
-            color: 'text.primary'
+            fontWeight: 700,
+            color: '#1E40AF',
+            fontSize: '1.25rem'
+          }}
+        >
+          Chatbot AI
+        </Typography>
+      </Stack>
+      
+      {/* Right: user name + avatar */}
+      <Stack direction="row" spacing={1.5} alignItems="center">
+        <Typography
+          variant="body2"
+          sx={{ 
+            fontWeight: 700, 
+            color: '#1E40AF',
+            fontSize: '0.875rem'
           }}
         >
           Đức
         </Typography>
+        <Avatar sx={{ 
+          width: 32, 
+          height: 32, 
+          bgcolor: '#F3F4F6', 
+          color: '#374151' 
+        }}>
+          <PersonIcon fontSize="small" />
+        </Avatar>
       </Stack>
     </Box>
   );
-}; 
+};

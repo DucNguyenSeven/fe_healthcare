@@ -18,10 +18,10 @@ export default function ChatPage() {
       content={
         <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
           <Box sx={{ flex: 1, bgcolor: 'grey.50', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-            {messages.length === 0 ? (
+            {messages.length === 0 && !loading ? (
               <>
                 <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <MessageList messages={messages} />
+                  <MessageList messages={messages} loading={loading} />
                 </Box>
                 <SuggestionChips
                   onSelect={sendQuestion}
@@ -29,7 +29,7 @@ export default function ChatPage() {
                 />
               </>
             ) : (
-              <MessageList messages={messages} />
+              <MessageList messages={messages} loading={loading} />
             )}
           </Box>
           <ChatInput onSend={sendQuestion} isLoading={loading} />

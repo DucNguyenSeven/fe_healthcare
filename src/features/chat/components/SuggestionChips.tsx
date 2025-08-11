@@ -14,38 +14,53 @@ export const SuggestionChips: React.FC<SuggestionChipsProps> = ({
   if (!visible) return null;
 
   return (
-    <Box
-      sx={{
-        p: 1,
-        display: 'flex',
-        gap: 0.5,
-        flexWrap: 'wrap',
-        justifyContent: 'center',
-        maxWidth: '100%'
-      }}
-    >
-      {defaultSuggestions.map((suggestion) => (
-        <Chip
-          key={suggestion.id}
-          label={suggestion.text}
-          variant="outlined"
-          size="small"
-          onClick={() => onSelect(suggestion.text)}
-          sx={{
-            px: 1,
-            py: 0.25,
-            borderRadius: 9999,
-            cursor: 'pointer',
-            transition: 'all 0.2s ease-in-out',
-            fontSize: '0.7rem',
-            maxWidth: '100%',
-            '&:hover': {
-              bgcolor: 'primary.light',
-              color: 'primary.contrastText'
-            }
-          }}
-        />
-      ))}
+    <Box sx={{ px: { xs: 2, md: 3 }, pb: 2 }}>
+      <Box
+        sx={{
+          display: 'flex',
+          gap: 1.5,
+          flexWrap: 'nowrap',
+          justifyContent: 'flex-start',
+          maxWidth: '100%',
+          overflowX: 'auto',
+          pb: 1,
+          '&::-webkit-scrollbar': {
+            display: 'none'
+          },
+          scrollbarWidth: 'none'
+        }}
+      >
+        {defaultSuggestions.map((suggestion, index) => (
+          <Chip
+            key={suggestion.id}
+            label={suggestion.text}
+            variant="outlined"
+            size="medium"
+            onClick={() => onSelect(suggestion.text)}
+            sx={{
+              px: 2,
+              py: 1,
+              borderRadius: 6,
+              cursor: 'pointer',
+              transition: 'all 0.2s ease-in-out',
+              fontSize: '0.875rem',
+              whiteSpace: 'nowrap',
+              flexShrink: 0,
+              bgcolor: index === 0 ? '#DBEAFE' : '#F3F4F6',
+              color: index === 0 ? '#1E40AF' : '#374151',
+              border: 'none',
+              '&:hover': {
+                bgcolor: '#DBEAFE',
+                color: '#1E40AF'
+              },
+              '&:active': {
+                bgcolor: '#BFDBFE',
+                color: '#1E40AF'
+              }
+            }}
+          />
+        ))}
+      </Box>
     </Box>
   );
 }; 
