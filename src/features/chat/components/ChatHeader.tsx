@@ -18,7 +18,10 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({ onBack }) => {
     if (onBack) {
       onBack();
     } else {
-      router.push('/'); // Navigate to home/landing page
+      // Use replace with scroll: false to prevent auto-scroll warnings
+      router.replace('/', { scroll: false });
+      // Force scroll to top without smooth behavior
+      window.scrollTo({ top: 0, behavior: 'auto' });
     }
   };
 
@@ -32,8 +35,7 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({ onBack }) => {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        position: 'sticky',
-        top: 0,
+        position: 'relative', // Changed from 'sticky' to 'relative'
         zIndex: 10,
         flexShrink: 0,
         boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)'
@@ -68,6 +70,7 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({ onBack }) => {
         </Avatar>
         <Typography
           variant="h6"
+          component="span" // Changed from default 'h6' to 'span' to avoid heading semantics
           sx={{
             fontWeight: 700,
             color: '#1E40AF',

@@ -144,6 +144,8 @@ const RegisterFormPanel: React.FC<RegisterFormPanelProps> = ({ formData, onInput
           {/* Email or Phone Field */}
           <TextField
             fullWidth
+            id="register-email-phone"
+            name="emailOrPhone"
             label="Email hoặc số điện thoại"
             value={formData?.emailOrPhone || ''}
             onChange={onInputChange?.('emailOrPhone')}
@@ -176,6 +178,8 @@ const RegisterFormPanel: React.FC<RegisterFormPanelProps> = ({ formData, onInput
           {/* Password Field */}
           <TextField
             fullWidth
+            id="register-password"
+            name="password"
             label="Mật khẩu"
             type={showPassword ? 'text' : 'password'}
             value={formData?.password || ''}
@@ -220,6 +224,8 @@ const RegisterFormPanel: React.FC<RegisterFormPanelProps> = ({ formData, onInput
           {/* Confirm Password Field */}
           <TextField
             fullWidth
+            id="register-confirm-password"
+            name="confirmPassword"
             label="Xác nhận lại mật khẩu"
             type={showConfirmPassword ? 'text' : 'password'}
             value={formData?.confirmPassword || ''}

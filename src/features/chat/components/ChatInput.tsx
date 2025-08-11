@@ -102,6 +102,8 @@ export const ChatInput: React.FC<ChatInputProps> = ({
         
         <TextareaAutosize
           ref={textareaRef}
+          id="chat-message-input"
+          name="chat-message"
           value={message}
           onChange={handleChange}
           onKeyDown={handleKeyDown}

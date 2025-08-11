@@ -137,6 +137,8 @@ const ForgotFormPanel: React.FC<ForgotFormPanelProps> = ({ formData, onInputChan
           {/* Email Field */}
           <TextField
             fullWidth
+            id="forgot-email"
+            name="email"
             label="Email"
             type="email"
             value={formData?.email || ''}

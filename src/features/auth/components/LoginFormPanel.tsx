@@ -149,6 +149,8 @@ const LoginFormPanel: React.FC<LoginFormPanelProps> = ({ formData, onInputChange
           {/* Email Field */}
           <TextField
             fullWidth
+            id="login-email"
+            name="email"
             label="Email"
             type="email"
             value={formData?.email || ''}
@@ -172,6 +174,8 @@ const LoginFormPanel: React.FC<LoginFormPanelProps> = ({ formData, onInputChange
           {/* Password Field */}
           <TextField
             fullWidth
+            id="login-password"
+            name="password"
             label="Mật khẩu"
             type={showPassword ? 'text' : 'password'}
             value={formData?.password || ''}
@@ -215,6 +219,8 @@ const LoginFormPanel: React.FC<LoginFormPanelProps> = ({ formData, onInputChange
             <FormControlLabel
               control={
                 <Checkbox
+                  id="login-remember-me"
+                  name="rememberMe"
                   checked={formData?.rememberMe || false}
                   onChange={onInputChange?.('rememberMe') || (() => {})}
                   color="primary"

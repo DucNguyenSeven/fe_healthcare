@@ -144,6 +144,7 @@ const Header: React.FC = () => {
           {/* Brand */}
           <Typography
             variant="h6"
+            component="span" // Changed from default 'h6' to 'span' to avoid heading semantics
             sx={{
               color: 'primary.main',
               fontWeight: 'bold',
