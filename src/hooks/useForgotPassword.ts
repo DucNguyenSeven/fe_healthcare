@@ -4,46 +4,36 @@ import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { AuthApi } from '@/lib/api/user/auth';
 import { parseApiError } from '@/lib/api/errors';
-import type { RegisterFormData } from '@/types';
+import type { ForgotFormData } from '@/types';
 
-interface UseRegisterState {
+interface UseForgotPasswordState {
   isLoading: boolean;
   error: string | null;
 }
 
-interface UseRegisterReturn extends UseRegisterState {
-  register: (data: RegisterFormData) => Promise<boolean>;
+interface UseForgotPasswordReturn extends UseForgotPasswordState {
+  sendResetOTP: (data: ForgotFormData) => Promise<boolean>;
   clearError: () => void;
 }
 
-export function useRegister(): UseRegisterReturn {
+export function useForgotPassword(): UseForgotPasswordReturn {
   const router = useRouter();
-  const [state, setState] = useState<UseRegisterState>({
+  const [state, setState] = useState<UseForgotPasswordState>({
     isLoading: false,
     error: null,
   });
 
-  const validateForm = (data: RegisterFormData): string | null => {
+  const validateForm = (data: ForgotFormData): string | null => {
     // Email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(data.emailOrPhone)) {
+    if (!emailRegex.test(data.email)) {
       return 'Email không hợp lệ';
-    }
-
-    // Password strength validation
-    if (data.password.length < 6) {
-      return 'Mật khẩu phải có ít nhất 6 ký tự';
-    }
-
-    // Password match validation
-    if (data.password !== data.confirmPassword) {
-      return 'Mật khẩu xác nhận không khớp';
     }
 
     return null;
   };
 
-  const register = useCallback(async (data: RegisterFormData): Promise<boolean> => {
+  const sendResetOTP = useCallback(async (data: ForgotFormData): Promise<boolean> => {
     setState(prev => ({ ...prev, isLoading: true, error: null }));
 
     try {
@@ -58,10 +48,7 @@ export function useRegister(): UseRegisterReturn {
         return false;
       }
 
-      const response = await AuthApi.register({
-        email: data.emailOrPhone,  // Backend expects 'email'
-        password: data.password,
-      });
+      const response = await AuthApi.sendOtpResetPassword(data.email);
 
       if (response.success && response.data) {
         setState(prev => ({ 
@@ -69,13 +56,19 @@ export function useRegister(): UseRegisterReturn {
           isLoading: false 
         }));
 
-        // Registration successful - redirect to OTP verification
-        // Store email in sessionStorage for OTP verification
-        sessionStorage.setItem('otp-email', data.emailOrPhone);
+        // Store email and flow type in sessionStorage for OTP verification
+        sessionStorage.setItem('otp-email', data.email);
+        sessionStorage.setItem('otp-flow', 'forgot-password');
+        
+        // Store reset token from response for later use
+        if (response.data.resetToken) {
+          sessionStorage.setItem('reset-token', response.data.resetToken);
+        }
+        
         router.push('/otp');
         return true;
       } else {
-        throw new Error(response.message || 'Registration failed');
+        throw new Error(response.message || 'Failed to send reset OTP');
       }
     } catch (error) {
       const parsedError = parseApiError(error);
@@ -84,13 +77,13 @@ export function useRegister(): UseRegisterReturn {
       // Override with more specific Vietnamese messages
       switch (parsedError.status) {
         case 400:
-          errorMessage = 'Thông tin đăng ký không hợp lệ';
+          errorMessage = 'Email không hợp lệ';
           break;
-        case 409:
-          errorMessage = 'Email đã được sử dụng. Vui lòng chọn email khác';
+        case 404:
+          errorMessage = 'Email không tồn tại trong hệ thống';
           break;
-        case 422:
-          errorMessage = 'Dữ liệu không đúng định dạng';
+        case 429:
+          errorMessage = 'Quá nhiều yêu cầu. Vui lòng thử lại sau';
           break;
         case 500:
           errorMessage = 'Lỗi hệ thống. Vui lòng thử lại sau';
@@ -112,7 +105,7 @@ export function useRegister(): UseRegisterReturn {
 
   return {
     ...state,
-    register,
+    sendResetOTP,
     clearError,
   };
 }

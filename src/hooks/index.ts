@@ -5,3 +5,5 @@ export { useNavigation } from './useNavigation';
 export { useOTP } from './useOTP';
 export { useAuth } from './useAuth';
 export { useRegister } from './useRegister';
+export { useForgotPassword } from './useForgotPassword';
+export { useResetPassword } from './useResetPassword';

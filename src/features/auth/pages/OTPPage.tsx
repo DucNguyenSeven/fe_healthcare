@@ -1,7 +1,7 @@
 "use client";
 
 import React from 'react';
-import { Box } from '@mui/material';
+import { Box, Alert, Snackbar } from '@mui/material';
 import { OTPFormPanel } from '../components';
 import { useOTP } from '../../../hooks/useOTP';
 
@@ -9,6 +9,10 @@ const OTPPage: React.FC = () => {
   const {
     otpValues,
     activeIndex,
+    email,
+    otpFlow,
+    isLoading,
+    error,
     inputRefs,
     handleOtpChange,
     handleKeyDown,
@@ -16,6 +20,7 @@ const OTPPage: React.FC = () => {
     handleResendOTP,
     handleBackToLogin,
     handleSubmit,
+    clearError,
   } = useOTP();
 
   return (
@@ -33,6 +38,9 @@ const OTPPage: React.FC = () => {
       <OTPFormPanel
         otpValues={otpValues}
         activeIndex={activeIndex}
+        email={email}
+        otpFlow={otpFlow}
+        isLoading={isLoading}
         inputRefs={inputRefs}
         onOtpChange={handleOtpChange}
         onKeyDown={handleKeyDown}
@@ -41,6 +49,18 @@ const OTPPage: React.FC = () => {
         onBackToLogin={handleBackToLogin}
         onSubmit={handleSubmit}
       />
+
+      {/* Error Snackbar */}
+      <Snackbar 
+        open={!!error} 
+        autoHideDuration={6000} 
+        onClose={clearError}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Alert onClose={clearError} severity="error" sx={{ width: '100%' }}>
+          {error}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };

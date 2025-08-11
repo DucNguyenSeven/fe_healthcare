@@ -14,3 +14,8 @@ export interface RegisterFormData {
 export interface ForgotFormData {
   email: string;
 }
+
+export interface ResetPasswordFormData {
+  password: string;
+  confirmPassword: string;
+}

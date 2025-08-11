@@ -14,6 +14,9 @@ import type { Theme } from '@mui/material/styles';
 interface OTPFormPanelProps {
   otpValues: string[];
   activeIndex: number;
+  email: string;
+  otpFlow: 'registration' | 'forgot-password';
+  isLoading: boolean;
   inputRefs: React.MutableRefObject<(HTMLInputElement | null)[]>;
   onOtpChange: (index: number, value: string) => void;
   onKeyDown: (index: number, event: React.KeyboardEvent<HTMLDivElement>) => void;
@@ -26,6 +29,9 @@ interface OTPFormPanelProps {
 const OTPFormPanel: React.FC<OTPFormPanelProps> = ({ 
   otpValues,
   activeIndex,
+  email,
+  otpFlow,
+  isLoading,
   inputRefs,
   onOtpChange,
   onKeyDown,
@@ -104,7 +110,7 @@ const OTPFormPanel: React.FC<OTPFormPanelProps> = ({
           fontSize: { xs: '1.25rem', sm: '1.375rem', md: '1.5rem' },
         }}
       >
-        Nhập mã OTP
+        {otpFlow === 'registration' ? 'Xác thực tài khoản' : 'Xác nhận quên mật khẩu'}
       </Typography>
 
       {/* Instructions */}
@@ -119,17 +125,25 @@ const OTPFormPanel: React.FC<OTPFormPanelProps> = ({
           px: { xs: 0.5, sm: 1 },
         }}
       >
-        Chúng tôi sẽ gửi cho bạn một{' '}
-        <Box
-          component="span"
-          sx={{
-            color: 'primary.main',
-            fontWeight: 600,
-          }}
-        >
-          đoạn mã ở trong email
-        </Box>
-        {' '}của bạn vui lòng kiểm tra email và nhập mã xuống ô bên dưới
+        {otpFlow === 'registration' ? (
+          <>
+            Chúng tôi đã gửi mã OTP xác thực tới{' '}
+            <Box component="span" sx={{ color: 'primary.main', fontWeight: 600 }}>
+              {email}
+            </Box>
+            <br />
+            Vui lòng kiểm tra email và nhập mã để hoàn tất đăng ký
+          </>
+        ) : (
+          <>
+            Chúng tôi đã gửi mã OTP khôi phục mật khẩu tới{' '}
+            <Box component="span" sx={{ color: 'primary.main', fontWeight: 600 }}>
+              {email}
+            </Box>
+            <br />
+            Vui lòng kiểm tra email và nhập mã để tiếp tục
+          </>
+        )}
       </Typography>
 
       {/* OTP Input Fields */}
@@ -181,6 +195,7 @@ const OTPFormPanel: React.FC<OTPFormPanelProps> = ({
           fullWidth
           variant="contained"
           size="medium"
+          disabled={isLoading}
           sx={{ 
             mb: { xs: 2, sm: 2.5 },
             py: { xs: 1.25, sm: 1.375 },
@@ -189,7 +204,7 @@ const OTPFormPanel: React.FC<OTPFormPanelProps> = ({
             borderRadius: 2,
           }}
         >
-          Xác nhận
+          {isLoading ? 'Đang xác thực...' : 'Xác nhận'}
         </Button>
       </Box>
 
@@ -207,6 +222,7 @@ const OTPFormPanel: React.FC<OTPFormPanelProps> = ({
         <Button
           onClick={onResendOTP}
           variant="text"
+          disabled={isLoading}
           sx={{ 
             color: 'primary.main', 
             textDecoration: 'none',

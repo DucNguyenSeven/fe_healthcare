@@ -2,18 +2,19 @@
 
 import React, { useState } from 'react';
 import { Box, Alert, Snackbar } from '@mui/material';
-import { ForgotFormPanel } from '../components';
-import { ForgotFormData } from '../../../types';
-import { useForgotPassword } from '../../../hooks';
+import { ResetPasswordFormPanel } from '../components';
+import { ResetPasswordFormData } from '../../../types';
+import { useResetPassword } from '../../../hooks';
 
-const ForgotPasswordPage: React.FC = () => {
-  const [formData, setFormData] = useState<ForgotFormData>({
-    email: '',
+const ResetPasswordPage: React.FC = () => {
+  const [formData, setFormData] = useState<ResetPasswordFormData>({
+    password: '',
+    confirmPassword: '',
   });
 
-  const { sendResetOTP, isLoading, error, clearError } = useForgotPassword();
+  const { resetPassword, isLoading, error, clearError } = useResetPassword();
 
-  const handleInputChange = (field: keyof ForgotFormData) => (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInputChange = (field: keyof ResetPasswordFormData) => (event: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
       ...formData,
       [field]: event.target.value,
@@ -24,11 +25,11 @@ const ForgotPasswordPage: React.FC = () => {
     event.preventDefault();
     
     // Basic validation
-    if (!formData.email) {
+    if (!formData.password || !formData.confirmPassword) {
       return;
     }
 
-    await sendResetOTP(formData);
+    await resetPassword(formData);
   };
 
   return (
@@ -42,7 +43,7 @@ const ForgotPasswordPage: React.FC = () => {
         overflow: 'hidden',
       }}
     >
-      <ForgotFormPanel
+      <ResetPasswordFormPanel
         formData={formData}
         isLoading={isLoading}
         onInputChange={handleInputChange}
@@ -64,4 +65,4 @@ const ForgotPasswordPage: React.FC = () => {
   );
 };
 
-export default ForgotPasswordPage; 
+export default ResetPasswordPage;

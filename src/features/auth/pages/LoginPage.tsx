@@ -15,6 +15,8 @@ const SuccessMessageHandler: React.FC<{ setSuccessMessage: (message: string | nu
     const message = searchParams.get('message');
     if (message === 'registration-success') {
       setSuccessMessage('Đăng ký thành công! Vui lòng đăng nhập để tiếp tục.');
+    } else if (message === 'password-reset-success') {
+      setSuccessMessage('Mật khẩu đã được đặt lại thành công! Vui lòng đăng nhập.');
     }
   }, [searchParams, setSuccessMessage]);
 
