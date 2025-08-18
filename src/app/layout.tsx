@@ -1,6 +1,8 @@
 import React from 'react';
 import ThemeRegistry from '../theme/ThemeRegistry';
 import { AuthProvider } from '../contexts/AuthContext';
+import './globals.css';
+import './output.css';
 
 export const metadata = {
   title: 'Healthcare App',
