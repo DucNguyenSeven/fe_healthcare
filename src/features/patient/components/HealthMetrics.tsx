@@ -1,7 +1,7 @@
 "use client";
 
 import React from 'react';
-import { Activity, Heart, Droplets, Weight, AlertTriangle, ArrowRight } from 'lucide-react';
+import { TrendingUp, TrendingDown, Activity, Droplets, Heart, Weight, AlertTriangle } from 'lucide-react';
 import { HealthMetric } from '../types';
 
 interface HealthMetricsProps {
@@ -45,10 +45,10 @@ export function HealthMetrics({ metrics, onNavigate }: HealthMetricsProps) {
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-xl font-semibold text-gray-900">Chỉ số sức khỏe</h2>
         <button 
-          onClick={() => onNavigate('monitoring')} 
-          className="text-blue-600 hover:text-blue-700 text-sm font-medium flex items-center"
+          onClick={() => onNavigate('monitoring')}
+          className="text-blue-600 hover:text-blue-700 text-sm font-medium"
         >
-          Xem biểu đồ <ArrowRight className="w-4 h-4 ml-1" />
+          Xem biểu đồ →
         </button>
       </div>
       

@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useState } from 'react';
-import { DashboardLayout, DashboardPage, User, Appointment, HealthMetric } from '@/features/patient';
+import React from 'react';
+import { DashboardPage, User, Appointment, HealthMetric, Alert } from '@/features/patient';
 
-// Mock data
+// Mock user data
 const mockUser: User = {
   id: '1',
   name: 'Nguyễn Văn An',
@@ -72,27 +72,40 @@ const mockHealthMetrics: HealthMetric[] = [
   }
 ];
 
-export default function PatientDashboardPage() {
-  const [currentPage, setCurrentPage] = useState('dashboard');
+const mockAlerts: Alert[] = [
+  {
+    id: '1',
+    type: 'critical',
+    title: 'Chỉ số eGFR thấp',
+    message: 'eGFR 45 mL/min/1.73m² - dưới ngưỡng an toàn. Vui lòng liên hệ bác sĩ.',
+    date: '2024-01-10',
+    isRead: false
+  },
+  {
+    id: '2',
+    type: 'warning',
+    title: 'Huyết áp cao',
+    message: 'Huyết áp 140/90 mmHg - vượt ngưỡng khuyến nghị.',
+    date: '2024-01-10',
+    isRead: false
+  }
+];
 
+export default function PatientDashboardPage() {
   const handleNavigate = (page: string) => {
-    setCurrentPage(page);
-    // Trong thực tế, bạn sẽ navigate đến page khác
-    console.log('Navigate to:', page);
+    // In a real app, this would use Next.js router
+    console.log('Navigating to:', page);
+    // For now, we'll just log the navigation
+    // You can implement actual navigation using Next.js router here
   };
 
   return (
-    <DashboardLayout
+    <DashboardPage
       user={mockUser}
-      currentPage={currentPage}
+      appointments={mockAppointments}
+      healthMetrics={mockHealthMetrics}
+      alerts={mockAlerts}
       onNavigate={handleNavigate}
-    >
-      <DashboardPage
-        user={mockUser}
-        appointments={mockAppointments}
-        healthMetrics={mockHealthMetrics}
-        onNavigate={handleNavigate}
-      />
-    </DashboardLayout>
+    />
   );
 }

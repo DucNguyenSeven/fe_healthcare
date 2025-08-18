@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Box, Typography, Stack, Avatar } from '@mui/material';
 import PersonIcon from '@mui/icons-material/Person';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import { ROUTES } from '@/constants/routes';
 
 interface ChatHeaderProps {
   onBack?: () => void;
@@ -19,7 +20,7 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({ onBack }) => {
       onBack();
     } else {
       // Use replace with scroll: false to prevent auto-scroll warnings
-      router.replace('/', { scroll: false });
+      router.replace(ROUTES.HOME, { scroll: false });
       // Force scroll to top without smooth behavior
       window.scrollTo({ top: 0, behavior: 'auto' });
     }

@@ -4,6 +4,7 @@ import React, { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Box, CircularProgress, Typography } from '@mui/material';
 import { useAuthContext } from '@/contexts/AuthContext';
+import { ROUTES } from '@/constants/routes';
 
 interface AuthGuardProps {
   children: React.ReactNode;
@@ -12,7 +13,7 @@ interface AuthGuardProps {
 
 const AuthGuard: React.FC<AuthGuardProps> = ({ 
   children, 
-  fallbackPath = '/login' 
+  fallbackPath = ROUTES.LOGIN 
 }) => {
   const { isAuthenticated, isLoading } = useAuthContext();
   const router = useRouter();

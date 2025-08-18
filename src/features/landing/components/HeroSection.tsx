@@ -9,6 +9,7 @@ import {
   Stack,
 } from '@mui/material';
 import { useRouter } from 'next/navigation';
+import { ROUTES } from '@/constants/routes';
 
 const heroDoctorImage = '/assets/images/hero_doctor1.png';
 
@@ -138,7 +139,7 @@ const HeroSection: React.FC<HeroSectionProps> = ({ id = 'home' }) => {
               size="large"
               onClick={() => {
                 console.log('Hero login button clicked');
-                router.push('/login');
+                router.push(ROUTES.LOGIN);
               }}
               sx={{
                 py: { xs: 1.25, md: 1.5 },

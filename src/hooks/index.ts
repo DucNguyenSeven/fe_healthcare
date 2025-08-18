@@ -1,12 +1,15 @@
-export { useMobileSlider } from './useMobileSlider';
-export { useChat } from './useChat';
-export { useConversations } from './useConversations';
-export { useNavigation } from './useNavigation';
-export { useOTP } from './useOTP';
-export { useAuth } from './auth';
-export { useRegister } from './useRegister';
-export { useForgotPassword } from './useForgotPassword';
-export { useResetPassword } from './useResetPassword';
+// Auth hooks
+export * from './auth';
 
 // Performance hooks
 export * from './performance';
+
+// Other hooks
+export { useChat } from './useChat';
+export { useConversations } from './useConversations';
+export { useForgotPassword } from './useForgotPassword';
+export { useMobileSlider } from './useMobileSlider';
+export { useNavigation } from './useNavigation';
+export { useOTP } from './useOTP';
+export { useRegister } from './useRegister';
+export { useResetPassword } from './useResetPassword';

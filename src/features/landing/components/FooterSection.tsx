@@ -20,6 +20,7 @@ import {
 } from '@mui/icons-material';
 import { footerLinks, contactInfo, socialLinks, bottomBarLinks } from '../../../data/global/footer.data';
 import { useRouter } from 'next/navigation';
+import { ROUTES } from '@/constants/routes';
 
 const FooterSection: React.FC = () => {
   const router = useRouter();
@@ -52,12 +53,12 @@ const FooterSection: React.FC = () => {
 
   const handleRegister = () => {
     console.log('Footer register button clicked');
-    router.push('/register');
+    router.push(ROUTES.REGISTER);
   };
 
   const handleLogin = () => {
     console.log('Footer login button clicked');
-    router.push('/login');
+    router.push(ROUTES.LOGIN);
   };
 
   return (

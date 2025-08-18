@@ -21,6 +21,7 @@ import {
 } from '@mui/icons-material';
 import { useRouter } from 'next/navigation';
 import { RegisterFormData } from '../../../types';
+import { ROUTES } from '@/constants/routes';
 
 interface RegisterFormPanelProps {
   formData?: RegisterFormData
@@ -45,7 +46,7 @@ const RegisterFormPanel: React.FC<RegisterFormPanelProps> = ({ formData, onInput
   };
 
   const handleLogin = () => {
-    router.push('/login');
+    router.push(ROUTES.LOGIN);
   };
 
   return (

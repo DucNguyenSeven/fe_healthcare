@@ -26,6 +26,7 @@ import {
 } from '@mui/icons-material';
 import { useRouter } from 'next/navigation';
 import { LoginFormData } from '../../../types';
+import { ROUTES } from '@/constants/routes';
 
 interface LoginFormPanelProps {
   formData?: LoginFormData
@@ -46,11 +47,11 @@ const LoginFormPanel: React.FC<LoginFormPanelProps> = ({ formData, onInputChange
   };
 
   const handleForgotPassword = () => {
-    router.push('/forgot-password');
+    router.push(ROUTES.FORGOT_PASSWORD);
   };
 
   const handleRegister = () => {
-    router.push('/register');
+    router.push(ROUTES.REGISTER);
   };
 
   return (

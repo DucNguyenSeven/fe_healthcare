@@ -19,6 +19,7 @@ import {
 } from '@mui/icons-material';
 import { useRouter } from 'next/navigation';
 import { ForgotFormData } from '../../../types';
+import { ROUTES } from '@/constants/routes';
 
 interface ForgotFormPanelProps {
   formData?: ForgotFormData
@@ -33,11 +34,11 @@ const ForgotFormPanel: React.FC<ForgotFormPanelProps> = ({ formData, isLoading, 
   const router = useRouter();
 
   const handleBackToLogin = () => {
-    router.push('/login');
+    router.push(ROUTES.LOGIN);
   };
 
   const handleRegister = () => {
-    router.push('/register');
+    router.push(ROUTES.REGISTER);
   };
 
   return (

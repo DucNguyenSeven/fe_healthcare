@@ -21,6 +21,7 @@ import {
 } from '@mui/icons-material';
 import { useRouter } from 'next/navigation';
 import { ResetPasswordFormData } from '../../../types';
+import { ROUTES } from '@/constants/routes';
 
 interface ResetPasswordFormPanelProps {
   formData?: ResetPasswordFormData;
@@ -43,7 +44,7 @@ const ResetPasswordFormPanel: React.FC<ResetPasswordFormPanelProps> = ({
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const handleBackToLogin = () => {
-    router.push('/login');
+    router.push(ROUTES.LOGIN);
   };
 
   const handleTogglePasswordVisibility = () => {

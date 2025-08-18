@@ -1,6 +1,8 @@
 "use client";
 
 import React, { useState } from 'react';
+import { useRouter, usePathname } from 'next/navigation';
+import { ROUTES } from '@/constants/routes';
 import { 
   Home, 
   User, 
@@ -13,13 +15,15 @@ import {
   Bell, 
   Menu, 
   X, 
-  ChevronRight 
+  ChevronRight,
+  LogOut
 } from 'lucide-react';
 
 interface NavigationItem {
   id: string;
   label: string;
   icon: React.ComponentType<{ className?: string }>;
+  path: string;
 }
 
 interface DashboardLayoutProps {
@@ -27,32 +31,51 @@ interface DashboardLayoutProps {
     name: string;
     avatar?: string;
   };
-  currentPage: string;
-  onNavigate: (page: string) => void;
   children: React.ReactNode;
 }
 
 const navigationItems: NavigationItem[] = [
-  { id: 'dashboard', label: 'Tổng quan', icon: Home },
-  { id: 'profile', label: 'Hồ sơ', icon: User },
-  { id: 'appointments', label: 'Lịch hẹn', icon: Calendar },
-  { id: 'telehealth', label: 'Tư vấn online', icon: Video },
-  { id: 'monitoring', label: 'Theo dõi', icon: Activity },
-  { id: 'ai-assistant', label: 'Trợ lý AI', icon: Bot },
-  { id: 'community', label: 'Cộng đồng', icon: Users },
-  { id: 'settings', label: 'Cài đặt', icon: Settings },
+  { id: 'dashboard', label: 'Tổng quan', icon: Home, path: ROUTES.PATIENT_DASHBOARD },
+  { id: 'profile', label: 'Hồ sơ', icon: User, path: ROUTES.PATIENT_PROFILE },
+  { id: 'appointments', label: 'Lịch hẹn', icon: Calendar, path: ROUTES.PATIENT_APPOINTMENTS },
+  { id: 'telehealth', label: 'Tư vấn online', icon: Video, path: ROUTES.PATIENT_TELEHEALTH },
+  { id: 'monitoring', label: 'Theo dõi', icon: Activity, path: ROUTES.PATIENT_MONITORING },
+  { id: 'ai-assistant', label: 'Trợ lý AI', icon: Bot, path: ROUTES.PATIENT_AI_ASSISTANT },
+  { id: 'community', label: 'Cộng đồng', icon: Users, path: ROUTES.PATIENT_COMMUNITY },
 ];
 
 export function DashboardLayout({
   user,
-  currentPage,
-  onNavigate,
   children
 }: DashboardLayoutProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const router = useRouter();
+  const pathname = usePathname();
+
+  // Determine current page from pathname
+  const getCurrentPage = () => {
+    const currentPath = pathname;
+    const currentItem = navigationItems.find(item => item.path === currentPath);
+    return currentItem?.id || 'dashboard';
+  };
+
+  const currentPage = getCurrentPage();
+
+  const handleNavigate = (pageId: string) => {
+    const targetItem = navigationItems.find(item => item.id === pageId);
+    if (targetItem) {
+      router.push(targetItem.path);
+    }
+  };
+
+  const handleLogout = () => {
+    // Xử lý đăng xuất ở đây
+    console.log('Đăng xuất');
+    router.push(ROUTES.LOGIN);
+  };
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex h-screen bg-gray-50 overflow-hidden">
       {/* Mobile Sidebar Overlay */}
       {isSidebarOpen && (
         <div 
@@ -65,74 +88,69 @@ export function DashboardLayout({
       <aside className={`
         fixed lg:static inset-y-0 left-0 z-50 w-64 bg-white shadow-lg transform transition-transform duration-300 ease-in-out
         ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+        flex flex-col
       `}>
-        <div className="flex flex-col h-full">
-          {/* Logo & Close Button */}
-          <div className="flex items-center justify-between p-6 border-b border-gray-200">
-            <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-                <Activity className="w-5 h-5 text-white" />
-              </div>
-              <h1 className="text-xl font-bold text-gray-900">HealthCare+</h1>
+        {/* Logo & Close Button */}
+        <div className="flex items-center justify-between p-6 border-b border-gray-200 flex-shrink-0">
+          <div className="flex items-center space-x-3">
+            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+              <Activity className="w-5 h-5 text-white" />
             </div>
-            <button 
-              onClick={() => setIsSidebarOpen(false)} 
-              className="lg:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors" 
-              aria-label="Đóng menu"
-            >
-              <X className="w-5 h-5 text-gray-600" />
-            </button>
+            <h1 className="text-xl font-bold text-gray-900">HealthCare+</h1>
           </div>
+          <button 
+            onClick={() => setIsSidebarOpen(false)} 
+            className="lg:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors" 
+            aria-label="Đóng menu"
+          >
+            <X className="w-5 h-5 text-gray-600" />
+          </button>
+        </div>
 
-          {/* Navigation */}
-          <nav className="flex-1 px-4 py-6 space-y-2">
-            {navigationItems.map(item => {
-              const Icon = item.icon;
-              const isActive = currentPage === item.id;
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => {
-                    onNavigate(item.id);
-                    if (window.innerWidth < 1024) {
-                      setIsSidebarOpen(false);
-                    }
-                  }}
-                  className={`
-                    w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-left transition-all duration-200
-                    ${isActive ? 'bg-blue-50 text-blue-700 shadow-sm' : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'}
-                  `}
-                  aria-current={isActive ? 'page' : undefined}
-                >
-                  <Icon className={`w-5 h-5 ${isActive ? 'text-blue-600' : 'text-gray-500'}`} />
-                  <span className="font-medium">{item.label}</span>
-                  {isActive && <ChevronRight className="w-4 h-4 ml-auto text-blue-600" />}
-                </button>
-              );
-            })}
-          </nav>
+        {/* Navigation - Fixed height, no scroll */}
+        <nav className="px-4 py-6 space-y-2 flex-shrink-0">
+          {navigationItems.map(item => {
+            const Icon = item.icon;
+            const isActive = currentPage === item.id;
+            return (
+              <button
+                key={item.id}
+                onClick={() => {
+                  handleNavigate(item.id);
+                  if (window.innerWidth < 1024) {
+                    setIsSidebarOpen(false);
+                  }
+                }}
+                className={`
+                  w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-left transition-all duration-200
+                  ${isActive ? 'bg-blue-50 text-blue-700 shadow-sm' : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'}
+                `}
+                aria-current={isActive ? 'page' : undefined}
+              >
+                <Icon className={`w-5 h-5 ${isActive ? 'text-blue-600' : 'text-gray-500'}`} />
+                <span className="font-medium">{item.label}</span>
+                {isActive && <ChevronRight className="w-4 h-4 ml-auto text-blue-600" />}
+              </button>
+            );
+          })}
+        </nav>
 
-          {/* User Profile */}
-          <div className="p-4 border-t border-gray-200">
-            <div className="flex items-center space-x-3 p-3 rounded-xl bg-gray-50">
-              <img 
-                src={user.avatar || '/api/placeholder/40/40'} 
-                alt={`Ảnh đại diện của ${user.name}`} 
-                className="w-10 h-10 rounded-full object-cover" 
-              />
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900 truncate">{user.name}</p>
-                <p className="text-xs text-gray-500">CKD Giai đoạn 3</p>
-              </div>
-            </div>
-          </div>
+        {/* Logout Button - Fixed at bottom */}
+        <div className="p-4 border-t border-gray-200 mt-auto flex-shrink-0">
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-left transition-all duration-200 text-red-600 hover:bg-red-50 hover:text-red-700"
+          >
+            <LogOut className="w-5 h-5" />
+            <span className="font-medium">Đăng xuất</span>
+          </button>
         </div>
       </aside>
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Top App Bar */}
-        <header className="bg-white shadow-sm border-b border-gray-200 px-4 lg:px-6 py-4">
+        <header className="bg-white shadow-sm border-b border-gray-200 px-4 lg:px-6 py-4 flex-shrink-0">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
               <button 
@@ -160,11 +178,9 @@ export function DashboardLayout({
 
               {/* User Avatar */}
               <button className="flex items-center space-x-3 p-2 rounded-lg hover:bg-gray-100 transition-colors">
-                <img 
-                  src={user.avatar || '/api/placeholder/32/32'} 
-                  alt={`Ảnh đại diện của ${user.name}`} 
-                  className="w-8 h-8 rounded-full object-cover" 
-                />
+                <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
+                  <User className="w-5 h-5 text-white" />
+                </div>
                 <span className="hidden md:block text-sm font-medium text-gray-700">
                   {user.name}
                 </span>
@@ -173,7 +189,7 @@ export function DashboardLayout({
           </div>
         </header>
 
-        {/* Main Content Area */}
+        {/* Main Content Area - Scrollable */}
         <main className="flex-1 overflow-auto">
           {children}
         </main>

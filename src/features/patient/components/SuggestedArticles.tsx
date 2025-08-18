@@ -1,7 +1,7 @@
 "use client";
 
 import React from 'react';
-import { ArrowRight, BookOpen } from 'lucide-react';
+import { BookOpen } from 'lucide-react';
 import { Article } from '../types';
 
 interface SuggestedArticlesProps {
@@ -10,7 +10,7 @@ interface SuggestedArticlesProps {
 }
 
 export function SuggestedArticles({ articles, onNavigate }: SuggestedArticlesProps) {
-  const defaultArticles: Article[] = [
+  const mockArticles: Article[] = [
     {
       id: '1',
       title: 'Chế độ ăn cho người bệnh thận mạn',
@@ -34,29 +34,25 @@ export function SuggestedArticles({ articles, onNavigate }: SuggestedArticlesPro
     }
   ];
 
-  const displayArticles = articles.length > 0 ? articles : defaultArticles;
+  const displayArticles = articles.length > 0 ? articles : mockArticles;
 
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-xl font-semibold text-gray-900">Bài viết đề xuất</h2>
         <button 
-          onClick={() => onNavigate('community')} 
-          className="text-blue-600 hover:text-blue-700 text-sm font-medium flex items-center"
+          onClick={() => onNavigate('community')}
+          className="text-blue-600 hover:text-blue-700 text-sm font-medium"
         >
-          Xem thêm <ArrowRight className="w-4 h-4 ml-1" />
+          Xem thêm →
         </button>
       </div>
       
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {displayArticles.map(article => (
           <div key={article.id} className="group cursor-pointer">
-            <div className="aspect-video bg-gray-200 rounded-xl mb-3 overflow-hidden">
-              <img 
-                src={article.image} 
-                alt={article.title} 
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200" 
-              />
+            <div className="aspect-video bg-gradient-to-br from-blue-100 to-purple-100 rounded-xl mb-3 overflow-hidden flex items-center justify-center">
+              <BookOpen className="w-12 h-12 text-blue-600" />
             </div>
             <h3 className="font-semibold text-gray-900 mb-2 group-hover:text-blue-600 transition-colors">
               {article.title}

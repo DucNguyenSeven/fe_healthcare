@@ -4,6 +4,7 @@ import React from 'react';
 import { Box, Typography, Button, Paper } from '@mui/material';
 import { LockOutlined, LoginOutlined } from '@mui/icons-material';
 import { useRouter } from 'next/navigation';
+import { ROUTES } from '@/constants/routes';
 
 interface UnauthorizedAccessProps {
   message?: string;
@@ -12,7 +13,7 @@ interface UnauthorizedAccessProps {
 
 const UnauthorizedAccess: React.FC<UnauthorizedAccessProps> = ({
   message = "Bạn cần đăng nhập để truy cập tính năng này",
-  loginPath = "/login"
+  loginPath = ROUTES.LOGIN
 }) => {
   const router = useRouter();
 
