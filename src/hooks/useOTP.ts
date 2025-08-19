@@ -15,21 +15,32 @@ export const useOTP = () => {
 
   // Get email and flow type from sessionStorage on component mount
   useEffect(() => {
+    // Prefer URL params if provided; fall back to sessionStorage; don't redirect if missing.
+    const params = new URLSearchParams(window.location.search);
+    const paramEmail = params.get('email');
+    const paramFlow = params.get('flow') as 'registration' | 'forgot-password' | null;
+
     const storedEmail = sessionStorage.getItem('otp-email');
     const storedFlow = sessionStorage.getItem('otp-flow') as 'registration' | 'forgot-password' | null;
-    
-    if (storedEmail) {
+
+    if (paramEmail) {
+      setEmail(paramEmail);
+      sessionStorage.setItem('otp-email', paramEmail);
+    } else if (storedEmail) {
       setEmail(storedEmail);
-      setOtpFlow(storedFlow || 'registration');
     } else {
-      // If no email found, redirect based on flow or default to register
-      if (storedFlow === 'forgot-password') {
-        router.push('/forgot-password');
-      } else {
-        router.push('/register');
-      }
+      setEmail('');
     }
-  }, [router]);
+
+    if (paramFlow === 'forgot-password' || paramFlow === 'registration') {
+      setOtpFlow(paramFlow);
+      sessionStorage.setItem('otp-flow', paramFlow);
+    } else if (storedFlow) {
+      setOtpFlow(storedFlow);
+    } else {
+      setOtpFlow('registration');
+    }
+  }, []);
 
   const handleOtpChange = useCallback((index: number, value: string) => {
     const newOtpValues = [...otpValues];
