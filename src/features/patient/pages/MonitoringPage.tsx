@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { Plus, TrendingUp, TrendingDown, Activity, Droplets, Heart, Weight, AlertTriangle, Settings, Clock, Calendar, Bell, BellOff, Edit, Trash2, RotateCcw, Filter, Download } from 'lucide-react';
-import { User as UserType, HealthMetric } from './HealthcarePlusApp';
+import { User as UserType, HealthMetric } from '../types';
 interface MonitoringPageProps {
   user: UserType;
   healthMetrics: HealthMetric[];

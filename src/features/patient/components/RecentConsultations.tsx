@@ -9,24 +9,7 @@ interface RecentConsultationsProps {
 }
 
 export function RecentConsultations({ consultations }: RecentConsultationsProps) {
-  const defaultConsultations: Consultation[] = [
-    {
-      id: '1',
-      doctor: 'BS. Trần Minh Hoàng',
-      service: 'Tư vấn thận học - 12/01/2024',
-      date: '2024-01-12',
-      type: 'video'
-    },
-    {
-      id: '2',
-      doctor: 'BS. Lê Thị Mai',
-      service: 'Khám tổng quát - 08/01/2024',
-      date: '2024-01-08',
-      type: 'document'
-    }
-  ];
-
-  const displayConsultations = consultations.length > 0 ? consultations : defaultConsultations;
+  const displayConsultations = consultations;
 
   const getIcon = (type: 'video' | 'document') => {
     return type === 'video' ? Video : FileText;

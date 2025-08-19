@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { Video, Mic, MicOff, VideoOff, Share2, PhoneOff, MessageCircle, FileText, User, Clock, CheckCircle, AlertTriangle, Download, Star, Calendar, Send, Paperclip } from 'lucide-react';
-import { User as UserType, Appointment } from './HealthcarePlusApp';
+import { User as UserType, Appointment } from '../types';
 interface TelehealthPageProps {
   user: UserType;
   appointments: Appointment[];

@@ -10,31 +10,7 @@ interface SuggestedArticlesProps {
 }
 
 export function SuggestedArticles({ articles, onNavigate }: SuggestedArticlesProps) {
-  const mockArticles: Article[] = [
-    {
-      id: '1',
-      title: 'Chế độ ăn cho người bệnh thận mạn',
-      excerpt: 'Hướng dẫn chi tiết về chế độ dinh dưỡng phù hợp...',
-      image: '/api/placeholder/300/200',
-      readTime: '5 phút đọc'
-    },
-    {
-      id: '2',
-      title: 'Tập thể dục an toàn với CKD',
-      excerpt: 'Các bài tập phù hợp cho từng giai đoạn bệnh...',
-      image: '/api/placeholder/300/200',
-      readTime: '7 phút đọc'
-    },
-    {
-      id: '3',
-      title: 'Hiểu về chỉ số eGFR',
-      excerpt: 'Ý nghĩa và cách theo dõi chỉ số quan trọng này...',
-      image: '/api/placeholder/300/200',
-      readTime: '4 phút đọc'
-    }
-  ];
-
-  const displayArticles = articles.length > 0 ? articles : mockArticles;
+  const displayArticles = articles;
 
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">

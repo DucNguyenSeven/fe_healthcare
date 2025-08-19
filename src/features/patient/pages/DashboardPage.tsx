@@ -10,13 +10,16 @@ import { TodaySchedule } from '../components/TodaySchedule';
 import { MedicationReminders } from '../components/MedicationReminders';
 import { RecentConsultations } from '../components/RecentConsultations';
 import { SuggestedArticles } from '../components/SuggestedArticles';
-import { User, Appointment, HealthMetric, Alert } from '../types';
+import { User, Appointment, HealthMetric, Alert, Consultation, MedicationReminder, Article } from '../types';
 
 interface DashboardPageProps {
   user: User;
   appointments: Appointment[];
   healthMetrics: HealthMetric[];
   alerts: Alert[];
+  consultations: Consultation[];
+  reminders: MedicationReminder[];
+  articles: Article[];
   onNavigate: (page: string) => void;
 }
 
@@ -25,6 +28,9 @@ export function DashboardPage({
   appointments,
   healthMetrics,
   alerts,
+  consultations,
+  reminders,
+  articles,
   onNavigate
 }: DashboardPageProps) {
   const router = useRouter();
@@ -64,7 +70,7 @@ export function DashboardPage({
           <HealthMetrics metrics={healthMetrics} onNavigate={handleNavigate} />
 
           {/* Recent Consultations */}
-          <RecentConsultations consultations={[]} />
+          <RecentConsultations consultations={consultations} />
         </div>
 
         {/* Sidebar */}
@@ -73,12 +79,12 @@ export function DashboardPage({
           <TodaySchedule appointments={appointments} onNavigate={handleNavigate} />
 
           {/* Medication Reminders */}
-          <MedicationReminders reminders={[]} />
+          <MedicationReminders reminders={reminders} />
         </div>
       </div>
 
       {/* Suggested Articles */}
-      <SuggestedArticles articles={[]} onNavigate={handleNavigate} />
+      <SuggestedArticles articles={articles} onNavigate={handleNavigate} />
     </div>
   );
 }

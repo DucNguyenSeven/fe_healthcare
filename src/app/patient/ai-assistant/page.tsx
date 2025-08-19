@@ -2,19 +2,9 @@
 
 import React from 'react';
 import { AIAssistantPage, User } from '@/features/patient';
+import { mockUser } from '@/data/global/patient.data';
 
-// Mock user data
-const mockUser: User = {
-  id: '1',
-  name: 'Nguyễn Văn An',
-  email: 'nguyenvanan@email.com',
-  phone: '0123456789',
-  avatar: '/api/placeholder/40/40',
-  ckdStage: 3,
-  lastEgfr: 45,
-  lastCreatinine: 1.8,
-  lastBp: '140/90'
-};
+// Using centralized mock user
 
 export default function AIAssistantPageRoute() {
   return <AIAssistantPage user={mockUser} />;

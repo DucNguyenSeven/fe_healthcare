@@ -9,24 +9,7 @@ interface MedicationRemindersProps {
 }
 
 export function MedicationReminders({ reminders }: MedicationRemindersProps) {
-  const defaultReminders: MedicationReminder[] = [
-    {
-      id: '1',
-      name: 'Losartan 50mg',
-      dosage: '50mg',
-      time: '8:00 AM',
-      isTaken: false
-    },
-    {
-      id: '2',
-      name: 'Furosemide 40mg',
-      dosage: '40mg',
-      time: '6:00 AM',
-      isTaken: true
-    }
-  ];
-
-  const displayReminders = reminders.length > 0 ? reminders : defaultReminders;
+  const displayReminders = reminders;
 
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">

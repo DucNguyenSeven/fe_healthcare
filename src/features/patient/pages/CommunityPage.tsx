@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { Search, Filter, BookOpen, Clock, User, MessageCircle, ThumbsUp, Share2, Plus, Send, Flag, Award, ExternalLink, Calendar, Tag, Eye, TrendingUp } from 'lucide-react';
-import { User as UserType } from './HealthcarePlusApp';
+import { User as UserType } from '../types';
 interface CommunityPageProps {
   user: UserType;
 }

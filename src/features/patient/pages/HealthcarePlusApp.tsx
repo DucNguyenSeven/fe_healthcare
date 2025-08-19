@@ -7,44 +7,7 @@ import { TelehealthPage } from './TelehealthPage';
 import { MonitoringPage } from './MonitoringPage';
 import { AIAssistantPage } from './AIAssistantPage';
 import { CommunityPage } from './CommunityPage';
-// NavigationItem type removed - using string instead
-export interface User {
-  id: string;
-  name: string;
-  avatar?: string;
-  email: string;
-  phone: string;
-  ckdStage: number;
-  lastEgfr: number;
-  lastCreatinine: number;
-  lastBp: string;
-}
-export interface Appointment {
-  id: string;
-  type: 'direct' | 'online';
-  service: string;
-  doctor: string;
-  date: string;
-  time: string;
-  status: 'upcoming' | 'completed' | 'cancelled';
-  canJoin?: boolean;
-}
-export interface HealthMetric {
-  id: string;
-  type: 'egfr' | 'creatinine' | 'bp' | 'weight';
-  value: number | string;
-  date: string;
-  unit: string;
-  isAlert?: boolean;
-}
-export interface Alert {
-  id: string;
-  type: 'critical' | 'warning' | 'info';
-  title: string;
-  message: string;
-  date: string;
-  isRead: boolean;
-}
+import { User, Appointment, HealthMetric, Alert } from '../types';
 export function HealthcarePlusApp() {
   const [currentPage, setCurrentPage] = useState<string>('dashboard');
 
