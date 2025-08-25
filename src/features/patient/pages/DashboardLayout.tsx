@@ -1,22 +1,18 @@
 "use client";
 
 import React, { useState } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
-import { ROUTES } from '@/constants/routes';
+import { usePathname } from 'next/navigation';
+import { usePatientNavigation } from '@/hooks/navigation';
+import { navigationItems } from '@/features/patient/navigation';
 import { 
-  Home, 
-  User, 
-  Calendar, 
-  Video, 
   Activity, 
-  Bot, 
-  Users, 
   Settings, 
   Bell, 
   Menu, 
   X, 
   ChevronRight,
-  LogOut
+  LogOut,
+  User
 } from 'lucide-react';
 
 interface NavigationItem {
@@ -27,29 +23,21 @@ interface NavigationItem {
 }
 
 interface DashboardLayoutProps {
-  user: {
-    name: string;
-    avatar?: string;
-  };
   children: React.ReactNode;
 }
 
-const navigationItems: NavigationItem[] = [
-  { id: 'dashboard', label: 'Tổng quan', icon: Home, path: ROUTES.PATIENT_DASHBOARD },
-  { id: 'profile', label: 'Hồ sơ', icon: User, path: ROUTES.PATIENT_PROFILE },
-  { id: 'appointments', label: 'Lịch hẹn', icon: Calendar, path: ROUTES.PATIENT_APPOINTMENTS },
-  { id: 'telehealth', label: 'Tư vấn online', icon: Video, path: ROUTES.PATIENT_TELEHEALTH },
-  { id: 'monitoring', label: 'Theo dõi', icon: Activity, path: ROUTES.PATIENT_MONITORING },
-  { id: 'ai-assistant', label: 'Trợ lý AI', icon: Bot, path: ROUTES.PATIENT_AI_ASSISTANT },
-  { id: 'community', label: 'Cộng đồng', icon: Users, path: ROUTES.PATIENT_COMMUNITY },
-];
+// Use shared items (same shape)
+const navigationItemsShared = navigationItems as NavigationItem[];
 
 export function DashboardLayout({
-  user,
   children
 }: DashboardLayoutProps) {
+  // In Phase 4, consume user from context
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { usePatientContext } = require('../context/PatientContext');
+  const { user } = usePatientContext();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const router = useRouter();
+  const { navigate, currentId } = usePatientNavigation();
   const pathname = usePathname();
 
   // Determine current page from pathname
@@ -59,19 +47,15 @@ export function DashboardLayout({
     return currentItem?.id || 'dashboard';
   };
 
-  const currentPage = getCurrentPage();
+  const currentPage = getCurrentPage() || currentId;
 
-  const handleNavigate = (pageId: string) => {
-    const targetItem = navigationItems.find(item => item.id === pageId);
-    if (targetItem) {
-      router.push(targetItem.path);
-    }
-  };
+  const handleNavigate = (pageId: string) => navigate(pageId as any);
 
   const handleLogout = () => {
     // Xử lý đăng xuất ở đây
     console.log('Đăng xuất');
-    router.push(ROUTES.LOGIN);
+    // Navigate to login
+    navigate('dashboard');
   };
 
   return (

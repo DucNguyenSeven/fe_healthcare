@@ -1,11 +1,12 @@
 "use client";
 
 import React from 'react';
-import { AIAssistantPage, User } from '@/features/patient';
-import { mockUser } from '@/data/global/patient.data';
+import { AIAssistantPage } from '@/features/patient';
+import { usePatient } from '@/hooks/usePatient';
 
 // Using centralized mock user
 
 export default function AIAssistantPageRoute() {
-  return <AIAssistantPage user={mockUser} />;
+  const { user } = usePatient();
+  return <AIAssistantPage user={user} />;
 }

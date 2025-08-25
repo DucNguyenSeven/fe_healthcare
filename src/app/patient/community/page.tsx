@@ -1,11 +1,12 @@
 "use client";
 
 import React from 'react';
-import { CommunityPage, User } from '@/features/patient';
-import { mockUser } from '@/data/global/patient.data';
+import { CommunityPage } from '@/features/patient';
+import { usePatient } from '@/hooks/usePatient';
 
 // Using centralized mock user
 
 export default function CommunityPageRoute() {
-  return <CommunityPage user={mockUser} />;
+  const { user } = usePatient();
+  return <CommunityPage user={user} />;
 }

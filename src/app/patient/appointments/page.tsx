@@ -1,11 +1,12 @@
 "use client";
 
 import React from 'react';
-import { AppointmentsPage, Appointment } from '@/features/patient';
-import { mockAppointments } from '@/data/global/patient.data';
+import { AppointmentsPage } from '@/features/patient';
+import { usePatient } from '@/hooks/usePatient';
 
 // Using centralized mock appointments
 
 export default function AppointmentsPageRoute() {
-  return <AppointmentsPage appointments={mockAppointments} />;
+  const { appointments } = usePatient();
+  return <AppointmentsPage appointments={appointments} />;
 }

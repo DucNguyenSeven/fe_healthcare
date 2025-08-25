@@ -2,11 +2,12 @@
 
 import React from 'react';
 import { DashboardPage } from '@/features/patient';
-import { mockUser, mockAppointments, mockHealthMetrics, mockAlerts, mockConsultations, mockMedicationReminders, mockArticles } from '@/data/global/patient.data';
+import { usePatient } from '@/hooks/usePatient';
 
 // Using centralized mock data
 
 export default function PatientDashboardPage() {
+  const { user, appointments, healthMetrics, alerts, consultations, reminders, articles } = usePatient();
   const handleNavigate = (page: string) => {
     // In a real app, this would use Next.js router
     console.log('Navigating to:', page);
@@ -16,13 +17,13 @@ export default function PatientDashboardPage() {
 
   return (
     <DashboardPage
-      user={mockUser}
-      appointments={mockAppointments}
-      healthMetrics={mockHealthMetrics}
-      alerts={mockAlerts}
-      consultations={mockConsultations}
-      reminders={mockMedicationReminders}
-      articles={mockArticles}
+      user={user}
+      appointments={appointments}
+      healthMetrics={healthMetrics}
+      alerts={alerts}
+      consultations={consultations}
+      reminders={reminders}
+      articles={articles}
       onNavigate={handleNavigate}
     />
   );

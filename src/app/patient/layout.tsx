@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { DashboardLayout } from '@/features/patient';
-import { mockUser } from '@/data/global/patient.data';
+import { PatientProvider } from '@/features/patient/context/PatientContext';
 
 interface PatientLayoutProps {
   children: React.ReactNode;
@@ -10,8 +10,10 @@ interface PatientLayoutProps {
 
 export default function PatientLayout({ children }: PatientLayoutProps) {
   return (
-    <DashboardLayout user={mockUser}>
-      {children}
-    </DashboardLayout>
+    <PatientProvider>
+      <DashboardLayout>
+        {children}
+      </DashboardLayout>
+    </PatientProvider>
   );
 }
