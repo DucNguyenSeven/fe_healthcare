@@ -1,5 +1,5 @@
-import ChatPage from '../../features/chat/pages/ChatPage';
-import { AuthGuard } from '../../components/common';
+import ChatPage from "../../features/chat/pages/ChatPage";
+import { AuthGuard } from "../../components/common";
 
 export default function ChatRoutePage() {
   return (
@@ -7,4 +7,4 @@ export default function ChatRoutePage() {
       <ChatPage />
     </AuthGuard>
   );
-} 
+}

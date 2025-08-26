@@ -2,7 +2,6 @@ export * from './types';
 
 // Layout & Main Components
 export { DashboardLayout } from './pages/DashboardLayout';
-export { HealthcarePlusApp } from './pages/HealthcarePlusApp';
 
 // Pages
 export { DashboardPage } from './pages/DashboardPage';

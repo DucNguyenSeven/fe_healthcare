@@ -1,9 +1,9 @@
 "use client";
 
-import React from 'react';
-import { Box, Alert, Snackbar } from '@mui/material';
-import { OTPFormPanel } from '../components';
-import { useOTP } from '../../../hooks/useOTP';
+import React from "react";
+import { Box, Alert, Snackbar } from "@mui/material";
+import { OTPFormPanel } from "../components";
+import { useOTP } from "../../../hooks/useOTP";
 
 const OTPPage: React.FC = () => {
   const {
@@ -26,11 +26,11 @@ const OTPPage: React.FC = () => {
   return (
     <Box
       sx={{
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        bgcolor: 'grey.50',
+        minHeight: "100vh",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        bgcolor: "grey.50",
         px: { xs: 1, sm: 1.5, md: 2 },
         py: { xs: 1, sm: 1.5, md: 2 },
       }}
@@ -51,13 +51,13 @@ const OTPPage: React.FC = () => {
       />
 
       {/* Error Snackbar */}
-      <Snackbar 
-        open={!!error} 
-        autoHideDuration={6000} 
+      <Snackbar
+        open={!!error}
+        autoHideDuration={6000}
         onClose={clearError}
-        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+        anchorOrigin={{ vertical: "top", horizontal: "center" }}
       >
-        <Alert onClose={clearError} severity="error" sx={{ width: '100%' }}>
+        <Alert onClose={clearError} severity="error" sx={{ width: "100%" }}>
           {error}
         </Alert>
       </Snackbar>

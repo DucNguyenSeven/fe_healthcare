@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   Box,
   Paper,
@@ -15,31 +15,39 @@ import {
   useTheme,
   useMediaQuery,
   CircularProgress,
-} from '@mui/material';
-import { 
-  Google, 
-  Facebook, 
-  MailOutline, 
-  LockOutlined, 
-  Visibility, 
-  VisibilityOff 
-} from '@mui/icons-material';
-import { useRouter } from 'next/navigation';
-import { LoginFormData } from '../../../types';
-import { ROUTES } from '@/constants/routes';
+} from "@mui/material";
+import {
+  Google,
+  Facebook,
+  MailOutline,
+  LockOutlined,
+  Visibility,
+  VisibilityOff,
+} from "@mui/icons-material";
+import { useRouter } from "next/navigation";
+import { LoginFormData } from "../../../types";
+import { ROUTES } from "@/constants/routes";
 
 interface LoginFormPanelProps {
-  formData?: LoginFormData
-  onInputChange?: (field: keyof LoginFormData) => (event: React.ChangeEvent<HTMLInputElement>) => void
-  onSubmit?: (event: React.SyntheticEvent) => void
-  onSocialLogin?: (provider: string) => void
-  isLoading?: boolean
+  formData?: LoginFormData;
+  onInputChange?: (
+    field: keyof LoginFormData
+  ) => (event: React.ChangeEvent<HTMLInputElement>) => void;
+  onSubmit?: (event: React.SyntheticEvent) => void;
+  onSocialLogin?: (provider: string) => void;
+  isLoading?: boolean;
 }
 
-const LoginFormPanel: React.FC<LoginFormPanelProps> = ({ formData, onInputChange, onSubmit, onSocialLogin, isLoading = false }) => {
+const LoginFormPanel: React.FC<LoginFormPanelProps> = ({
+  formData,
+  onInputChange,
+  onSubmit,
+  onSocialLogin,
+  isLoading = false,
+}) => {
   const [showPassword, setShowPassword] = useState(false);
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const router = useRouter();
 
   const handleTogglePasswordVisibility = () => {
@@ -57,62 +65,62 @@ const LoginFormPanel: React.FC<LoginFormPanelProps> = ({ formData, onInputChange
   return (
     <Box
       sx={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        minHeight: '100vh',
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        minHeight: "100vh",
         px: 2,
-        width: '100%',
+        width: "100%",
       }}
     >
       <Paper
         elevation={0}
         sx={{
           p: { xs: 2, sm: 3 },
-          width: '100%',
+          width: "100%",
           maxWidth: 400,
-          mx: 'auto',
+          mx: "auto",
           borderRadius: 4,
-          backgroundColor: '#fff',
-          boxShadow: '0px 4px 20px rgba(0, 0, 0, 0.08)',
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'center',
+          backgroundColor: "#fff",
+          boxShadow: "0px 4px 20px rgba(0, 0, 0, 0.08)",
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "center",
         }}
       >
         {/* Logo */}
-        <Box sx={{ textAlign: 'center', mb: isMobile ? 1.5 : 2 }}>
+        <Box sx={{ textAlign: "center", mb: isMobile ? 1.5 : 2 }}>
           <Box
             sx={{
               width: { xs: 48, sm: 56, md: 64 },
               height: { xs: 48, sm: 56, md: 64 },
-              bgcolor: 'primary.main',
-              borderRadius: '50%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              mx: 'auto',
+              bgcolor: "primary.main",
+              borderRadius: "50%",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              mx: "auto",
               mb: isMobile ? 1 : 1.5,
             }}
           >
             <Typography
               variant="h4"
-              sx={{ 
-                color: 'white', 
-                fontWeight: 'bold',
-                fontSize: { xs: '1.25rem', sm: '1.5rem', md: '1.75rem' }
+              sx={{
+                color: "white",
+                fontWeight: "bold",
+                fontSize: { xs: "1.25rem", sm: "1.5rem", md: "1.75rem" },
               }}
             >
               H+
             </Typography>
           </Box>
-          <Typography 
-            variant="h6" 
-            sx={{ 
-              color: 'primary.main', 
+          <Typography
+            variant="h6"
+            sx={{
+              color: "primary.main",
               fontWeight: 700,
-              fontSize: { xs: '0.875rem', sm: '1rem', md: '1.125rem' },
-              textTransform: 'uppercase',
+              fontSize: { xs: "0.875rem", sm: "1rem", md: "1.125rem" },
+              textTransform: "uppercase",
             }}
           >
             HEALTHCARE
@@ -124,11 +132,11 @@ const LoginFormPanel: React.FC<LoginFormPanelProps> = ({ formData, onInputChange
           variant="h5"
           component="h1"
           sx={{
-            textAlign: 'center',
+            textAlign: "center",
             fontWeight: 700,
             mb: isMobile ? 1 : 1.5,
-            color: 'text.primary',
-            fontSize: { xs: '1.25rem', sm: '1.5rem', md: '1.75rem' },
+            color: "text.primary",
+            fontSize: { xs: "1.25rem", sm: "1.5rem", md: "1.75rem" },
           }}
         >
           Đăng nhập
@@ -138,10 +146,10 @@ const LoginFormPanel: React.FC<LoginFormPanelProps> = ({ formData, onInputChange
         <Typography
           variant="body2"
           sx={{
-            textAlign: 'center',
-            color: 'text.secondary',
+            textAlign: "center",
+            color: "text.secondary",
             mb: isMobile ? 2 : 3,
-            fontSize: { xs: '0.875rem', sm: '1rem' },
+            fontSize: { xs: "0.875rem", sm: "1rem" },
           }}
         >
           Chào mừng bạn trở lại! Vui lòng đăng nhập để tiếp tục.
@@ -156,8 +164,8 @@ const LoginFormPanel: React.FC<LoginFormPanelProps> = ({ formData, onInputChange
             name="email"
             label="Email"
             type="email"
-            value={formData?.email || ''}
-            onChange={onInputChange?.('email')}
+            value={formData?.email || ""}
+            onChange={onInputChange?.("email")}
             required
             disabled={isLoading}
             InputProps={{
@@ -169,7 +177,7 @@ const LoginFormPanel: React.FC<LoginFormPanelProps> = ({ formData, onInputChange
             }}
             sx={{
               mb: 2,
-              '& .MuiOutlinedInput-root': {
+              "& .MuiOutlinedInput-root": {
                 borderRadius: 2,
               },
             }}
@@ -181,9 +189,9 @@ const LoginFormPanel: React.FC<LoginFormPanelProps> = ({ formData, onInputChange
             id="login-password"
             name="password"
             label="Mật khẩu"
-            type={showPassword ? 'text' : 'password'}
-            value={formData?.password || ''}
-            onChange={onInputChange?.('password')}
+            type={showPassword ? "text" : "password"}
+            value={formData?.password || ""}
+            onChange={onInputChange?.("password")}
             required
             disabled={isLoading}
             InputProps={{
@@ -207,7 +215,7 @@ const LoginFormPanel: React.FC<LoginFormPanelProps> = ({ formData, onInputChange
             }}
             sx={{
               mb: 2,
-              '& .MuiOutlinedInput-root': {
+              "& .MuiOutlinedInput-root": {
                 borderRadius: 2,
               },
             }}
@@ -216,9 +224,9 @@ const LoginFormPanel: React.FC<LoginFormPanelProps> = ({ formData, onInputChange
           {/* Remember Me and Forgot Password */}
           <Box
             sx={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
               mb: isMobile ? 1.5 : 2,
             }}
           >
@@ -228,25 +236,25 @@ const LoginFormPanel: React.FC<LoginFormPanelProps> = ({ formData, onInputChange
                   id="login-remember-me"
                   name="rememberMe"
                   checked={formData?.rememberMe || false}
-                  onChange={onInputChange?.('rememberMe') || (() => {})}
+                  onChange={onInputChange?.("rememberMe") || (() => {})}
                   color="primary"
                   size="small"
                   disabled={isLoading}
                 />
               }
               label="Nhớ tôi"
-              sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
+              sx={{ fontSize: { xs: "0.75rem", sm: "0.875rem" } }}
             />
             <Button
               onClick={handleForgotPassword}
               variant="text"
-              sx={{ 
-                color: 'primary.main', 
-                textDecoration: 'none',
-                fontSize: '0.875rem',
-                textTransform: 'none',
+              sx={{
+                color: "primary.main",
+                textDecoration: "none",
+                fontSize: "0.875rem",
+                textTransform: "none",
                 p: 0,
-                minWidth: 'auto',
+                minWidth: "auto",
               }}
             >
               Quên mật khẩu?
@@ -260,16 +268,18 @@ const LoginFormPanel: React.FC<LoginFormPanelProps> = ({ formData, onInputChange
             variant="contained"
             size="medium"
             disabled={isLoading}
-            startIcon={isLoading ? <CircularProgress size={20} color="inherit" /> : null}
-            sx={{ 
+            startIcon={
+              isLoading ? <CircularProgress size={20} color="inherit" /> : null
+            }
+            sx={{
               mb: isMobile ? 1.5 : 2,
               py: { xs: 1.25, sm: 1.5 },
-              fontSize: { xs: '0.875rem', sm: '1rem' },
-              fontWeight: 'bold',
+              fontSize: { xs: "0.875rem", sm: "1rem" },
+              fontWeight: "bold",
               borderRadius: 2,
             }}
           >
-            {isLoading ? 'Đang đăng nhập...' : 'Đăng nhập'}
+            {isLoading ? "Đang đăng nhập..." : "Đăng nhập"}
           </Button>
         </Box>
 
@@ -278,9 +288,9 @@ const LoginFormPanel: React.FC<LoginFormPanelProps> = ({ formData, onInputChange
           <Divider sx={{ mb: isMobile ? 1 : 1.5 }}>
             <Typography
               variant="body2"
-              sx={{ 
-                color: 'text.secondary',
-                fontSize: { xs: '0.75rem', sm: '0.875rem' },
+              sx={{
+                color: "text.secondary",
+                fontSize: { xs: "0.75rem", sm: "0.875rem" },
                 px: 1,
               }}
             >
@@ -292,29 +302,29 @@ const LoginFormPanel: React.FC<LoginFormPanelProps> = ({ formData, onInputChange
         {/* Social Login Buttons */}
         <Box
           sx={{
-            display: 'flex',
+            display: "flex",
             gap: { xs: 1, sm: 1.5 },
-            justifyContent: 'center',
+            justifyContent: "center",
             mb: isMobile ? 1.5 : 2,
           }}
         >
           <Button
             variant="outlined"
-            onClick={() => onSocialLogin?.('google')}
+            onClick={() => onSocialLogin?.("google")}
             startIcon={<Google />}
             size="medium"
             disabled={isLoading}
             sx={{
               borderRadius: 2,
-              borderColor: 'grey.300',
-              color: 'text.primary',
-              textTransform: 'none',
-              fontSize: { xs: '0.75rem', sm: '0.875rem' },
+              borderColor: "grey.300",
+              color: "text.primary",
+              textTransform: "none",
+              fontSize: { xs: "0.75rem", sm: "0.875rem" },
               py: { xs: 0.75, sm: 1 },
               px: { xs: 1.5, sm: 2 },
-              '&:hover': {
-                borderColor: 'grey.400',
-                bgcolor: 'grey.50',
+              "&:hover": {
+                borderColor: "grey.400",
+                bgcolor: "grey.50",
               },
             }}
           >
@@ -322,21 +332,21 @@ const LoginFormPanel: React.FC<LoginFormPanelProps> = ({ formData, onInputChange
           </Button>
           <Button
             variant="outlined"
-            onClick={() => onSocialLogin?.('facebook')}
+            onClick={() => onSocialLogin?.("facebook")}
             startIcon={<Facebook />}
             size="medium"
             disabled={isLoading}
             sx={{
               borderRadius: 2,
-              borderColor: 'grey.300',
-              color: 'text.primary',
-              textTransform: 'none',
-              fontSize: { xs: '0.75rem', sm: '0.875rem' },
+              borderColor: "grey.300",
+              color: "text.primary",
+              textTransform: "none",
+              fontSize: { xs: "0.75rem", sm: "0.875rem" },
               py: { xs: 0.75, sm: 1 },
               px: { xs: 1.5, sm: 2 },
-              '&:hover': {
-                borderColor: 'grey.400',
-                bgcolor: 'grey.50',
+              "&:hover": {
+                borderColor: "grey.400",
+                bgcolor: "grey.50",
               },
             }}
           >
@@ -345,25 +355,25 @@ const LoginFormPanel: React.FC<LoginFormPanelProps> = ({ formData, onInputChange
         </Box>
 
         {/* Don't have account link */}
-        <Typography 
-          variant="body2" 
-          sx={{ 
-            color: 'text.secondary',
-            fontSize: { xs: '0.75rem', sm: '0.875rem' },
-            textAlign: 'center',
+        <Typography
+          variant="body2"
+          sx={{
+            color: "text.secondary",
+            fontSize: { xs: "0.75rem", sm: "0.875rem" },
+            textAlign: "center",
           }}
         >
-          Chưa có tài khoản?{' '}
+          Chưa có tài khoản?{" "}
           <Button
             onClick={handleRegister}
             variant="text"
-            sx={{ 
-              color: 'primary.main', 
-              textDecoration: 'none',
-              fontSize: { xs: '0.75rem', sm: '0.875rem' },
-              textTransform: 'none',
+            sx={{
+              color: "primary.main",
+              textDecoration: "none",
+              fontSize: { xs: "0.75rem", sm: "0.875rem" },
+              textTransform: "none",
               p: 0,
-              minWidth: 'auto',
+              minWidth: "auto",
             }}
           >
             Đăng ký ngay
@@ -374,4 +384,4 @@ const LoginFormPanel: React.FC<LoginFormPanelProps> = ({ formData, onInputChange
   );
 };
 
-export default LoginFormPanel; 
+export default LoginFormPanel;

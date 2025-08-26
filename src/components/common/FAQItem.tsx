@@ -1,11 +1,11 @@
-import React from 'react';
+import React from "react";
 import {
   Accordion,
   AccordionSummary,
   AccordionDetails,
   Typography,
-} from '@mui/material';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+} from "@mui/material";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 
 interface FAQItemProps {
   question: string;
@@ -14,7 +14,12 @@ interface FAQItemProps {
   onChange: (event: React.SyntheticEvent, isExpanded: boolean) => void;
 }
 
-const FAQItem: React.FC<FAQItemProps> = ({ question, answer, expanded, onChange }) => {
+const FAQItem: React.FC<FAQItemProps> = ({
+  question,
+  answer,
+  expanded,
+  onChange,
+}) => {
   return (
     <Accordion
       expanded={expanded}
@@ -22,40 +27,40 @@ const FAQItem: React.FC<FAQItemProps> = ({ question, answer, expanded, onChange 
       sx={{
         mb: 0,
         borderRadius: 1.5,
-        boxShadow: '0 1px 4px rgba(0, 0, 0, 0.06)',
-        '&:before': {
-          display: 'none',
+        boxShadow: "0 1px 4px rgba(0, 0, 0, 0.06)",
+        "&:before": {
+          display: "none",
         },
-        '&.Mui-expanded': {
-          margin: '4px 0',
-          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+        "&.Mui-expanded": {
+          margin: "4px 0",
+          boxShadow: "0 2px 8px rgba(0, 0, 0, 0.1)",
         },
-        transition: 'all 0.2s ease-in-out',
-        '&:hover': {
-          boxShadow: '0 2px 6px rgba(0, 0, 0, 0.1)',
+        transition: "all 0.2s ease-in-out",
+        "&:hover": {
+          boxShadow: "0 2px 6px rgba(0, 0, 0, 0.1)",
         },
       }}
     >
       <AccordionSummary
         expandIcon={
-          <ExpandMoreIcon 
-            sx={{ 
-              color: 'primary.main',
-              transition: 'transform 0.3s ease-in-out',
-            }} 
+          <ExpandMoreIcon
+            sx={{
+              color: "primary.main",
+              transition: "transform 0.3s ease-in-out",
+            }}
           />
         }
         sx={{
           px: { xs: 1.5, sm: 2 },
           py: { xs: 1, sm: 1.25 },
-          minHeight: '48px',
-          '& .MuiAccordionSummary-content': {
+          minHeight: "48px",
+          "& .MuiAccordionSummary-content": {
             margin: 0,
           },
-          '&.Mui-expanded': {
-            minHeight: '48px',
-            '& .MuiAccordionSummary-expandIconWrapper': {
-              transform: 'rotate(180deg)',
+          "&.Mui-expanded": {
+            minHeight: "48px",
+            "& .MuiAccordionSummary-expandIconWrapper": {
+              transform: "rotate(180deg)",
             },
           },
         }}
@@ -65,8 +70,8 @@ const FAQItem: React.FC<FAQItemProps> = ({ question, answer, expanded, onChange 
           component="h3"
           sx={{
             fontWeight: 500,
-            color: 'text.primary',
-            fontSize: { xs: '0.9rem', sm: '0.95rem' },
+            color: "text.primary",
+            fontSize: { xs: "0.9rem", sm: "0.95rem" },
             lineHeight: 1.3,
             flexGrow: 1,
           }}
@@ -74,7 +79,7 @@ const FAQItem: React.FC<FAQItemProps> = ({ question, answer, expanded, onChange 
           {question}
         </Typography>
       </AccordionSummary>
-      
+
       <AccordionDetails
         sx={{
           px: { xs: 1.5, sm: 2 },
@@ -87,7 +92,7 @@ const FAQItem: React.FC<FAQItemProps> = ({ question, answer, expanded, onChange 
           color="text.secondary"
           sx={{
             lineHeight: 1.5,
-            fontSize: { xs: '0.85rem', sm: '0.9rem' },
+            fontSize: { xs: "0.85rem", sm: "0.9rem" },
           }}
         >
           {answer}
@@ -97,4 +102,4 @@ const FAQItem: React.FC<FAQItemProps> = ({ question, answer, expanded, onChange 
   );
 };
 
-export default FAQItem; 
+export default FAQItem;

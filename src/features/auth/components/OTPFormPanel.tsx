@@ -1,6 +1,6 @@
 "use client";
 
-import React from 'react';
+import React from "react";
 import {
   Box,
   Paper,
@@ -8,25 +8,28 @@ import {
   Typography,
   Button,
   useMediaQuery,
-} from '@mui/material';
-import type { Theme } from '@mui/material/styles';
+} from "@mui/material";
+import type { Theme } from "@mui/material/styles";
 
 interface OTPFormPanelProps {
   otpValues: string[];
   activeIndex: number;
   email: string;
-  otpFlow: 'registration' | 'forgot-password';
+  otpFlow: "registration" | "forgot-password";
   isLoading: boolean;
   inputRefs: React.MutableRefObject<(HTMLInputElement | null)[]>;
   onOtpChange: (index: number, value: string) => void;
-  onKeyDown: (index: number, event: React.KeyboardEvent<HTMLDivElement>) => void;
+  onKeyDown: (
+    index: number,
+    event: React.KeyboardEvent<HTMLDivElement>
+  ) => void;
   onInputFocus: (index: number) => void;
   onResendOTP: () => void;
   onBackToLogin: () => void;
   onSubmit: (event: React.SyntheticEvent) => void;
 }
 
-const OTPFormPanel: React.FC<OTPFormPanelProps> = ({ 
+const OTPFormPanel: React.FC<OTPFormPanelProps> = ({
   otpValues,
   activeIndex,
   email,
@@ -38,60 +41,62 @@ const OTPFormPanel: React.FC<OTPFormPanelProps> = ({
   onInputFocus,
   onResendOTP,
   onBackToLogin,
-  onSubmit
+  onSubmit,
 }) => {
-  const isMobile = useMediaQuery((theme: Theme) => theme.breakpoints.down('sm'));
+  const isMobile = useMediaQuery((theme: Theme) =>
+    theme.breakpoints.down("sm")
+  );
 
   return (
     <Paper
       elevation={0}
       sx={{
         p: { xs: 2.5, sm: 3, md: 3.5 },
-        width: '100%',
+        width: "100%",
         maxWidth: { xs: 380, sm: 400, md: 420 },
-        mx: 'auto',
+        mx: "auto",
         borderRadius: 3,
-        backgroundColor: '#fff',
-        boxShadow: '0px 8px 32px rgba(0, 0, 0, 0.12)',
-        border: '1px solid rgba(0, 0, 0, 0.05)',
-        display: 'flex',
-        flexDirection: 'column',
-        justifyContent: 'center',
+        backgroundColor: "#fff",
+        boxShadow: "0px 8px 32px rgba(0, 0, 0, 0.12)",
+        border: "1px solid rgba(0, 0, 0, 0.05)",
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: "center",
       }}
     >
       {/* Logo */}
-      <Box sx={{ textAlign: 'center', mb: { xs: 1.5, sm: 2 } }}>
+      <Box sx={{ textAlign: "center", mb: { xs: 1.5, sm: 2 } }}>
         <Box
           sx={{
             width: { xs: 48, sm: 52, md: 56 },
             height: { xs: 48, sm: 52, md: 56 },
-            bgcolor: 'primary.main',
-            borderRadius: '50%',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            mx: 'auto',
+            bgcolor: "primary.main",
+            borderRadius: "50%",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            mx: "auto",
             mb: { xs: 1, sm: 1.5 },
           }}
         >
           <Typography
             variant="h4"
-            sx={{ 
-              color: 'white', 
-              fontWeight: 'bold',
-              fontSize: { xs: '1.25rem', sm: '1.375rem', md: '1.5rem' }
+            sx={{
+              color: "white",
+              fontWeight: "bold",
+              fontSize: { xs: "1.25rem", sm: "1.375rem", md: "1.5rem" },
             }}
           >
             H+
           </Typography>
         </Box>
-        <Typography 
-          variant="h6" 
-          sx={{ 
-            color: 'primary.main', 
+        <Typography
+          variant="h6"
+          sx={{
+            color: "primary.main",
             fontWeight: 700,
-            fontSize: { xs: '0.875rem', sm: '0.9375rem', md: '1rem' },
-            textTransform: 'uppercase',
+            fontSize: { xs: "0.875rem", sm: "0.9375rem", md: "1rem" },
+            textTransform: "uppercase",
           }}
         >
           HEALTHCARE
@@ -103,32 +108,37 @@ const OTPFormPanel: React.FC<OTPFormPanelProps> = ({
         variant="h5"
         component="h1"
         sx={{
-          textAlign: 'center',
+          textAlign: "center",
           fontWeight: 700,
           mb: { xs: 1, sm: 1.25 },
-          color: 'text.primary',
-          fontSize: { xs: '1.25rem', sm: '1.375rem', md: '1.5rem' },
+          color: "text.primary",
+          fontSize: { xs: "1.25rem", sm: "1.375rem", md: "1.5rem" },
         }}
       >
-        {otpFlow === 'registration' ? 'Xác thực tài khoản' : 'Xác nhận quên mật khẩu'}
+        {otpFlow === "registration"
+          ? "Xác thực tài khoản"
+          : "Xác nhận quên mật khẩu"}
       </Typography>
 
       {/* Instructions */}
       <Typography
         variant="body2"
         sx={{
-          textAlign: 'center',
-          color: 'text.secondary',
+          textAlign: "center",
+          color: "text.secondary",
           mb: { xs: 2, sm: 2.5 },
-          fontSize: { xs: '0.8125rem', sm: '0.875rem' },
+          fontSize: { xs: "0.8125rem", sm: "0.875rem" },
           lineHeight: 1.5,
           px: { xs: 0.5, sm: 1 },
         }}
       >
-        {otpFlow === 'registration' ? (
+        {otpFlow === "registration" ? (
           <>
-            Chúng tôi đã gửi mã OTP xác thực tới{' '}
-            <Box component="span" sx={{ color: 'primary.main', fontWeight: 600 }}>
+            Chúng tôi đã gửi mã OTP xác thực tới{" "}
+            <Box
+              component="span"
+              sx={{ color: "primary.main", fontWeight: 600 }}
+            >
               {email}
             </Box>
             <br />
@@ -136,8 +146,11 @@ const OTPFormPanel: React.FC<OTPFormPanelProps> = ({
           </>
         ) : (
           <>
-            Chúng tôi đã gửi mã OTP khôi phục mật khẩu tới{' '}
-            <Box component="span" sx={{ color: 'primary.main', fontWeight: 600 }}>
+            Chúng tôi đã gửi mã OTP khôi phục mật khẩu tới{" "}
+            <Box
+              component="span"
+              sx={{ color: "primary.main", fontWeight: 600 }}
+            >
               {email}
             </Box>
             <br />
@@ -150,9 +163,9 @@ const OTPFormPanel: React.FC<OTPFormPanelProps> = ({
       <Box component="form" onSubmit={onSubmit}>
         <Box
           sx={{
-            display: 'flex',
+            display: "flex",
             gap: { xs: 1, sm: 1.25 },
-            justifyContent: 'center',
+            justifyContent: "center",
             mb: { xs: 2, sm: 2.5 },
           }}
         >
@@ -166,23 +179,23 @@ const OTPFormPanel: React.FC<OTPFormPanelProps> = ({
               onFocus={() => onInputFocus(index)}
               inputProps={{
                 maxLength: 1,
-                style: { textAlign: 'center' },
+                style: { textAlign: "center" },
               }}
               sx={{
                 width: { xs: 42, sm: 45, md: 48 },
-                '& .MuiOutlinedInput-root': {
+                "& .MuiOutlinedInput-root": {
                   borderRadius: 1.5,
-                  '&.Mui-focused': {
-                    '& .MuiOutlinedInput-notchedOutline': {
-                      borderColor: 'primary.main',
+                  "&.Mui-focused": {
+                    "& .MuiOutlinedInput-notchedOutline": {
+                      borderColor: "primary.main",
                       borderWidth: 2,
                     },
                   },
                 },
-                '& .MuiInputBase-input': {
-                  fontSize: { xs: '1.25rem', sm: '1.375rem' },
+                "& .MuiInputBase-input": {
+                  fontSize: { xs: "1.25rem", sm: "1.375rem" },
                   fontWeight: 600,
-                  color: 'text.primary',
+                  color: "text.primary",
                 },
               }}
             />
@@ -196,40 +209,40 @@ const OTPFormPanel: React.FC<OTPFormPanelProps> = ({
           variant="contained"
           size="medium"
           disabled={isLoading}
-          sx={{ 
+          sx={{
             mb: { xs: 2, sm: 2.5 },
             py: { xs: 1.25, sm: 1.375 },
-            fontSize: { xs: '0.9375rem', sm: '1rem' },
-            fontWeight: 'bold',
+            fontSize: { xs: "0.9375rem", sm: "1rem" },
+            fontWeight: "bold",
             borderRadius: 2,
           }}
         >
-          {isLoading ? 'Đang xác thực...' : 'Xác nhận'}
+          {isLoading ? "Đang xác thực..." : "Xác nhận"}
         </Button>
       </Box>
 
       {/* Resend OTP */}
-      <Typography 
-        variant="body2" 
-        sx={{ 
-          color: 'text.secondary',
-          fontSize: { xs: '0.8125rem', sm: '0.875rem' },
-          textAlign: 'center',
+      <Typography
+        variant="body2"
+        sx={{
+          color: "text.secondary",
+          fontSize: { xs: "0.8125rem", sm: "0.875rem" },
+          textAlign: "center",
           mb: { xs: 1.5, sm: 2 },
         }}
       >
-        Bạn không nhận được mã xác thực OTP?{' '}
+        Bạn không nhận được mã xác thực OTP?{" "}
         <Button
           onClick={onResendOTP}
           variant="text"
           disabled={isLoading}
-          sx={{ 
-            color: 'primary.main', 
-            textDecoration: 'none',
-            fontSize: { xs: '0.8125rem', sm: '0.875rem' },
-            textTransform: 'none',
+          sx={{
+            color: "primary.main",
+            textDecoration: "none",
+            fontSize: { xs: "0.8125rem", sm: "0.875rem" },
+            textTransform: "none",
             p: 0,
-            minWidth: 'auto',
+            minWidth: "auto",
           }}
         >
           Gửi lại mã OTP
@@ -237,24 +250,24 @@ const OTPFormPanel: React.FC<OTPFormPanelProps> = ({
       </Typography>
 
       {/* Back to Login */}
-      <Typography 
-        variant="body2" 
-        sx={{ 
-          color: 'text.secondary',
-          fontSize: { xs: '0.8125rem', sm: '0.875rem' },
-          textAlign: 'center',
+      <Typography
+        variant="body2"
+        sx={{
+          color: "text.secondary",
+          fontSize: { xs: "0.8125rem", sm: "0.875rem" },
+          textAlign: "center",
         }}
       >
         <Button
           onClick={onBackToLogin}
           variant="text"
-          sx={{ 
-            color: 'primary.main', 
-            textDecoration: 'none',
-            fontSize: { xs: '0.8125rem', sm: '0.875rem' },
-            textTransform: 'none',
+          sx={{
+            color: "primary.main",
+            textDecoration: "none",
+            fontSize: { xs: "0.8125rem", sm: "0.875rem" },
+            textTransform: "none",
             p: 0,
-            minWidth: 'auto',
+            minWidth: "auto",
           }}
         >
           Quay lại đăng nhập

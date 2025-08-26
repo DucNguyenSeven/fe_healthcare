@@ -1,15 +1,23 @@
 "use client";
 
-import React from 'react';
-import { usePatientNavigation } from '@/hooks/navigation';
-import { WelcomeSection } from '../components/WelcomeSection';
-import { QuickActions } from '../components/QuickActions';
-import { HealthMetrics } from '../components/HealthMetrics';
-import { TodaySchedule } from '../components/TodaySchedule';
-import { MedicationReminders } from '../components/MedicationReminders';
-import { RecentConsultations } from '../components/RecentConsultations';
-import { SuggestedArticles } from '../components/SuggestedArticles';
-import { User, Appointment, HealthMetric, Alert, Consultation, MedicationReminder, Article } from '../types';
+import React from "react";
+import { usePatientNavigation } from "@/hooks/navigation";
+import { WelcomeSection } from "../components/WelcomeSection";
+import { QuickActions } from "../components/QuickActions";
+import { HealthMetrics } from "../components/HealthMetrics";
+import { TodaySchedule } from "../components/TodaySchedule";
+import { MedicationReminders } from "../components/MedicationReminders";
+import { RecentConsultations } from "../components/RecentConsultations";
+import { SuggestedArticles } from "../components/SuggestedArticles";
+import {
+  User,
+  Appointment,
+  HealthMetric,
+  Alert,
+  Consultation,
+  MedicationReminder,
+  Article,
+} from "../types";
 
 interface DashboardPageProps {
   user: User;
@@ -30,7 +38,7 @@ export function DashboardPage({
   consultations,
   reminders,
   articles,
-  onNavigate
+  onNavigate,
 }: DashboardPageProps) {
   const { navigate } = usePatientNavigation();
 
@@ -60,7 +68,10 @@ export function DashboardPage({
         {/* Sidebar */}
         <div className="space-y-6">
           {/* Today's Schedule */}
-          <TodaySchedule appointments={appointments} onNavigate={handleNavigate} />
+          <TodaySchedule
+            appointments={appointments}
+            onNavigate={handleNavigate}
+          />
 
           {/* Medication Reminders */}
           <MedicationReminders reminders={reminders} />

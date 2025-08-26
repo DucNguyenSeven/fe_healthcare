@@ -1,10 +1,10 @@
 "use client";
 
-import React from 'react';
-import { Box, Typography, Button, Paper } from '@mui/material';
-import { LockOutlined, LoginOutlined } from '@mui/icons-material';
-import { useRouter } from 'next/navigation';
-import { ROUTES } from '@/constants/routes';
+import React from "react";
+import { Box, Typography, Button, Paper } from "@mui/material";
+import { LockOutlined, LoginOutlined } from "@mui/icons-material";
+import { useRouter } from "next/navigation";
+import { ROUTES } from "@/constants/routes";
 
 interface UnauthorizedAccessProps {
   message?: string;
@@ -13,7 +13,7 @@ interface UnauthorizedAccessProps {
 
 const UnauthorizedAccess: React.FC<UnauthorizedAccessProps> = ({
   message = "Bạn cần đăng nhập để truy cập tính năng này",
-  loginPath = ROUTES.LOGIN
+  loginPath = ROUTES.LOGIN,
 }) => {
   const router = useRouter();
 
@@ -24,11 +24,11 @@ const UnauthorizedAccess: React.FC<UnauthorizedAccessProps> = ({
   return (
     <Box
       sx={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        minHeight: '100vh',
-        backgroundColor: 'background.default',
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        minHeight: "100vh",
+        backgroundColor: "background.default",
         px: 2,
       }}
     >
@@ -36,9 +36,9 @@ const UnauthorizedAccess: React.FC<UnauthorizedAccessProps> = ({
         elevation={1}
         sx={{
           p: 4,
-          textAlign: 'center',
+          textAlign: "center",
           maxWidth: 400,
-          width: '100%',
+          width: "100%",
           borderRadius: 3,
         }}
       >
@@ -46,30 +46,30 @@ const UnauthorizedAccess: React.FC<UnauthorizedAccessProps> = ({
           sx={{
             width: 80,
             height: 80,
-            borderRadius: '50%',
-            backgroundColor: 'primary.light',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            mx: 'auto',
+            borderRadius: "50%",
+            backgroundColor: "primary.light",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            mx: "auto",
             mb: 3,
           }}
         >
-          <LockOutlined sx={{ fontSize: 40, color: 'primary.main' }} />
+          <LockOutlined sx={{ fontSize: 40, color: "primary.main" }} />
         </Box>
 
         <Typography
           variant="h5"
           component="h1"
           gutterBottom
-          sx={{ fontWeight: 600, color: 'text.primary' }}
+          sx={{ fontWeight: 600, color: "text.primary" }}
         >
           Truy cập bị hạn chế
         </Typography>
 
         <Typography
           variant="body1"
-          sx={{ color: 'text.secondary', mb: 3, lineHeight: 1.6 }}
+          sx={{ color: "text.secondary", mb: 3, lineHeight: 1.6 }}
         >
           {message}
         </Typography>
@@ -84,7 +84,7 @@ const UnauthorizedAccess: React.FC<UnauthorizedAccessProps> = ({
             py: 1.5,
             px: 3,
             fontWeight: 600,
-            textTransform: 'none',
+            textTransform: "none",
           }}
         >
           Đăng nhập ngay

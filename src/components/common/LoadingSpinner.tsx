@@ -1,7 +1,7 @@
 "use client";
 
-import React from 'react';
-import { Box, CircularProgress, Typography } from '@mui/material';
+import React from "react";
+import { Box, CircularProgress, Typography } from "@mui/material";
 
 interface LoadingSpinnerProps {
   size?: number;
@@ -11,7 +11,7 @@ interface LoadingSpinnerProps {
 
 export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
   size = 40,
-  message = 'Đang tải...',
+  message = "Đang tải...",
   fullScreen = false,
 }) => {
   const content = (
@@ -51,12 +51,7 @@ export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
   }
 
   return (
-    <Box
-      display="flex"
-      alignItems="center"
-      justifyContent="center"
-      p={3}
-    >
+    <Box display="flex" alignItems="center" justifyContent="center" p={3}>
       {content}
     </Box>
   );

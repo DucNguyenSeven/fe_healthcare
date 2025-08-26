@@ -1,8 +1,8 @@
 "use client";
 
-import React, { Component, ErrorInfo, ReactNode } from 'react';
-import { Box, Typography, Button, Paper } from '@mui/material';
-import { ErrorOutline, Refresh } from '@mui/icons-material';
+import React, { Component, ErrorInfo, ReactNode } from "react";
+import { Box, Typography, Button, Paper } from "@mui/material";
+import { ErrorOutline, Refresh } from "@mui/icons-material";
 
 interface Props {
   children: ReactNode;
@@ -26,7 +26,7 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error('ErrorBoundary caught an error:', error, errorInfo);
+    console.error("ErrorBoundary caught an error:", error, errorInfo);
     this.setState({ errorInfo });
   }
 
@@ -52,35 +52,36 @@ export class ErrorBoundary extends Component<Props, State> {
             elevation={3}
             sx={{
               p: 4,
-              textAlign: 'center',
+              textAlign: "center",
               maxWidth: 500,
-              width: '100%',
+              width: "100%",
             }}
           >
             <ErrorOutline
               sx={{
                 fontSize: 64,
-                color: 'error.main',
+                color: "error.main",
                 mb: 2,
               }}
             />
-            
+
             <Typography variant="h5" gutterBottom color="error">
               Đã xảy ra lỗi
             </Typography>
-            
+
             <Typography variant="body1" color="text.secondary" paragraph>
-              Xin lỗi, đã có lỗi xảy ra trong ứng dụng. Vui lòng thử lại hoặc liên hệ hỗ trợ nếu vấn đề vẫn tiếp tục.
+              Xin lỗi, đã có lỗi xảy ra trong ứng dụng. Vui lòng thử lại hoặc
+              liên hệ hỗ trợ nếu vấn đề vẫn tiếp tục.
             </Typography>
 
-            {process.env.NODE_ENV === 'development' && this.state.error && (
+            {process.env.NODE_ENV === "development" && this.state.error && (
               <Box
                 sx={{
                   mt: 2,
                   p: 2,
-                  bgcolor: 'grey.100',
+                  bgcolor: "grey.100",
                   borderRadius: 1,
-                  textAlign: 'left',
+                  textAlign: "left",
                 }}
               >
                 <Typography variant="caption" color="error">

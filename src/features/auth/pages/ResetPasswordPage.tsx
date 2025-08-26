@@ -1,29 +1,31 @@
 "use client";
 
-import React, { useState } from 'react';
-import { Box, Alert, Snackbar } from '@mui/material';
-import { ResetPasswordFormPanel } from '../components';
-import { ResetPasswordFormData } from '../../../types';
-import { useResetPassword } from '../../../hooks';
+import React, { useState } from "react";
+import { Box, Alert, Snackbar } from "@mui/material";
+import { ResetPasswordFormPanel } from "../components";
+import { ResetPasswordFormData } from "../../../types";
+import { useResetPassword } from "../../../hooks";
 
 const ResetPasswordPage: React.FC = () => {
   const [formData, setFormData] = useState<ResetPasswordFormData>({
-    password: '',
-    confirmPassword: '',
+    password: "",
+    confirmPassword: "",
   });
 
   const { resetPassword, isLoading, error, clearError } = useResetPassword();
 
-  const handleInputChange = (field: keyof ResetPasswordFormData) => (event: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({
-      ...formData,
-      [field]: event.target.value,
-    });
-  };
+  const handleInputChange =
+    (field: keyof ResetPasswordFormData) =>
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      setFormData({
+        ...formData,
+        [field]: event.target.value,
+      });
+    };
 
   const handleSubmit = async (event: React.SyntheticEvent): Promise<void> => {
     event.preventDefault();
-    
+
     // Basic validation
     if (!formData.password || !formData.confirmPassword) {
       return;
@@ -35,12 +37,12 @@ const ResetPasswordPage: React.FC = () => {
   return (
     <Box
       sx={{
-        height: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        bgcolor: 'background.default',
-        overflow: 'hidden',
+        height: "100vh",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        bgcolor: "background.default",
+        overflow: "hidden",
       }}
     >
       <ResetPasswordFormPanel
@@ -51,13 +53,13 @@ const ResetPasswordPage: React.FC = () => {
       />
 
       {/* Error Snackbar */}
-      <Snackbar 
-        open={!!error} 
-        autoHideDuration={6000} 
+      <Snackbar
+        open={!!error}
+        autoHideDuration={6000}
         onClose={clearError}
-        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+        anchorOrigin={{ vertical: "top", horizontal: "center" }}
       >
-        <Alert onClose={clearError} severity="error" sx={{ width: '100%' }}>
+        <Alert onClose={clearError} severity="error" sx={{ width: "100%" }}>
           {error}
         </Alert>
       </Snackbar>

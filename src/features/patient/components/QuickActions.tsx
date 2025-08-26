@@ -1,7 +1,7 @@
 "use client";
 
-import React from 'react';
-import { Plus, Calendar, MessageCircle, FileText } from 'lucide-react';
+import React from "react";
+import { Plus, Calendar, MessageCircle, FileText } from "lucide-react";
 
 interface QuickAction {
   id: string;
@@ -18,40 +18,42 @@ interface QuickActionsProps {
 export function QuickActions({ onNavigate }: QuickActionsProps) {
   const quickActions: QuickAction[] = [
     {
-      id: 'input-metrics',
-      label: 'Nhập chỉ số',
+      id: "input-metrics",
+      label: "Nhập chỉ số",
       icon: Plus,
-      color: 'bg-blue-500',
-      onClick: () => onNavigate('monitoring')
+      color: "bg-blue-500",
+      onClick: () => onNavigate("monitoring"),
     },
     {
-      id: 'book-appointment',
-      label: 'Đặt lịch',
+      id: "book-appointment",
+      label: "Đặt lịch",
       icon: Calendar,
-      color: 'bg-green-500',
-      onClick: () => onNavigate('appointments')
+      color: "bg-green-500",
+      onClick: () => onNavigate("appointments"),
     },
     {
-      id: 'ai-chat',
+      id: "ai-chat",
       label: "Tư vấn với AI",
       icon: MessageCircle,
-      color: 'bg-purple-500',
-      onClick: () => onNavigate('ai-assistant')
+      color: "bg-purple-500",
+      onClick: () => onNavigate("ai-assistant"),
     },
     {
-      id: 'telehealth',
+      id: "telehealth",
       label: "Xem kết quả",
       icon: FileText,
-      color: 'bg-orange-500',
-      onClick: () => onNavigate('telehealth')
-    }
+      color: "bg-orange-500",
+      onClick: () => onNavigate("telehealth"),
+    },
   ];
 
   return (
     <div>
-      <h2 className="text-xl font-semibold text-gray-900 mb-4">Thao tác nhanh</h2>
+      <h2 className="text-xl font-semibold text-gray-900 mb-4">
+        Thao tác nhanh
+      </h2>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {quickActions.map(action => {
+        {quickActions.map((action) => {
           const Icon = action.icon;
           return (
             <button
@@ -59,7 +61,9 @@ export function QuickActions({ onNavigate }: QuickActionsProps) {
               onClick={action.onClick}
               className="flex flex-col items-center justify-center p-6 bg-white rounded-2xl border border-gray-200 hover:shadow-lg transition-all duration-200 hover:scale-105"
             >
-              <div className={`w-12 h-12 ${action.color} rounded-xl flex items-center justify-center mb-3`}>
+              <div
+                className={`w-12 h-12 ${action.color} rounded-xl flex items-center justify-center mb-3`}
+              >
                 <Icon className="w-6 h-6 text-white" />
               </div>
               <span className="text-sm font-medium text-gray-900 text-center">

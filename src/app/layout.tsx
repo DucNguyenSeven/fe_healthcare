@@ -1,12 +1,16 @@
-import React from 'react';
-import ThemeRegistry from '../theme/ThemeRegistry';
-import { AuthProvider } from '../contexts/AuthContext';
-import './globals.css';
-import './output.css';
+import React from "react";
+import ThemeRegistry from "../theme/ThemeRegistry";
+import { AuthProvider } from "../contexts/AuthContext";
+import "./globals.css";
+import "./output.css";
 
 export const metadata = {
-  title: 'Healthcare App',
-  description: 'A health consultation platform',
+  title: "Healthcare+ - Hệ thống quản lý sức khỏe thận",
+  description: "Nền tảng chăm sóc sức khỏe toàn diện, kết nối bệnh nhân với các bác sĩ chuyên môn cao. Quản lý sức khỏe thận, theo dõi chỉ số, tư vấn điều trị an toàn.",
+  keywords: "sức khỏe, thận, bác sĩ, tư vấn, điều trị, healthcare, kidney health",
+  authors: [{ name: "Healthcare+ Team" }],
+  viewport: "width=device-width, initial-scale=1",
+  robots: "index, follow",
 };
 
 export default function RootLayout({
@@ -18,9 +22,7 @@ export default function RootLayout({
     <html lang="vi">
       <body>
         <ThemeRegistry>
-          <AuthProvider>
-            {children}
-          </AuthProvider>
+          <AuthProvider>{children}</AuthProvider>
         </ThemeRegistry>
       </body>
     </html>

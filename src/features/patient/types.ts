@@ -54,7 +54,6 @@ export interface MedicationReminder {
   isTaken: boolean;
 }
 
-// New types for additional components
 export interface Alert {
   id: string;
   type: 'critical' | 'warning' | 'info';
@@ -64,10 +63,6 @@ export interface Alert {
   isRead: boolean;
 }
 
-// Navigation types are now imported from @/hooks/navigation
-// export type NavigationItem = 'dashboard' | 'profile' | 'appointments' | 'telehealth' | 'monitoring' | 'ai-assistant' | 'community';
-
-// Types for Community features
 export interface BlogPost {
   id: string;
   title: string;
@@ -109,7 +104,6 @@ export interface ForumPost {
   hasExpertReply?: boolean;
 }
 
-// Types for AI Assistant
 export interface ChatMessage {
   id: string;
   sender: 'user' | 'assistant';

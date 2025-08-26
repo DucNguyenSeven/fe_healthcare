@@ -1,19 +1,19 @@
 "use client";
 
-import React, { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { Box, CircularProgress, Typography } from '@mui/material';
-import { useAuthContext } from '@/contexts/AuthContext';
-import { ROUTES } from '@/constants/routes';
+import React, { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { Box, CircularProgress, Typography } from "@mui/material";
+import { useAuthContext } from "@/contexts/AuthContext";
+import { ROUTES } from "@/constants/routes";
 
 interface AuthGuardProps {
   children: React.ReactNode;
   fallbackPath?: string;
 }
 
-const AuthGuard: React.FC<AuthGuardProps> = ({ 
-  children, 
-  fallbackPath = ROUTES.LOGIN 
+const AuthGuard: React.FC<AuthGuardProps> = ({
+  children,
+  fallbackPath = ROUTES.LOGIN,
 }) => {
   const { isAuthenticated, isLoading } = useAuthContext();
   const router = useRouter();
@@ -23,7 +23,7 @@ const AuthGuard: React.FC<AuthGuardProps> = ({
       // Store current path to redirect back after login
       const currentPath = window.location.pathname;
       if (currentPath !== fallbackPath) {
-        sessionStorage.setItem('redirectAfterLogin', currentPath);
+        sessionStorage.setItem("redirectAfterLogin", currentPath);
       }
       router.push(fallbackPath);
     }
@@ -34,19 +34,19 @@ const AuthGuard: React.FC<AuthGuardProps> = ({
     return (
       <Box
         sx={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          minHeight: '100vh',
-          backgroundColor: 'background.default',
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          minHeight: "100vh",
+          backgroundColor: "background.default",
         }}
       >
         <CircularProgress size={60} sx={{ mb: 2 }} />
-        <Typography 
-          variant="body1" 
+        <Typography
+          variant="body1"
           color="text.secondary"
-          sx={{ textAlign: 'center' }}
+          sx={{ textAlign: "center" }}
         >
           Đang kiểm tra thông tin đăng nhập...
         </Typography>

@@ -1,24 +1,24 @@
 "use client";
 
-import React, { createContext, useContext, PropsWithChildren } from 'react';
-import { 
-  User, 
-  Appointment, 
-  HealthMetric, 
-  Alert, 
-  Consultation, 
-  MedicationReminder, 
-  Article 
-} from '../types';
-import { 
-  mockUser, 
-  mockAppointments, 
-  mockHealthMetrics, 
-  mockAlerts, 
-  mockConsultations, 
-  mockMedicationReminders, 
-  mockArticles 
-} from '@/data/global/patient.data';
+import React, { createContext, useContext, PropsWithChildren } from "react";
+import {
+  User,
+  Appointment,
+  HealthMetric,
+  Alert,
+  Consultation,
+  MedicationReminder,
+  Article,
+} from "../types";
+import {
+  mockUser,
+  mockAppointments,
+  mockHealthMetrics,
+  mockAlerts,
+  mockConsultations,
+  mockMedicationReminders,
+  mockArticles,
+} from "@/data/global/patient.data";
 
 export interface PatientState {
   user: User;
@@ -42,21 +42,20 @@ const defaultValue: PatientState = {
 
 const PatientContext = createContext<PatientState>(defaultValue);
 
-export function PatientProvider({ children, value }: PropsWithChildren<{ value?: Partial<PatientState> }>) {
+export function PatientProvider({
+  children,
+  value,
+}: PropsWithChildren<{ value?: Partial<PatientState> }>) {
   const merged: PatientState = {
     ...defaultValue,
     ...value,
   } as PatientState;
 
   return (
-    <PatientContext.Provider value={merged}>
-      {children}
-    </PatientContext.Provider>
+    <PatientContext.Provider value={merged}>{children}</PatientContext.Provider>
   );
 }
 
 export function usePatientContext(): PatientState {
   return useContext(PatientContext);
 }
-
-

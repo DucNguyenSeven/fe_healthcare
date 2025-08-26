@@ -1,10 +1,8 @@
 "use client";
 
-import React from 'react';
-import { TelehealthPage } from '@/features/patient';
-import { usePatient } from '@/hooks/usePatient';
-
-// Using centralized mock user & appointments
+import React from "react";
+import { TelehealthPage } from "@/features/patient";
+import { usePatient } from "@/hooks/usePatient";
 
 export default function TelehealthPageRoute() {
   const { user, appointments } = usePatient();
