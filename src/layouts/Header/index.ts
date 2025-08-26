@@ -1,10 +1,5 @@
-// Export all Header components and types
-export { Header } from './Header';
-export { HeaderToolbar } from './HeaderToolbar';
-export { HeaderDrawer } from './HeaderDrawer';
-export { UserMenu } from './UserMenu';
-export * from './types';
+// Export Header component as default
+export { default } from './Header';
 
-// Export Header as default for MainLayout compatibility
-import { Header } from './Header';
-export default Header;
+// Export types
+export * from './types';

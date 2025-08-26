@@ -14,11 +14,11 @@ const LandingPage: React.FC = () => {
   return (
     <MainLayout>
       <Box sx={{ width: '100%' }}>
-        <HeroSection />
-        <FeatureSection />
-        <DoctorSection />
-        <FeedbackSection />
-        <FAQSection />
+        <HeroSection id="home" />
+        <FeatureSection id="services" />
+        <DoctorSection id="doctors" />
+        <FeedbackSection id="reviews" />
+        <FAQSection id="faq" />
         <FooterSection />
       </Box>
     </MainLayout>

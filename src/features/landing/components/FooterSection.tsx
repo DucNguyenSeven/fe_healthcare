@@ -1,6 +1,6 @@
 "use client";
 
-import React from 'react';
+import React from "react";
 import {
   Box,
   Container,
@@ -9,7 +9,7 @@ import {
   Stack,
   Link,
   Divider,
-} from '@mui/material';
+} from "@mui/material";
 import {
   Facebook,
   Twitter,
@@ -17,21 +17,25 @@ import {
   Phone,
   Email,
   LocationOn,
-} from '@mui/icons-material';
-import { footerLinks, contactInfo, socialLinks, bottomBarLinks } from '../../../data/global/footer.data';
-import { useRouter } from 'next/navigation';
-import { ROUTES } from '@/constants/routes';
+} from "@mui/icons-material";
+import {
+  footerLinks,
+  contactInfo,
+  socialLinks,
+  bottomBarLinks,
+} from "../../../data/global/footer.data";
+import { useRouter } from "next/navigation";
 
 const FooterSection: React.FC = () => {
   const router = useRouter();
 
   const getSocialIcon = (iconName: string) => {
     switch (iconName) {
-      case 'facebook':
+      case "facebook":
         return <Facebook />;
-      case 'twitter':
+      case "twitter":
         return <Twitter />;
-      case 'instagram':
+      case "instagram":
         return <Instagram />;
       default:
         return null;
@@ -40,11 +44,11 @@ const FooterSection: React.FC = () => {
 
   const getContactIcon = (iconName: string) => {
     switch (iconName) {
-      case 'phone':
+      case "phone":
         return <Phone />;
-      case 'email':
+      case "email":
         return <Email />;
-      case 'location_on':
+      case "location_on":
         return <LocationOn />;
       default:
         return null;
@@ -52,13 +56,13 @@ const FooterSection: React.FC = () => {
   };
 
   const handleRegister = () => {
-    console.log('Footer register button clicked');
-    router.push(ROUTES.REGISTER);
+    console.log("Footer register button clicked");
+    router.push("/register");
   };
 
   const handleLogin = () => {
-    console.log('Footer login button clicked');
-    router.push(ROUTES.LOGIN);
+    console.log("Footer login button clicked");
+    router.push("/login");
   };
 
   return (
@@ -66,21 +70,21 @@ const FooterSection: React.FC = () => {
       component="footer"
       id="contact"
       sx={{
-        backgroundColor: '#0B1220',
-        color: '#ffffff',
+        backgroundColor: "#0B1220",
+        color: "#ffffff",
         py: 6,
-        scrollMarginTop: { xs: '56px', sm: '64px' },
+        scrollMarginTop: { xs: "56px", sm: "64px" },
       }}
     >
       <Container maxWidth="xl">
         {/* Main Footer Content */}
         <Box
           sx={{
-            display: 'grid',
+            display: "grid",
             gridTemplateColumns: {
-              xs: '1fr',
-              sm: 'repeat(2, 1fr)',
-              md: 'repeat(4, 1fr)',
+              xs: "1fr",
+              sm: "repeat(2, 1fr)",
+              md: "repeat(4, 1fr)",
             },
             gap: 4,
             mb: 4,
@@ -95,7 +99,7 @@ const FooterSection: React.FC = () => {
                   component="h2"
                   sx={{
                     fontWeight: 700,
-                    color: '#ffffff',
+                    color: "#ffffff",
                     mb: 2,
                   }}
                 >
@@ -104,15 +108,16 @@ const FooterSection: React.FC = () => {
                 <Typography
                   variant="body2"
                   sx={{
-                    color: '#E0E0E0',
+                    color: "#E0E0E0",
                     lineHeight: 1.6,
                     mb: 3,
                   }}
                 >
-                  Nền tảng chăm sóc sức khỏe toàn diện, kết nối bệnh nhân với các bác sĩ chuyên môn cao.
+                  Nền tảng chăm sóc sức khỏe toàn diện, kết nối bệnh nhân với
+                  các bác sĩ chuyên môn cao.
                 </Typography>
               </Box>
-              
+
               <Stack direction="row" spacing={2}>
                 {socialLinks.map((social) => (
                   <Link
@@ -122,11 +127,11 @@ const FooterSection: React.FC = () => {
                     rel="noopener noreferrer"
                     aria-label={social.ariaLabel}
                     sx={{
-                      color: '#E0E0E0',
-                      transition: 'all 0.3s ease',
-                      '&:hover': {
-                        color: '#ffffff',
-                        transform: 'scale(1.1)',
+                      color: "#E0E0E0",
+                      transition: "all 0.3s ease",
+                      "&:hover": {
+                        color: "#ffffff",
+                        transform: "scale(1.1)",
                       },
                     }}
                   >
@@ -144,7 +149,7 @@ const FooterSection: React.FC = () => {
               component="h3"
               sx={{
                 fontWeight: 600,
-                color: '#ffffff',
+                color: "#ffffff",
                 mb: 3,
               }}
             >
@@ -156,11 +161,11 @@ const FooterSection: React.FC = () => {
                   key={link.name}
                   href={link.href}
                   sx={{
-                    color: '#E0E0E0',
-                    textDecoration: 'none',
-                    transition: 'color 0.3s ease',
-                    '&:hover': {
-                      color: '#ffffff',
+                    color: "#E0E0E0",
+                    textDecoration: "none",
+                    transition: "color 0.3s ease",
+                    "&:hover": {
+                      color: "#ffffff",
                     },
                   }}
                 >
@@ -177,7 +182,7 @@ const FooterSection: React.FC = () => {
               component="h3"
               sx={{
                 fontWeight: 600,
-                color: '#ffffff',
+                color: "#ffffff",
                 mb: 3,
               }}
             >
@@ -189,21 +194,19 @@ const FooterSection: React.FC = () => {
                   key={index}
                   href={contact.href}
                   sx={{
-                    display: 'flex',
-                    alignItems: 'center',
+                    display: "flex",
+                    alignItems: "center",
                     gap: 1,
-                    color: '#E0E0E0',
-                    textDecoration: 'none',
-                    transition: 'color 0.3s ease',
-                    '&:hover': {
-                      color: '#ffffff',
+                    color: "#E0E0E0",
+                    textDecoration: "none",
+                    transition: "color 0.3s ease",
+                    "&:hover": {
+                      color: "#ffffff",
                     },
                   }}
                 >
                   {getContactIcon(contact.icon)}
-                  <Typography variant="body2">
-                    {contact.text}
-                  </Typography>
+                  <Typography variant="body2">{contact.text}</Typography>
                 </Link>
               ))}
             </Stack>
@@ -216,7 +219,7 @@ const FooterSection: React.FC = () => {
               component="h3"
               sx={{
                 fontWeight: 600,
-                color: '#ffffff',
+                color: "#ffffff",
                 mb: 3,
               }}
             >
@@ -225,21 +228,22 @@ const FooterSection: React.FC = () => {
             <Typography
               variant="body2"
               sx={{
-                color: '#E0E0E0',
+                color: "#E0E0E0",
                 lineHeight: 1.6,
                 mb: 3,
               }}
             >
-              Tham gia cùng chúng tôi để trải nghiệm dịch vụ chăm sóc sức khỏe tốt nhất.
+              Tham gia cùng chúng tôi để trải nghiệm dịch vụ chăm sóc sức khỏe
+              tốt nhất.
             </Typography>
             <Stack spacing={2}>
               <Button
                 variant="contained"
                 fullWidth
                 sx={{
-                  backgroundColor: '#1976d2',
-                  '&:hover': {
-                    backgroundColor: '#1565c0',
+                  backgroundColor: "#1976d2",
+                  "&:hover": {
+                    backgroundColor: "#1565c0",
                   },
                 }}
                 onClick={handleRegister}
@@ -250,11 +254,11 @@ const FooterSection: React.FC = () => {
                 variant="outlined"
                 fullWidth
                 sx={{
-                  borderColor: '#E0E0E0',
-                  color: '#E0E0E0',
-                  '&:hover': {
-                    borderColor: '#ffffff',
-                    color: '#ffffff',
+                  borderColor: "#E0E0E0",
+                  color: "#E0E0E0",
+                  "&:hover": {
+                    borderColor: "#ffffff",
+                    color: "#ffffff",
                   },
                 }}
                 onClick={handleLogin}
@@ -266,30 +270,30 @@ const FooterSection: React.FC = () => {
         </Box>
 
         {/* Bottom Bar */}
-        <Divider sx={{ borderColor: '#2A3441', mb: 3 }} />
+        <Divider sx={{ borderColor: "#2A3441", mb: 3 }} />
         <Box
           sx={{
-            display: 'flex',
-            flexDirection: { xs: 'column', sm: 'row' },
-            justifyContent: 'space-between',
-            alignItems: { xs: 'flex-start', sm: 'center' },
+            display: "flex",
+            flexDirection: { xs: "column", sm: "row" },
+            justifyContent: "space-between",
+            alignItems: { xs: "flex-start", sm: "center" },
             gap: 2,
           }}
         >
           <Typography
             variant="body2"
             sx={{
-              color: '#E0E0E0',
+              color: "#E0E0E0",
             }}
           >
             © 2024 Healthcare+. Tất cả quyền được bảo lưu.
           </Typography>
-          
+
           <Stack
-            direction={{ xs: 'column', sm: 'row' }}
+            direction={{ xs: "column", sm: "row" }}
             spacing={{ xs: 1, sm: 3 }}
             sx={{
-              flexWrap: 'wrap',
+              flexWrap: "wrap",
             }}
           >
             {bottomBarLinks.map((link, index) => (
@@ -297,12 +301,12 @@ const FooterSection: React.FC = () => {
                 key={index}
                 href={link.href}
                 sx={{
-                  color: '#E0E0E0',
-                  textDecoration: 'none',
-                  fontSize: '0.875rem',
-                  transition: 'color 0.3s ease',
-                  '&:hover': {
-                    color: '#ffffff',
+                  color: "#E0E0E0",
+                  textDecoration: "none",
+                  fontSize: "0.875rem",
+                  transition: "color 0.3s ease",
+                  "&:hover": {
+                    color: "#ffffff",
                   },
                 }}
               >
@@ -316,4 +320,4 @@ const FooterSection: React.FC = () => {
   );
 };
 
-export default FooterSection; 
+export default FooterSection;

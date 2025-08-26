@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import React from 'react';
+import React from "react";
 import {
   Box,
   Container,
@@ -10,42 +10,44 @@ import {
   useMediaQuery,
   Card,
   CardContent,
-} from '@mui/material';
-import Image from 'next/image';
-import { features, Feature } from '../data/features.data';
-import MobileSlider from './MobileSlider';
-import DesktopFeatureGrid from './DesktopFeatureGrid';
+} from "@mui/material";
+import Image from "next/image";
+import { features, Feature } from "../data/features.data";
+import MobileSlider from "./MobileSlider";
+import DesktopFeatureGrid from "./DesktopFeatureGrid";
 
 interface FeatureSectionProps {
   id?: string;
 }
 
-const FeatureSection: React.FC<FeatureSectionProps> = ({ id = 'services' }) => {
+const FeatureSection: React.FC<FeatureSectionProps> = ({ id = "services" }) => {
   const theme = useTheme();
-  const isMdUp = useMediaQuery(theme.breakpoints.up('md'));
+  const isMdUp = useMediaQuery(theme.breakpoints.up("md"));
 
   const renderFeatureCard = (feature: Feature) => (
     <Card
       sx={{
-        height: '100%',
-        display: 'flex',
-        flexDirection: 'column',
-        transition: 'all 0.3s ease-in-out',
-        minHeight: '280px',
-        position: 'relative',
+        height: "100%",
+        display: "flex",
+        flexDirection: "column",
+        transition: "all 0.3s ease-in-out",
+        minHeight: "280px",
+        position: "relative",
       }}
     >
-      <CardContent sx={{ p: 3, flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
-        <Stack spacing={2} sx={{ height: '100%' }}>
+      <CardContent
+        sx={{ p: 3, flexGrow: 1, display: "flex", flexDirection: "column" }}
+      >
+        <Stack spacing={2} sx={{ height: "100%" }}>
           <Box
             sx={{
               width: 60,
               height: 60,
               borderRadius: 2,
-              backgroundColor: 'primary.light',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
+              backgroundColor: "primary.light",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
               mb: 2,
               flexShrink: 0,
             }}
@@ -55,22 +57,33 @@ const FeatureSection: React.FC<FeatureSectionProps> = ({ id = 'services' }) => {
               alt={feature.title}
               width={32}
               height={32}
-              style={{ filter: 'brightness(0) invert(1)' }}
+              style={{ filter: "brightness(0) invert(1)" }}
             />
           </Box>
-          <Typography variant="h6" sx={{ fontWeight: 600, color: 'text.primary', fontSize: '1.1rem', flexShrink: 0 }}>
+          <Typography
+            variant="h6"
+            sx={{
+              fontWeight: 600,
+              color: "text.primary",
+              fontSize: "1.1rem",
+              flexShrink: 0,
+            }}
+          >
             {feature.title}
           </Typography>
-          <Typography variant="body2" sx={{ 
-            color: 'text.secondary', 
-            lineHeight: 1.6, 
-            flexGrow: 1, 
-            overflow: 'hidden',
-            display: '-webkit-box',
-            WebkitLineClamp: 4,
-            WebkitBoxOrient: 'vertical',
-            textOverflow: 'ellipsis',
-          }}>
+          <Typography
+            variant="body2"
+            sx={{
+              color: "text.secondary",
+              lineHeight: 1.6,
+              flexGrow: 1,
+              overflow: "hidden",
+              display: "-webkit-box",
+              WebkitLineClamp: 4,
+              WebkitBoxOrient: "vertical",
+              textOverflow: "ellipsis",
+            }}
+          >
             {feature.description}
           </Typography>
         </Stack>
@@ -83,24 +96,28 @@ const FeatureSection: React.FC<FeatureSectionProps> = ({ id = 'services' }) => {
       id={id}
       sx={{
         py: { xs: 4, md: 6 },
-        backgroundColor: 'background.default',
-        overflow: 'visible',
-        width: '100%',
-        maxWidth: '100vw',
-        scrollMarginTop: { xs: '56px', sm: '64px' },
+        backgroundColor: "background.default",
+        overflow: "visible",
+        width: "100%",
+        maxWidth: "100vw",
+        scrollMarginTop: { xs: "56px", sm: "64px" },
       }}
     >
-      <Container maxWidth="lg" sx={{ overflow: 'visible', maxWidth: '100%' }}>
-        <Stack spacing={3} alignItems="center" sx={{ width: '100%', overflow: 'visible' }}>
+      <Container maxWidth="lg" sx={{ overflow: "visible", maxWidth: "100%" }}>
+        <Stack
+          spacing={3}
+          alignItems="center"
+          sx={{ width: "100%", overflow: "visible" }}
+        >
           {/* Section Header */}
-          <Box sx={{ textAlign: 'center', maxWidth: '800px' }}>
+          <Box sx={{ textAlign: "center", maxWidth: "800px" }}>
             <Typography
               variant="h2"
               sx={{
                 fontWeight: 700,
-                fontSize: { xs: '2rem', md: '2.5rem', lg: '3rem' },
+                fontSize: { xs: "2rem", md: "2.5rem", lg: "3rem" },
                 mb: 2,
-                color: 'primary.main',
+                color: "primary.main",
                 mt: 0,
               }}
             >
@@ -109,12 +126,13 @@ const FeatureSection: React.FC<FeatureSectionProps> = ({ id = 'services' }) => {
             <Typography
               variant="body1"
               sx={{
-                fontSize: { xs: '1rem', md: '1.1rem' },
-                color: 'text.secondary',
+                fontSize: { xs: "1rem", md: "1.1rem" },
+                color: "text.secondary",
                 lineHeight: 1.6,
               }}
             >
-              Chúng tôi cung cấp các dịch vụ toàn diện để hỗ trợ bạn trong hành trình quản lý sức khỏe thận
+              Chúng tôi cung cấp các dịch vụ toàn diện để hỗ trợ bạn trong hành
+              trình quản lý sức khỏe thận
             </Typography>
           </Box>
 
@@ -122,8 +140,8 @@ const FeatureSection: React.FC<FeatureSectionProps> = ({ id = 'services' }) => {
           {isMdUp ? (
             <DesktopFeatureGrid features={features} />
           ) : (
-            <MobileSlider 
-              items={features} 
+            <MobileSlider
+              items={features}
               renderItem={renderFeatureCard}
               ariaLabel="Feature carousel"
             />
