@@ -14,6 +14,15 @@ export const ROUTES = {
   PATIENT_AI_ASSISTANT: '/patient/ai-assistant',
   PATIENT_COMMUNITY: '/patient/community',
   
+  // Doctor routes
+  DOCTOR_DASHBOARD: '/doctor/dashboard',
+  DOCTOR_PROFILE: '/doctor/profile',
+  DOCTOR_PATIENTS: '/doctor/patients',
+  DOCTOR_APPOINTMENTS: '/doctor/appointments',
+  DOCTOR_TELEHEALTH: '/doctor/telehealth',
+  DOCTOR_SCHEDULE: '/doctor/schedule',
+  DOCTOR_COMMUNITY: '/doctor/community',
+  
   // Chat
   CHAT: '/chat',
 } as const;
