@@ -81,8 +81,8 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         {/* Logo & Close Button */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200 flex-shrink-0">
           <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-              <Activity className="w-5 h-5 text-white" />
+            <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
+              <span className="text-white font-bold text-sm">H+</span>
             </div>
             <h1 className="text-xl font-bold text-gray-900">HealthCare+</h1>
           </div>
@@ -121,12 +121,12 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
               >
                 <Icon
                   className={`w-5 h-5 ${
-                    isActive ? "text-blue-600" : "text-gray-500"
+                    isActive ? "text-blue-700" : "text-gray-500"
                   }`}
                 />
-                <span className="font-medium">{item.label}</span>
+                <span className={`flex-1 ${isActive ? "font-semibold" : "font-medium"}`}>{item.label}</span>
                 {isActive && (
-                  <ChevronRight className="w-4 h-4 ml-auto text-blue-600" />
+                  <ChevronRight className="w-4 h-4 ml-auto text-blue-700" />
                 )}
               </button>
             );
