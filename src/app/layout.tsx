@@ -9,8 +9,12 @@ export const metadata = {
   description: "Nền tảng chăm sóc sức khỏe toàn diện, kết nối bệnh nhân với các bác sĩ chuyên môn cao. Quản lý sức khỏe thận, theo dõi chỉ số, tư vấn điều trị an toàn.",
   keywords: "sức khỏe, thận, bác sĩ, tư vấn, điều trị, healthcare, kidney health",
   authors: [{ name: "Healthcare+ Team" }],
-  viewport: "width=device-width, initial-scale=1",
   robots: "index, follow",
+};
+
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
 };
 
 export default function RootLayout({
