@@ -22,6 +22,9 @@ import {
   Check,
 } from "lucide-react";
 import { User } from "../types";
+import { useUpdateUser } from "../../../hooks/auth";
+import { FormInput, FormTextArea, FormSelect } from "../../../components/ui/FormInput";
+import { Alert, Snackbar } from "@mui/material";
 interface ProfileRecordsPageProps {
   user: User;
 }
@@ -47,14 +50,24 @@ interface Allergy {
   severity: "mild" | "moderate" | "severe";
 }
 export function ProfileRecordsPage({ user }: ProfileRecordsPageProps) {
-  const { data: userData, isLoading } = useGetMe();
+  const { data: userData, isLoading, refetch } = useGetMe();
+  const { updateUser, isLoading: isUpdating, error: updateError } = useUpdateUser();
   const [activeTab, setActiveTab] = useState<"personal" | "medical" | "files">(
     "personal"
   );
   const [isEditing, setIsEditing] = useState(false);
-  const [editedUser, setEditedUser] = useState(user);
+  const [editFormData, setEditFormData] = useState({
+    name: "",
+    gender: "male",
+    dateOfBirth: "",
+    phone: "",
+    email: "",
+    address: ""
+  });
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [isSelectionMode, setIsSelectionMode] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<string[]>([]);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   // Mock data
   const [medicalHistory, setMedicalHistory] = useState<MedicalHistory[]>([
@@ -175,14 +188,114 @@ export function ProfileRecordsPage({ user }: ProfileRecordsPageProps) {
         return <FileText className="w-6 h-6 text-red-600" />;
     }
   };
-  const handleSave = () => {
-    // In a real app, this would save to backend
-    setIsEditing(false);
-    console.log("Saving user data:", editedUser);
+  const validateForm = (): boolean => {
+    const newErrors: Record<string, string> = {};
+
+    if (!editFormData.name.trim()) {
+      newErrors.name = "Họ và tên là bắt buộc";
+    }
+
+    if (!editFormData.dateOfBirth) {
+      newErrors.dateOfBirth = "Ngày sinh là bắt buộc";
+    }
+
+    if (!editFormData.phone.trim()) {
+      newErrors.phone = "Số điện thoại là bắt buộc";
+    } else if (!/^[0-9]{10,11}$/.test(editFormData.phone.replace(/\s/g, ""))) {
+      newErrors.phone = "Số điện thoại không hợp lệ";
+    }
+
+    if (!editFormData.email.trim()) {
+      newErrors.email = "Email là bắt buộc";
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(editFormData.email)) {
+      newErrors.email = "Email không hợp lệ";
+    }
+
+    if (!editFormData.address.trim()) {
+      newErrors.address = "Địa chỉ là bắt buộc";
+    }
+
+    setFormErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
+
+  const handleInputChange = (field: string, value: string) => {
+    setEditFormData(prev => ({ ...prev, [field]: value }));
+    if (formErrors[field]) {
+      setFormErrors(prev => ({ ...prev, [field]: "" }));
+    }
+  };
+
+  const handleEdit = () => {
+    // Initialize form data with current user data
+    setEditFormData({
+      name: userData?.fullName || user.name || "",
+      gender: userData?.gender?.toLowerCase() || "male",
+      dateOfBirth: userData?.dob ? 
+        (typeof userData.dob === 'string' ? 
+          userData.dob.split('T')[0] : 
+          new Date(userData.dob).toISOString().split('T')[0]
+        ) : "",
+      phone: userData?.phone || user.phone || "",
+      email: userData?.email || user.email || "",
+      address: userData?.address || ""
+    });
+    setIsEditing(true);
+  };
+
+  const handleSave = async () => {
+    if (!validateForm()) {
+      return;
+    }
+
+    try {
+      const updateData = {
+        userId: userData?.userId || '',
+        fullName: editFormData.name,
+        gender: editFormData.gender.toUpperCase(),
+        dob: editFormData.dateOfBirth ? new Date(editFormData.dateOfBirth).toISOString().split('T')[0] : undefined,
+        phone: editFormData.phone,
+        address: editFormData.address,
+        role: 'PATIENT'
+      };
+
+      const result = await updateUser(updateData);
+      
+      if (result) {
+        // Fetch lại data của user để cập nhật UI
+        await refetch();
+        
+        // Hiển thị thông báo thành công
+        setSuccessMessage('Cập nhật thông tin thành công!');
+        
+        // Đóng form chỉnh sửa
+        setIsEditing(false);
+        
+        // Tự động ẩn thông báo sau 3 giây
+        setTimeout(() => {
+          setSuccessMessage(null);
+        }, 3000);
+      } else {
+        console.error('Update failed:', updateError);
+        alert(updateError || 'Có lỗi xảy ra khi cập nhật thông tin');
+      }
+    } catch (error) {
+      console.error("Form submission error:", error);
+      alert('Có lỗi xảy ra khi cập nhật thông tin');
+    }
+  };
+  
   const handleCancel = () => {
-    setEditedUser(user);
     setIsEditing(false);
+    setFormErrors({});
+    setEditFormData({
+      name: "",
+      gender: "male",
+      dateOfBirth: "",
+      phone: "",
+      email: "",
+      address: ""
+    });
   };
   const handleSelectFile = (fileId: string) => {
     setSelectedFiles((prev) =>
@@ -207,11 +320,8 @@ export function ProfileRecordsPage({ user }: ProfileRecordsPageProps) {
         </h2>
         {!isEditing ? (
           <button
-            onClick={() => setIsEditing(true)}
+            onClick={handleEdit}
             className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors"
-            style={{
-              display: "none",
-            }}
           >
             <Edit3 className="w-4 h-4" />
             <span>Chỉnh sửa</span>
@@ -220,14 +330,16 @@ export function ProfileRecordsPage({ user }: ProfileRecordsPageProps) {
           <div className="flex space-x-2">
             <button
               onClick={handleSave}
-              className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-colors"
+              disabled={isUpdating}
+              className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Save className="w-4 h-4" />
-              <span>Lưu</span>
+              <span>{isUpdating ? "Đang lưu..." : "Lưu thông tin"}</span>
             </button>
             <button
               onClick={handleCancel}
-              className="flex items-center space-x-2 px-4 py-2 bg-gray-600 text-white rounded-xl hover:bg-gray-700 transition-colors"
+              disabled={isUpdating}
+              className="flex items-center space-x-2 px-4 py-2 bg-gray-600 text-white rounded-xl hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <X className="w-4 h-4" />
               <span>Hủy</span>
@@ -261,9 +373,6 @@ export function ProfileRecordsPage({ user }: ProfileRecordsPageProps) {
               )}
             </h3>
           </div>
-          <button className="px-4 py-2 bg-blue-700 hover:bg-blue-800 rounded-lg text-sm font-medium transition-colors">
-            Chỉnh sửa
-          </button>
         </div>
 
         <div className="grid grid-cols-4 gap-4">
@@ -320,62 +429,97 @@ export function ProfileRecordsPage({ user }: ProfileRecordsPageProps) {
           Thông tin cá nhân
         </h3>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Họ và tên
-            </label>
-            <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-xl">
-              <UserIcon className="w-5 h-5 text-gray-500" />
-              <span className="text-gray-900">
-                {isLoading ? (
-                  <span className="animate-pulse">...</span>
-                ) : (
-                  userData?.fullName || user.name || 'Chưa cập nhật'
-                )}
-              </span>
+        {!isEditing ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Họ và tên
+              </label>
+              <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-xl">
+                <UserIcon className="w-5 h-5 text-gray-500" />
+                <span className="text-gray-900">
+                  {isLoading ? (
+                    <span className="animate-pulse">...</span>
+                  ) : (
+                    userData?.fullName || user.name || 'Chưa cập nhật'
+                  )}
+                </span>
+              </div>
             </div>
-          </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Ngày sinh
-            </label>
-            <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-xl">
-              <Calendar className="w-5 h-5 text-gray-500" />
-              <span className="text-gray-900">
-                {isLoading ? (
-                  <span className="animate-pulse">...</span>
-                ) : userData?.dob ? (
-                  new Date(userData.dob).toLocaleDateString('vi-VN')
-                ) : (
-                  'Chưa cập nhật'
-                )}
-              </span>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Ngày sinh
+              </label>
+              <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-xl">
+                <Calendar className="w-5 h-5 text-gray-500" />
+                <span className="text-gray-900">
+                  {isLoading ? (
+                    <span className="animate-pulse">...</span>
+                  ) : userData?.dob ? (
+                    new Date(userData.dob).toLocaleDateString('vi-VN')
+                  ) : (
+                    'Chưa cập nhật'
+                  )}
+                </span>
+              </div>
             </div>
-          </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Giới tính
-            </label>
-            <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-xl">
-              <UserIcon className="w-5 h-5 text-gray-500" />
-              <span className="text-gray-900">
-                {isLoading ? (
-                  <span className="animate-pulse">...</span>
-                ) : userData?.gender ? (
-                  userData.gender === 'male' || userData.gender === 'MALE' ? 'Nam' : 
-                  userData.gender === 'female' || userData.gender === 'FEMALE' ? 'Nữ' : 
-                  userData.gender === 'other' || userData.gender === 'OTHER' ? 'Khác' : 
-                  userData.gender
-                ) : (
-                  'Chưa cập nhật'
-                )}
-              </span>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Giới tính
+              </label>
+              <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-xl">
+                <UserIcon className="w-5 h-5 text-gray-500" />
+                <span className="text-gray-900">
+                  {isLoading ? (
+                    <span className="animate-pulse">...</span>
+                  ) : userData?.gender ? (
+                    userData.gender === 'male' || userData.gender === 'MALE' ? 'Nam' : 
+                    userData.gender === 'female' || userData.gender === 'FEMALE' ? 'Nữ' : 
+                    userData.gender === 'other' || userData.gender === 'OTHER' ? 'Khác' : 
+                    userData.gender
+                  ) : (
+                    'Chưa cập nhật'
+                  )}
+                </span>
+              </div>
             </div>
           </div>
-        </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <FormInput
+              label="Họ và tên"
+              placeholder="Nhập họ và tên"
+              value={editFormData.name}
+              onChange={(value) => handleInputChange("name", value)}
+              error={formErrors.name}
+              required
+            />
+
+            <FormInput
+              label="Ngày sinh"
+              type="date"
+              value={editFormData.dateOfBirth}
+              onChange={(value) => handleInputChange("dateOfBirth", value)}
+              max={new Date().toISOString().split('T')[0]}
+              error={formErrors.dateOfBirth}
+              required
+            />
+
+            <FormSelect
+              label="Giới tính"
+              value={editFormData.gender}
+              onChange={(value) => handleInputChange("gender", value)}
+              options={[
+                { value: "male", label: "Nam" },
+                { value: "female", label: "Nữ" },
+                { value: "other", label: "Khác" }
+              ]}
+              required
+            />
+          </div>
+        )}
       </div>
 
       {/* Contact Information */}
@@ -384,55 +528,91 @@ export function ProfileRecordsPage({ user }: ProfileRecordsPageProps) {
           Thông tin liên hệ
         </h3>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Email
-            </label>
-            <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-xl">
-              <Mail className="w-5 h-5 text-gray-500" />
-              <span className="text-gray-900">
-                {isLoading ? (
-                  <span className="animate-pulse">...</span>
-                ) : (
-                  userData?.email || user.email || 'Chưa cập nhật'
-                )}
-              </span>
+        {!isEditing ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Email
+              </label>
+              <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-xl">
+                <Mail className="w-5 h-5 text-gray-500" />
+                <span className="text-gray-900">
+                  {isLoading ? (
+                    <span className="animate-pulse">...</span>
+                  ) : (
+                    userData?.email || user.email || 'Chưa cập nhật'
+                  )}
+                </span>
+              </div>
             </div>
-          </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Số điện thoại
-            </label>
-            <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-xl">
-              <Phone className="w-5 h-5 text-gray-500" />
-              <span className="text-gray-900">
-                {isLoading ? (
-                  <span className="animate-pulse">...</span>
-                ) : (
-                  userData?.phone || user.phone || 'Chưa cập nhật'
-                )}
-              </span>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Số điện thoại
+              </label>
+              <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-xl">
+                <Phone className="w-5 h-5 text-gray-500" />
+                <span className="text-gray-900">
+                  {isLoading ? (
+                    <span className="animate-pulse">...</span>
+                  ) : (
+                    userData?.phone || user.phone || 'Chưa cập nhật'
+                  )}
+                </span>
+              </div>
             </div>
-          </div>
 
-          <div className="md:col-span-2">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Địa chỉ
-            </label>
-            <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-xl">
-              <MapPin className="w-5 h-5 text-gray-500" />
-              <span className="text-gray-900">
-                {isLoading ? (
-                  <span className="animate-pulse">...</span>
-                ) : (
-                  userData?.address || 'Chưa cập nhật'
-                )}
-              </span>
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Địa chỉ
+              </label>
+              <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-xl">
+                <MapPin className="w-5 h-5 text-gray-500" />
+                <span className="text-gray-900">
+                  {isLoading ? (
+                    <span className="animate-pulse">...</span>
+                  ) : (
+                    userData?.address || 'Chưa cập nhật'
+                  )}
+                </span>
+              </div>
             </div>
           </div>
-        </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <FormInput
+              label="Email"
+              type="email"
+              placeholder="Nhập email"
+              value={editFormData.email}
+              onChange={(value) => handleInputChange("email", value)}
+              error={formErrors.email}
+              required
+            />
+
+            <FormInput
+              label="Số điện thoại"
+              type="tel"
+              placeholder="0901234567"
+              value={editFormData.phone}
+              onChange={(value) => handleInputChange("phone", value)}
+              error={formErrors.phone}
+              required
+            />
+
+            <div className="md:col-span-2">
+              <FormTextArea
+                label="Địa chỉ"
+                placeholder="Số nhà, đường, phường/xã, quận/huyện, tỉnh/thành phố"
+                value={editFormData.address}
+                onChange={(value) => handleInputChange("address", value)}
+                rows={2}
+                error={formErrors.address}
+                required
+              />
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Insurance Information */}
@@ -835,6 +1015,22 @@ export function ProfileRecordsPage({ user }: ProfileRecordsPageProps) {
       {activeTab === "personal" && renderPersonalInfo()}
       {activeTab === "medical" && renderMedicalHistory()}
       {activeTab === "files" && renderMedicalFiles()}
+
+      {/* Success Snackbar */}
+      <Snackbar
+        open={!!successMessage}
+        autoHideDuration={3000}
+        onClose={() => setSuccessMessage(null)}
+        anchorOrigin={{ vertical: "top", horizontal: "center" }}
+      >
+        <Alert 
+          onClose={() => setSuccessMessage(null)} 
+          severity="success" 
+          sx={{ width: "100%" }}
+        >
+          {successMessage}
+        </Alert>
+      </Snackbar>
     </div>
   );
 }
