@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useGetMe } from "@/hooks/auth/useGetMe";
 import {
   User as UserIcon,
   Phone,
@@ -46,6 +47,7 @@ interface Allergy {
   severity: "mild" | "moderate" | "severe";
 }
 export function ProfileRecordsPage({ user }: ProfileRecordsPageProps) {
+  const { data: userData, isLoading } = useGetMe();
   const [activeTab, setActiveTab] = useState<"personal" | "medical" | "files">(
     "personal"
   );
@@ -251,10 +253,13 @@ export function ProfileRecordsPage({ user }: ProfileRecordsPageProps) {
             </button>
           </div>
           <div className="flex-1">
-            <h3 className="text-xl font-bold">{user.name}</h3>
-            <p className="text-blue-100">
-              Bệnh nhân #{user.id}2345 • Tham gia từ tháng 6/2023
-            </p>
+            <h3 className="text-xl font-bold">
+              {isLoading ? (
+                <span className="animate-pulse">...</span>
+              ) : (
+                userData?.fullName || user.name || 'Bạn'
+              )}
+            </h3>
           </div>
           <button className="px-4 py-2 bg-blue-700 hover:bg-blue-800 rounded-lg text-sm font-medium transition-colors">
             Chỉnh sửa
@@ -264,19 +269,47 @@ export function ProfileRecordsPage({ user }: ProfileRecordsPageProps) {
         <div className="grid grid-cols-4 gap-4">
           <div className="text-center">
             <div className="text-sm text-blue-100 mb-1">Chiều cao:</div>
-            <div className="font-semibold text-lg">170 cm</div>
+            <div className="font-semibold text-lg">
+              {isLoading ? (
+                <span className="animate-pulse">...</span>
+              ) : userData?.height ? (
+                `${userData.height} cm`
+              ) : (
+                '--'
+              )}
+            </div>
           </div>
           <div className="text-center">
             <div className="text-sm text-blue-100 mb-1">Cân nặng:</div>
-            <div className="font-semibold text-lg">68 kg</div>
+            <div className="font-semibold text-lg">
+              {isLoading ? (
+                <span className="animate-pulse">...</span>
+              ) : userData?.weight ? (
+                `${userData.weight} kg`
+              ) : (
+                '--'
+              )}
+            </div>
           </div>
           <div className="text-center">
             <div className="text-sm text-blue-100 mb-1">Nhóm máu:</div>
-            <div className="font-semibold text-lg">O+</div>
+            <div className="font-semibold text-lg">
+              {isLoading ? (
+                <span className="animate-pulse">...</span>
+              ) : userData?.bloodType || '--'}
+            </div>
           </div>
           <div className="text-center">
             <div className="text-sm text-blue-100 mb-1">BMI:</div>
-            <div className="font-semibold text-lg">23.5</div>
+            <div className="font-semibold text-lg">
+              {isLoading ? (
+                <span className="animate-pulse">...</span>
+              ) : userData?.bmi ? (
+                userData.bmi.toFixed(1)
+              ) : (
+                '--'
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -294,7 +327,13 @@ export function ProfileRecordsPage({ user }: ProfileRecordsPageProps) {
             </label>
             <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-xl">
               <UserIcon className="w-5 h-5 text-gray-500" />
-              <span className="text-gray-900">{user.name}</span>
+              <span className="text-gray-900">
+                {isLoading ? (
+                  <span className="animate-pulse">...</span>
+                ) : (
+                  userData?.fullName || user.name || 'Chưa cập nhật'
+                )}
+              </span>
             </div>
           </div>
 
@@ -304,7 +343,15 @@ export function ProfileRecordsPage({ user }: ProfileRecordsPageProps) {
             </label>
             <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-xl">
               <Calendar className="w-5 h-5 text-gray-500" />
-              <span className="text-gray-900">15/03/1985</span>
+              <span className="text-gray-900">
+                {isLoading ? (
+                  <span className="animate-pulse">...</span>
+                ) : userData?.dob ? (
+                  new Date(userData.dob).toLocaleDateString('vi-VN')
+                ) : (
+                  'Chưa cập nhật'
+                )}
+              </span>
             </div>
           </div>
 
@@ -314,16 +361,18 @@ export function ProfileRecordsPage({ user }: ProfileRecordsPageProps) {
             </label>
             <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-xl">
               <UserIcon className="w-5 h-5 text-gray-500" />
-              <span className="text-gray-900">Nam</span>
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              CCCD/CMND
-            </label>
-            <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-xl">
-              <span className="text-gray-900">123456789012</span>
+              <span className="text-gray-900">
+                {isLoading ? (
+                  <span className="animate-pulse">...</span>
+                ) : userData?.gender ? (
+                  userData.gender === 'male' || userData.gender === 'MALE' ? 'Nam' : 
+                  userData.gender === 'female' || userData.gender === 'FEMALE' ? 'Nữ' : 
+                  userData.gender === 'other' || userData.gender === 'OTHER' ? 'Khác' : 
+                  userData.gender
+                ) : (
+                  'Chưa cập nhật'
+                )}
+              </span>
             </div>
           </div>
         </div>
@@ -338,21 +387,33 @@ export function ProfileRecordsPage({ user }: ProfileRecordsPageProps) {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Số điện thoại
+              Email
             </label>
             <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-xl">
-              <Phone className="w-5 h-5 text-gray-500" />
-              <span className="text-gray-900">0901234567</span>
+              <Mail className="w-5 h-5 text-gray-500" />
+              <span className="text-gray-900">
+                {isLoading ? (
+                  <span className="animate-pulse">...</span>
+                ) : (
+                  userData?.email || user.email || 'Chưa cập nhật'
+                )}
+              </span>
             </div>
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Email
+              Số điện thoại
             </label>
             <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-xl">
-              <Mail className="w-5 h-5 text-gray-500" />
-              <span className="text-gray-900">nguyenvanan@email.com</span>
+              <Phone className="w-5 h-5 text-gray-500" />
+              <span className="text-gray-900">
+                {isLoading ? (
+                  <span className="animate-pulse">...</span>
+                ) : (
+                  userData?.phone || user.phone || 'Chưa cập nhật'
+                )}
+              </span>
             </div>
           </div>
 
@@ -363,7 +424,11 @@ export function ProfileRecordsPage({ user }: ProfileRecordsPageProps) {
             <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-xl">
               <MapPin className="w-5 h-5 text-gray-500" />
               <span className="text-gray-900">
-                123 Đường ABC, Phường XYZ, Quận 1, TP.HCM
+                {isLoading ? (
+                  <span className="animate-pulse">...</span>
+                ) : (
+                  userData?.address || 'Chưa cập nhật'
+                )}
               </span>
             </div>
           </div>
@@ -371,7 +436,7 @@ export function ProfileRecordsPage({ user }: ProfileRecordsPageProps) {
       </div>
 
       {/* Insurance Information */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+      {/* <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-6">
           Thông tin bảo hiểm
         </h3>
@@ -404,7 +469,7 @@ export function ProfileRecordsPage({ user }: ProfileRecordsPageProps) {
             </div>
           </div>
         </div>
-      </div>
+      </div> */}
     </div>
   );
   const renderMedicalHistory = () => (
