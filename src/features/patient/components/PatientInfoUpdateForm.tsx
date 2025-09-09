@@ -12,7 +12,7 @@ import { User } from "../types";
 import { FormInput, FormTextArea, FormSelect } from "../../../components/ui/FormInput";
 import { PatientFormData } from "../hooks/usePatientInfoForm";
 import { calculateBMI, getBMICategory } from "../../../utils/formatting";
-import { useUpdateUser } from "../../../hooks/auth";
+import { useUpdateUser, useUpdateAvatar } from "../../../hooks/auth";
 
 interface PatientInfoUpdateFormProps {
   user?: Partial<User>;
@@ -31,6 +31,7 @@ export function PatientInfoUpdateForm({
   isFirstTime = false,
 }: PatientInfoUpdateFormProps) {
   const { updateUser, isLoading: isUpdating, error: updateError } = useUpdateUser();
+  const { updateAvatar, isLoading: isUploading, error: uploadError, progress: uploadProgress } = useUpdateAvatar();
   
   const [formData, setFormData] = useState<PatientFormData>({
     avatar: user.avatar || "",
@@ -104,29 +105,42 @@ export function PatientInfoUpdateForm({
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleAvatarChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAvatarChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      if (file.size > 5 * 1024 * 1024) { // 5MB limit
-        setErrors({ ...errors, avatar: "Kích thước file không được vượt quá 5MB" });
-        return;
+      // Clear previous errors
+      if (errors.avatar) {
+        setErrors({ ...errors, avatar: undefined });
       }
 
-      if (!file.type.startsWith("image/")) {
-        setErrors({ ...errors, avatar: "Chỉ chấp nhận file hình ảnh" });
-        return;
-      }
-
-      setFormData({ ...formData, avatar: file });
-      
+      // Show preview immediately for better UX
       const reader = new FileReader();
       reader.onload = (e) => {
         setAvatarPreview(e.target?.result as string);
       };
       reader.readAsDataURL(file);
-      
-      if (errors.avatar) {
-        setErrors({ ...errors, avatar: undefined });
+
+      // Upload avatar to server
+      if (user.id) {
+        try {
+          const avatarUrl = await updateAvatar(user.id, file);
+          if (avatarUrl) {
+            // Update form data with the new avatar URL
+            setFormData({ ...formData, avatar: avatarUrl });
+            setSuccessMessage('Cập nhật ảnh đại diện thành công!');
+          } else {
+            // If upload failed, revert preview to original
+            setAvatarPreview(typeof user.avatar === "string" ? user.avatar : "");
+            setErrors({ ...errors, avatar: uploadError || "Không thể cập nhật ảnh đại diện" });
+          }
+        } catch (error) {
+          console.error('Avatar upload error:', error);
+          setAvatarPreview(typeof user.avatar === "string" ? user.avatar : "");
+          setErrors({ ...errors, avatar: "Có lỗi xảy ra khi upload ảnh" });
+        }
+      } else {
+        // If no user ID, just update form data with file for later processing
+        setFormData({ ...formData, avatar: file });
       }
     }
   };
@@ -177,7 +191,9 @@ export function PatientInfoUpdateForm({
         dob: formData.dateOfBirth ? new Date(formData.dateOfBirth).toISOString().split('T')[0] : undefined,
         phone: formData.phone,
         address: formData.address,
-        role: 'PATIENT' // Mặc định role là PATIENT
+        role: 'PATIENT', // Mặc định role là PATIENT
+        // Chỉ gửi avatarUrl nếu đã upload thành công (không phải File object)
+        ...(typeof formData.avatar === 'string' && formData.avatar && { avatarUrl: formData.avatar })
       };
 
       // Kiểm tra dữ liệu bắt buộc
@@ -301,7 +317,7 @@ export function PatientInfoUpdateForm({
             {/* Avatar Section */}
             <div className="flex flex-col items-center mb-6">
               <div className="relative group">
-                <div className="w-20 h-20 bg-gradient-to-br from-blue-100 to-blue-200 rounded-full flex items-center justify-center overflow-hidden border-4 border-white shadow-lg">
+                <div className="w-20 h-20 bg-gradient-to-br from-blue-100 to-blue-200 rounded-full flex items-center justify-center overflow-hidden border-4 border-white shadow-lg relative">
                   {avatarPreview ? (
                     <img
                       src={avatarPreview}
@@ -311,33 +327,70 @@ export function PatientInfoUpdateForm({
                   ) : (
                     <UserIcon className="w-8 h-8 text-blue-500" />
                   )}
+                  
+                  {/* Upload Progress Overlay */}
+                  {isUploading && (
+                    <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center rounded-full">
+                      <div className="text-white text-xs font-medium">
+                        {uploadProgress}%
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Loading Spinner */}
+                  {isUploading && (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    </div>
+                  )}
                 </div>
+                
                 <button
                   type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="absolute -bottom-1 -right-1 w-7 h-7 bg-blue-500 hover:bg-blue-600 rounded-full flex items-center justify-center transition-all duration-200 shadow-lg hover:scale-110"
-                  title="Thay đổi ảnh đại diện"
+                  onClick={() => !isUploading && fileInputRef.current?.click()}
+                  disabled={isUploading}
+                  className={`absolute -bottom-1 -right-1 w-7 h-7 rounded-full flex items-center justify-center transition-all duration-200 shadow-lg hover:scale-110 ${
+                    isUploading 
+                      ? 'bg-gray-400 cursor-not-allowed' 
+                      : 'bg-blue-500 hover:bg-blue-600'
+                  }`}
+                  title={isUploading ? "Đang upload..." : "Thay đổi ảnh đại diện"}
                 >
                   <Camera className="w-4 h-4 text-white" />
                 </button>
+                
                 <input
                   ref={fileInputRef}
                   type="file"
                   accept="image/*"
                   onChange={handleAvatarChange}
+                  disabled={isUploading}
                   className="hidden"
                 />
               </div>
+              
               <p className="text-xs text-gray-500 mt-2 text-center">
-                Nhấn vào camera để thay đổi ảnh
+                {isUploading ? `Đang upload... ${uploadProgress}%` : "Nhấn vào camera để thay đổi ảnh"}
               </p>
+              
+              {/* Progress Bar */}
+              {isUploading && (
+                <div className="w-32 mt-2">
+                  <div className="w-full bg-gray-200 rounded-full h-1.5">
+                    <div 
+                      className="bg-blue-500 h-1.5 rounded-full transition-all duration-300 ease-out"
+                      style={{ width: `${uploadProgress}%` }}
+                    ></div>
+                  </div>
+                </div>
+              )}
             </div>
             
-            {errors.avatar && (
+            {(errors.avatar || uploadError) && (
               <div className="text-center mb-3">
                 <p className="text-red-500 text-sm flex items-center justify-center">
                   <AlertCircle className="w-4 h-4 mr-1" />
-                  {errors.avatar as string}
+                  {typeof errors.avatar === 'string' ? errors.avatar : uploadError}
                 </p>
               </div>
             )}
@@ -530,11 +583,18 @@ export function PatientInfoUpdateForm({
               )}
               <button
                 type="submit"
-                disabled={isLoading || isUpdating}
+                disabled={isLoading || isUpdating || isUploading}
                 className="flex items-center justify-center space-x-2 px-8 py-3 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 hover:shadow-lg"
               >
                 <Save className="w-4 h-4" />
-                <span>{(isLoading || isUpdating) ? "Đang lưu..." : "Lưu thông tin"}</span>
+                <span>
+                  {isUploading 
+                    ? "Đang upload ảnh..." 
+                    : (isLoading || isUpdating) 
+                      ? "Đang lưu..." 
+                      : "Lưu thông tin"
+                  }
+                </span>
               </button>
             </div>
           </div>

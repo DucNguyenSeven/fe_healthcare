@@ -20,7 +20,7 @@ export const UsersApi = {
   updateAvatar: (id: string, file: File) => {
     const form = new FormData();
     form.append("file", file);
-    return api.put<MessageResponse<string>>(`/api/user/users/update-avatar/${encodeURIComponent(id)}`, form, {
+    return api.put<MessageResponse<string>>(`/api/v1/users/update-avatar/${encodeURIComponent(id)}`, form, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },

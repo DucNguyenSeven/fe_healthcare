@@ -5,3 +5,4 @@ export * from './useLogin';
 export * from './useLogout';
 export * from './useGetMe';
 export * from './useUpdateUser';
+export * from './useUpdateAvatar';
