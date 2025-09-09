@@ -397,7 +397,7 @@ export function ProfileRecordsPage({ user }: ProfileRecordsPageProps) {
       </div>
 
       {/* Profile Card */}
-      <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-2xl p-6 text-white">
+      <div className="bg-gradient-to-r from-[#1E75FF] to-[#1659C9] rounded-2xl p-6 text-white">
         <div className="flex items-center space-x-4 mb-6">
           <div className="relative">
             <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center overflow-hidden border-4 border-white shadow-lg relative">
@@ -463,7 +463,7 @@ export function ProfileRecordsPage({ user }: ProfileRecordsPageProps) {
 
         <div className="grid grid-cols-4 gap-4">
           <div className="text-center">
-            <div className="text-sm text-blue-100 mb-1">Chiều cao:</div>
+            <div className="text-sm text-white/80 mb-1">Chiều cao:</div>
             <div className="font-semibold text-lg">
               {isLoading ? (
                 <span className="animate-pulse">...</span>
@@ -475,7 +475,7 @@ export function ProfileRecordsPage({ user }: ProfileRecordsPageProps) {
             </div>
           </div>
           <div className="text-center">
-            <div className="text-sm text-blue-100 mb-1">Cân nặng:</div>
+            <div className="text-sm text-white/80 mb-1">Cân nặng:</div>
             <div className="font-semibold text-lg">
               {isLoading ? (
                 <span className="animate-pulse">...</span>
@@ -487,7 +487,7 @@ export function ProfileRecordsPage({ user }: ProfileRecordsPageProps) {
             </div>
           </div>
           <div className="text-center">
-            <div className="text-sm text-blue-100 mb-1">Nhóm máu:</div>
+            <div className="text-sm text-white/80 mb-1">Nhóm máu:</div>
             <div className="font-semibold text-lg">
               {isLoading ? (
                 <span className="animate-pulse">...</span>
@@ -495,7 +495,7 @@ export function ProfileRecordsPage({ user }: ProfileRecordsPageProps) {
             </div>
           </div>
           <div className="text-center">
-            <div className="text-sm text-blue-100 mb-1">BMI:</div>
+            <div className="text-sm text-white/80 mb-1">BMI:</div>
             <div className="font-semibold text-lg">
               {isLoading ? (
                 <span className="animate-pulse">...</span>

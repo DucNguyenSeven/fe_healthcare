@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   User,
@@ -14,6 +14,8 @@ import {
   Calendar,
   Edit3,
 } from "lucide-react";
+import { useGetMe } from "@/hooks/auth/useGetMe";
+import { useUpdateAvatar } from "@/hooks/auth";
 const specialties = [
   "Thận học",
   "Tim mạch",
@@ -52,6 +54,8 @@ interface Certificate {
 
 // @component: DoctorProfilePage
 export const DoctorProfilePage = () => {
+  const { data: userData, refetch } = useGetMe();
+  const { updateAvatar, isLoading: isUploading, error: uploadError, progress: uploadProgress } = useUpdateAvatar();
   const [formData, setFormData] = useState({
     fullName: "Bác sĩ Nguyễn Văn An",
     email: "bs.nguyenvanan@healthcare.vn",
@@ -84,6 +88,8 @@ export const DoctorProfilePage = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [avatar, setAvatar] = useState<string | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState<string>("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [showCertificateModal, setShowCertificateModal] = useState(false);
   const [newCertificate, setNewCertificate] = useState({
     name: "",
@@ -113,14 +119,27 @@ export const DoctorProfilePage = () => {
     setIsSaving(false);
     setIsEditing(false);
   };
-  const handleAvatarUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        setAvatar(e.target?.result as string);
-      };
-      reader.readAsDataURL(file);
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setAvatarPreview(e.target?.result as string);
+    };
+    reader.readAsDataURL(file);
+
+    if (userData?.userId) {
+      try {
+        const avatarUrl = await updateAvatar(userData.userId, file);
+        if (avatarUrl) {
+          setAvatarPreview(avatarUrl);
+          setAvatar(avatarUrl);
+          await refetch();
+        }
+      } catch (e) {
+        // noop - errors surfaced via uploadError state
+      }
     }
   };
   const handleAddCertificate = () => {
@@ -165,27 +184,39 @@ export const DoctorProfilePage = () => {
             <div className="flex items-center gap-6">
               <div className="relative">
                 <div className="w-24 h-24 rounded-full bg-white/20 flex items-center justify-center overflow-hidden">
-                  {avatar ? (
+                  {avatarPreview || avatar || userData?.avatarUrl ? (
                     <img
-                      src={avatar}
+                      src={avatarPreview || avatar || (userData?.avatarUrl as string) || ""}
                       alt="Avatar"
                       className="w-full h-full object-cover"
                     />
                   ) : (
                     <User size={40} className="text-white" />
                   )}
+                  {isUploading && (
+                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                      <div className="text-white text-xs font-medium">{uploadProgress}%</div>
+                    </div>
+                  )}
                 </div>
-                {isEditing && (
-                  <label className="absolute -bottom-2 -right-2 w-8 h-8 bg-white rounded-full flex items-center justify-center cursor-pointer shadow-lg hover:shadow-xl transition-shadow">
-                    <Camera size={16} className="text-[#1E75FF]" />
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleAvatarUpload}
-                      className="hidden"
-                    />
-                  </label>
-                )}
+                <button
+                  onClick={() => !isUploading && fileInputRef.current?.click()}
+                  disabled={isUploading}
+                  className={`absolute -bottom-2 -right-2 w-8 h-8 rounded-full flex items-center justify-center transition-all shadow-lg ${
+                    isUploading ? "bg-gray-400 cursor-not-allowed" : "bg-white"
+                  }`}
+                  title={isUploading ? "Đang upload..." : "Thay đổi ảnh đại diện"}
+                >
+                  <Camera size={16} className="text-[#1E75FF]" />
+                </button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleAvatarUpload}
+                  disabled={isUploading}
+                  className="hidden"
+                />
               </div>
               <div>
                 <h1 className="text-3xl font-bold mb-2">{formData.fullName}</h1>

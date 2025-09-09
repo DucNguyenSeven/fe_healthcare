@@ -81,6 +81,7 @@ export function AppLayout({
   alertCount,
   children,
 }: AppLayoutProps) {
+  const hideTopBarActions = currentPage === "profile";
   return (
     <div className="flex h-screen bg-gray-50">
       {/* Mobile Sidebar Overlay */}
@@ -104,8 +105,8 @@ export function AppLayout({
           {/* Logo & Close Button */}
           <div className="flex items-center justify-between p-6 border-b border-gray-200">
             <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-                <Activity className="w-5 h-5 text-white" />
+              <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
+                <span className="text-white font-bold text-sm">H+</span>
               </div>
               <h1 className="text-xl font-bold text-gray-900">HealthCare+</h1>
             </div>
@@ -204,32 +205,50 @@ export function AppLayout({
             </div>
 
             <div className="flex items-center space-x-4">
-              {/* Notifications */}
-              <button
-                className="relative p-2 rounded-lg hover:bg-gray-100 transition-colors"
-                aria-label={`Thông báo${
-                  alertCount > 0 ? ` (${alertCount} mới)` : ""
-                }`}
-              >
-                <Bell className="w-5 h-5 text-gray-600" />
-                {alertCount > 0 && (
-                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
-                    {alertCount > 9 ? "9+" : alertCount}
-                  </span>
-                )}
-              </button>
+              {hideTopBarActions ? (
+                // Keep layout/height by rendering an invisible placeholder
+                <div className="flex items-center space-x-4 opacity-0 pointer-events-none select-none">
+                  <button className="relative p-2 rounded-lg">
+                    <Bell className="w-5 h-5" />
+                    <span className="absolute -top-1 -right-1 w-5 h-5 text-xs rounded-full flex items-center justify-center">
+                      2
+                    </span>
+                  </button>
+                  <button className="flex items-center space-x-3 p-2 rounded-lg">
+                    <div className="w-8 h-8 rounded-full" />
+                    <span className="hidden md:block text-sm font-medium">...</span>
+                  </button>
+                </div>
+              ) : (
+                <>
+                  {/* Notifications */}
+                  <button
+                    className="relative p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                    aria-label={`Thông báo${
+                      alertCount > 0 ? ` (${alertCount} mới)` : ""
+                    }`}
+                  >
+                    <Bell className="w-5 h-5 text-gray-600" />
+                    {alertCount > 0 && (
+                      <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
+                        {alertCount > 9 ? "9+" : alertCount}
+                      </span>
+                    )}
+                  </button>
 
-              {/* User Avatar */}
-              <button className="flex items-center space-x-3 p-2 rounded-lg hover:bg-gray-100 transition-colors">
-                <img
-                  src={user.avatar || "/api/placeholder/32/32"}
-                  alt={`Ảnh đại diện của ${user.name}`}
-                  className="w-8 h-8 rounded-full object-cover"
-                />
-                <span className="hidden md:block text-sm font-medium text-gray-700">
-                  {user.name}
-                </span>
-              </button>
+                  {/* User Avatar */}
+                  <button className="flex items-center space-x-3 p-2 rounded-lg hover:bg-gray-100 transition-colors">
+                    <img
+                      src={user.avatar || "/api/placeholder/32/32"}
+                      alt={`Ảnh đại diện của ${user.name}`}
+                      className="w-8 h-8 rounded-full object-cover border-2 border-white shadow-sm"
+                    />
+                    <span className="hidden md:block text-sm font-medium text-gray-700">
+                      {user.name}
+                    </span>
+                  </button>
+                </>
+              )}
             </div>
           </div>
         </header>
