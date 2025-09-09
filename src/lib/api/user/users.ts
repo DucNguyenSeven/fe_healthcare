@@ -3,13 +3,11 @@ import type { MessageResponse, UpdateUserRequest, UserResponse } from "@/lib/api
 
 export const UsersApi = {
   update: (payload: UpdateUserRequest) => {
-    console.log('API call to /api/v1/users/update with payload:', payload);
     return api.put<MessageResponse<UserResponse>>("/api/v1/users/update", payload, {
       headers: {
         'Content-Type': 'application/json',
       },
     }).then(res => {
-      console.log('API response received:', res.data);
       return res.data;
     }).catch(err => {
       console.error('API call failed:', err);

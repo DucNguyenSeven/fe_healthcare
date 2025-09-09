@@ -55,7 +55,6 @@ export function usePatientInfoForm({
         processedData.avatar = URL.createObjectURL(formData.avatar); // Temporary for demo
       }
 
-      console.log("Patient info submitted:", processedData);
       onSuccess?.(processedData);
       setIsFormOpen(false);
     } catch (error) {

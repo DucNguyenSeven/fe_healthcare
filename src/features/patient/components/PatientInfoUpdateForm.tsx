@@ -202,9 +202,6 @@ export function PatientInfoUpdateForm({
         return;
       }
 
-      // Debug: Log dữ liệu gửi lên API
-      console.log('Sending update data:', updateData);
-      console.log('User object:', user);
 
       // Gọi API update user
       const result = await updateUser(updateData);

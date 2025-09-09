@@ -17,10 +17,8 @@ export const useUpdateUser = (): UseUpdateUserReturn => {
     setError(null);
 
     try {
-      console.log('Calling UsersApi.update with data:', data);
       const response = await UsersApi.update(data);
-      console.log('API response:', response);
-      
+
       if (response.success) {
         return response.data;
       } else {

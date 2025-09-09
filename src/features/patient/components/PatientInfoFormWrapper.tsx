@@ -23,7 +23,6 @@ export function PatientInfoFormWrapper({ children }: PatientInfoFormWrapperProps
     submitForm,
   } = usePatientInfoForm({
     onSuccess: (data: PatientFormData) => {
-      console.log("Patient info updated successfully:", data);
       // Here you would typically update the user context or make an API call
       // For now, we'll just close the form
     },
@@ -35,9 +34,6 @@ export function PatientInfoFormWrapper({ children }: PatientInfoFormWrapperProps
 
   const handleSkip = async () => {
     try {
-      // Log skip event for analytics
-      console.log('Patient info form skip requested by user:', authUser?.userId);
-      
       // Close form
       closeForm();
       
