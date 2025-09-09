@@ -10,7 +10,7 @@ interface UseResetPasswordState {
   isLoading: boolean;
   error: string | null;
   email: string;
-  resetToken: string;
+  otp: string;
 }
 
 interface UseResetPasswordReturn extends UseResetPasswordState {
@@ -24,26 +24,45 @@ export function useResetPassword(): UseResetPasswordReturn {
     isLoading: false,
     error: null,
     email: '',
-    resetToken: '',
+    otp: '',
   });
 
-  // Get email and reset token from sessionStorage on component mount
+  // Get email and otp from URL or sessionStorage on component mount
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const paramEmail = params.get('email');
+    const paramOtp = params.get('otp');
+
     const storedEmail = sessionStorage.getItem('otp-email');
-    const storedToken = sessionStorage.getItem('reset-token');
-    
-    if (!storedEmail || !storedToken) {
-      // If no data found, redirect back to forgot password
-      router.push('/forgot-password');
+    const storedOtp = sessionStorage.getItem('otp-code');
+
+    // Also check localStorage as backup
+    const backupEmail = localStorage.getItem('reset-password-email');
+    const backupOtp = localStorage.getItem('reset-password-otp');
+
+    const finalEmail = (paramEmail || storedEmail || backupEmail || '').trim();
+    const finalOtp = (paramOtp || storedOtp || backupOtp || '').trim();
+
+    // Check if we have valid data
+    if (!finalEmail || !finalOtp || finalEmail === '' || finalOtp === '') {
+      setState(prev => ({ ...prev, error: 'Thiếu thông tin đặt lại mật khẩu. Vui lòng yêu cầu OTP lại.' }));
       return;
     }
 
+    // Persist again to ensure availability on refresh
+    sessionStorage.setItem('otp-email', finalEmail);
+    sessionStorage.setItem('otp-code', finalOtp);
+
+    // Also save to localStorage as backup
+    localStorage.setItem('reset-password-email', finalEmail);
+    localStorage.setItem('reset-password-otp', finalOtp);
+
     setState(prev => ({
       ...prev,
-      email: storedEmail,
-      resetToken: storedToken,
+      email: finalEmail,
+      otp: finalOtp,
     }));
-  }, [router]);
+  }, []);
 
   const validateForm = (data: ResetPasswordFormData): string | null => {
     // Password strength validation
@@ -76,8 +95,8 @@ export function useResetPassword(): UseResetPasswordReturn {
 
       const response = await AuthApi.resetPassword({
         email: state.email,
-        resetToken: state.resetToken,
-        password: data.password,
+        otp: state.otp,
+        newPassword: data.password,
       });
 
       if (response.success) {
@@ -86,10 +105,14 @@ export function useResetPassword(): UseResetPasswordReturn {
           isLoading: false 
         }));
 
-        // Clear reset data from sessionStorage
+        // Clear reset data from sessionStorage and localStorage
         sessionStorage.removeItem('otp-email');
         sessionStorage.removeItem('otp-flow');
-        sessionStorage.removeItem('reset-token');
+        sessionStorage.removeItem('otp-code');
+
+        // Also clear from localStorage
+        localStorage.removeItem('reset-password-email');
+        localStorage.removeItem('reset-password-otp');
         
         // Redirect to login with success message
         router.push('/login?message=password-reset-success');
@@ -107,7 +130,7 @@ export function useResetPassword(): UseResetPasswordReturn {
           errorMessage = 'Yêu cầu không hợp lệ';
           break;
         case 401:
-          errorMessage = 'Token đặt lại mật khẩu không hợp lệ hoặc đã hết hạn';
+          errorMessage = 'OTP không hợp lệ hoặc đã hết hạn';
           break;
         case 404:
           errorMessage = 'Không tìm thấy yêu cầu đặt lại mật khẩu';
@@ -127,7 +150,7 @@ export function useResetPassword(): UseResetPasswordReturn {
       }));
       return false;
     }
-  }, [state.email, state.resetToken, router]);
+  }, [state.email, state.otp, router]);
 
   const clearError = useCallback(() => {
     setState(prev => ({ ...prev, error: null }));

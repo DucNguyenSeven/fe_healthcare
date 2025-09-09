@@ -75,3 +75,13 @@ export interface UserQueryParams {
   sortBy?: 'createdAt' | 'updatedAt' | 'lastName' | 'email';
   sortOrder?: 'asc' | 'desc';
 }
+
+// Auth form types
+export interface ForgotFormData {
+  email: string;
+}
+
+export interface ResetPasswordFormData {
+  password: string;
+  confirmPassword: string;
+}

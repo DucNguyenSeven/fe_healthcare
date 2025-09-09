@@ -9,6 +9,7 @@ export const useOTP = () => {
   const [email, setEmail] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string>('');
   const [otpFlow, setOtpFlow] = useState<'registration' | 'forgot-password'>('registration');
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const router = useRouter();
@@ -82,7 +83,8 @@ export const useOTP = () => {
       
       if (response.success) {
         // Optionally show success message
-        console.log('OTP đã được gửi lại');
+        setSuccessMessage('OTP đã được gửi lại');
+        setTimeout(() => setSuccessMessage(''), 1500);
       } else {
         throw new Error(response.message || 'Failed to resend OTP');
       }
@@ -115,16 +117,30 @@ export const useOTP = () => {
     try {
       const response = await AuthApi.validateOtp(email, otpCode);
       if (response.success) {
-        // Clear OTP data from sessionStorage
-        sessionStorage.removeItem('otp-email');
-        sessionStorage.removeItem('otp-flow');
-        
         if (otpFlow === 'registration') {
           // Registration flow: redirect to login with success message
           router.push('/login?message=registration-success');
         } else {
-          // Forgot password flow: redirect to reset password page
-          router.push('/reset-password');
+          // Forgot password flow: show success then redirect to reset password page
+          // Persist email and otp for reset-password step
+          sessionStorage.setItem('otp-email', email);
+          sessionStorage.setItem('otp-code', otpCode);
+
+          // Also save to localStorage as backup
+          localStorage.setItem('reset-password-email', email);
+          localStorage.setItem('reset-password-otp', otpCode);
+
+          setSuccessMessage('Xác thực OTP thành công! Hãy đặt lại mật khẩu.');
+          setTimeout(() => {
+            const query = `?email=${encodeURIComponent(email)}&otp=${encodeURIComponent(otpCode)}`;
+            router.push(`/reset-password${query}`);
+          }, 1200);
+        }
+
+        // Clear OTP data from sessionStorage after handling the flow
+        if (otpFlow === 'registration') {
+          sessionStorage.removeItem('otp-email');
+          sessionStorage.removeItem('otp-flow');
         }
       } else {
         throw new Error(response.message || 'OTP verification failed');
@@ -136,7 +152,7 @@ export const useOTP = () => {
       // Override with more specific Vietnamese messages
       switch (parsedError.status) {
         case 400:
-          errorMessage = 'Mã OTP không hợp lệ';
+          errorMessage = 'Mã OTP không hợp lệ hoặc đã hết hạn';
           break;
         case 408:
           errorMessage = 'Mã OTP đã hết hạn. Vui lòng gửi lại mã mới';
@@ -159,6 +175,10 @@ export const useOTP = () => {
     setError(null);
   }, []);
 
+  const clearSuccess = useCallback(() => {
+    setSuccessMessage('');
+  }, []);
+
   return {
     otpValues,
     activeIndex,
@@ -166,6 +186,7 @@ export const useOTP = () => {
     otpFlow,
     isLoading,
     error,
+    successMessage,
     inputRefs,
     handleOtpChange,
     handleKeyDown,
@@ -174,5 +195,6 @@ export const useOTP = () => {
     handleBackToLogin,
     handleSubmit,
     clearError,
+    clearSuccess,
   };
 };

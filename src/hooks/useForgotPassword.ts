@@ -50,7 +50,7 @@ export function useForgotPassword(): UseForgotPasswordReturn {
 
       const response = await AuthApi.sendOtpResetPassword(data.email);
 
-      if (response.success && response.data) {
+      if (response.success) {
         setState(prev => ({ 
           ...prev, 
           isLoading: false 
@@ -60,12 +60,7 @@ export function useForgotPassword(): UseForgotPasswordReturn {
         sessionStorage.setItem('otp-email', data.email);
         sessionStorage.setItem('otp-flow', 'forgot-password');
         
-        // Store reset token from response for later use
-        if (response.data.resetToken) {
-          sessionStorage.setItem('reset-token', response.data.resetToken);
-        }
-        
-        router.push('/otp');
+        router.push(`/otp-forgot?email=${encodeURIComponent(data.email)}&flow=forgot-password`);
         return true;
       } else {
         throw new Error(response.message || 'Failed to send reset OTP');
@@ -78,6 +73,9 @@ export function useForgotPassword(): UseForgotPasswordReturn {
       switch (parsedError.status) {
         case 400:
           errorMessage = 'Email không hợp lệ';
+          break;
+        case 403:
+          errorMessage = 'Bạn không có quyền thực hiện thao tác này';
           break;
         case 404:
           errorMessage = 'Email không tồn tại trong hệ thống';

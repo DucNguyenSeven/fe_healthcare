@@ -77,7 +77,6 @@ const OTPPage: React.FC = () => {
         router.push('/login');
       }, 2000);
     } catch (error) {
-      console.error('Verification failed:', error);
       setErrorMessage((error as Error)?.message || 'Xác minh OTP thất bại. Vui lòng thử lại.');
     }
   };
@@ -87,13 +86,8 @@ const OTPPage: React.FC = () => {
   };
 
   const handleResendOTP = async () => {
-    try {
-      // TODO: Implement resend OTP logic
-      // For now, just show a message
-      setErrorMessage('Tính năng gửi lại OTP sẽ được triển khai sau');
-    } catch (error) {
-      setErrorMessage('Không thể gửi lại mã OTP. Vui lòng thử lại sau.');
-    }
+    // Tính năng gửi lại OTP cho flow đăng ký chưa khả dụng ở trang này
+    setErrorMessage('Tính năng gửi lại OTP sẽ được triển khai sau');
   };
 
   if (!email) {
