@@ -141,7 +141,7 @@ export function DoctorLayout({ children }: { children: React.ReactNode }) {
                   </button>
                 </div>
               ) : (
-                <>
+                <div className="flex items-center space-x-4">
                   <button
                     className="relative p-2 rounded-lg hover:bg-gray-100 transition-colors"
                     aria-label="Thông báo"
@@ -156,7 +156,7 @@ export function DoctorLayout({ children }: { children: React.ReactNode }) {
                       {user?.email ? user.email.split("@")[0] : "Người dùng"}
                     </span>
                   </button>
-                </>
+                </div>
               )}
             </div>
           </div>

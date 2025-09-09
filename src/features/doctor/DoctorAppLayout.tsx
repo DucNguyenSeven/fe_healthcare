@@ -22,6 +22,7 @@ import { DoctorProfilePage } from "./DoctorProfilePage";
 import { PatientManagementModule } from "./PatientManagementModule";
 import { AppointmentAndConsultationModule } from "./AppointmentAndConsultationModule";
 import { ForumModule } from "./ForumModule";
+import { useGetMe } from "@/hooks/auth/useGetMe";
 const navigationItems = [
   {
     id: "dashboard",
@@ -71,9 +72,17 @@ export const DoctorAppLayout = ({
 }: {
   initialTab?: string;
 }) => {
+  const { data: userData, isLoading: isLoadingUserData } = useGetMe();
   const [activeTab, setActiveTab] = useState(initialTab);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  
+  // Debug log to check userData
+  React.useEffect(() => {
+    console.log('DoctorAppLayout - userData:', userData);
+    console.log('DoctorAppLayout - avatarUrl:', userData?.avatarUrl);
+    console.log('DoctorAppLayout - isLoading:', isLoadingUserData);
+  }, [userData, isLoadingUserData]);
   const renderContent = () => {
     switch (activeTab) {
       case "dashboard":
@@ -179,12 +188,20 @@ export const DoctorAppLayout = ({
               }}
             >
               <div className="flex items-center space-x-3 p-3 rounded-xl bg-gray-50">
-                <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center">
-                  <User className="w-5 h-5 text-white" />
-                </div>
+                {userData?.avatarUrl ? (
+                  <img
+                    src={userData.avatarUrl}
+                    alt={`Ảnh đại diện của ${userData?.fullName || 'Bác sĩ'}`}
+                    className="w-10 h-10 rounded-full object-cover"
+                  />
+                ) : (
+                  <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center">
+                    <User className="w-5 h-5 text-white" />
+                  </div>
+                )}
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-gray-900 truncate">
-                    Bác sĩ
+                    {isLoadingUserData ? 'Đang tải...' : (userData?.fullName || 'Bác sĩ')}
                   </p>
                   <p className="text-xs text-gray-500">Chuyên khoa Thận</p>
                 </div>
@@ -241,11 +258,23 @@ export const DoctorAppLayout = ({
                   onClick={() => setProfileMenuOpen(!profileMenuOpen)}
                   className="flex items-center space-x-3 p-2 rounded-lg hover:bg-gray-100 transition-colors"
                 >
-                  <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
-                    <User className="w-4 h-4 text-white" />
-                  </div>
+                  {userData?.avatarUrl || userData?.avatar ? (
+                    <img
+                      src={userData.avatarUrl || userData.avatar}
+                      alt={`Ảnh đại diện của ${userData?.fullName || 'Bác sĩ'}`}
+                      className="w-8 h-8 rounded-full object-cover border-2 border-white shadow-sm"
+                      onError={(e) => {
+                        console.log('Avatar load error:', e);
+                        console.log('Tried to load:', userData.avatarUrl || userData.avatar);
+                      }}
+                    />
+                  ) : (
+                    <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
+                      <User className="w-4 h-4 text-white" />
+                    </div>
+                  )}
                   <span className="hidden md:block text-sm font-medium text-gray-700">
-                    Bác sĩ
+                    {isLoadingUserData ? 'Đang tải...' : (userData?.fullName || 'Bác sĩ')}
                   </span>
                 </button>
 
