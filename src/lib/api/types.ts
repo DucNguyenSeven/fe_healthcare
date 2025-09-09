@@ -38,7 +38,7 @@ export type AuthenticationRequest = { email: string; password: string };
 export type ResetPasswordRequest = { email: string; newPassword: string };
 export type UpdateUserRequest = {
   userId: string;
-  fullname?: string;
+  fullName?: string;
   gender?: string;
   dob?: string;
   phone?: string;

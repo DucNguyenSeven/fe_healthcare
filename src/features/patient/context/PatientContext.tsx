@@ -1,6 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, PropsWithChildren } from "react";
+import { useGetMe } from "@/hooks/auth/useGetMe";
 import {
   User,
   Appointment,
@@ -11,7 +12,6 @@ import {
   Article,
 } from "../types";
 import {
-  mockUser,
   mockAppointments,
   mockHealthMetrics,
   mockAlerts,
@@ -31,7 +31,17 @@ export interface PatientState {
 }
 
 const defaultValue: PatientState = {
-  user: mockUser,
+  user: {
+    id: '',
+    name: '',
+    email: '',
+    phone: '',
+    avatar: '',
+    ckdStage: 0,
+    lastEgfr: 0,
+    lastCreatinine: 0,
+    lastBp: '',
+  },
   appointments: mockAppointments,
   healthMetrics: mockHealthMetrics,
   alerts: mockAlerts,
@@ -46,8 +56,24 @@ export function PatientProvider({
   children,
   value,
 }: PropsWithChildren<{ value?: Partial<PatientState> }>) {
+  const { data: userData, isLoading, error } = useGetMe();
+  
+  // Transform API data to User type
+  const user: User = userData ? {
+    id: userData.userId,
+    name: userData.fullName || '',
+    email: userData.email,
+    phone: userData.phone || '',
+    avatar: userData.avatarUrl || '',
+    ckdStage: 3, // Default value, should be fetched from medical data
+    lastEgfr: 45, // Default value, should be fetched from medical data
+    lastCreatinine: 1.8, // Default value, should be fetched from medical data
+    lastBp: '140/90', // Default value, should be fetched from medical data
+  } : defaultValue.user;
+
   const merged: PatientState = {
     ...defaultValue,
+    user,
     ...value,
   } as PatientState;
 

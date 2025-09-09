@@ -2,6 +2,7 @@
 
 import React from "react";
 import { usePatientNavigation } from "@/hooks/navigation";
+import { useGetMe } from "@/hooks/auth/useGetMe";
 import { WelcomeSection } from "../components/WelcomeSection";
 import { QuickActions } from "../components/QuickActions";
 import { HealthMetrics } from "../components/HealthMetrics";
@@ -41,16 +42,20 @@ export function DashboardPage({
   onNavigate,
 }: DashboardPageProps) {
   const { navigate } = usePatientNavigation();
+  const { data: userData, isLoading } = useGetMe();
 
   const handleNavigate = (page: string) => {
     navigate(page as any);
     onNavigate?.(page);
   };
 
+  // Use API data if available, fallback to props
+  const displayName = userData?.fullName || user.name;
+
   return (
     <div className="p-4 lg:p-6 space-y-6">
       {/* Welcome Section */}
-      <WelcomeSection userName={user.name} />
+      <WelcomeSection userName={displayName} isLoading={isLoading} />
 
       {/* Quick Actions */}
       <QuickActions onNavigate={handleNavigate} />

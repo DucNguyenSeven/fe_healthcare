@@ -7,10 +7,12 @@ import {
   Save,
   AlertCircle,
 } from "lucide-react";
+import { Alert, Snackbar } from "@mui/material";
 import { User } from "../types";
 import { FormInput, FormTextArea, FormSelect } from "../../../components/ui/FormInput";
 import { PatientFormData } from "../hooks/usePatientInfoForm";
-import { calculateBMI, getBMICategory, isAuthenticated, getUserId } from "../../../utils/formatting";
+import { calculateBMI, getBMICategory } from "../../../utils/formatting";
+import { useUpdateUser } from "../../../hooks/auth";
 
 interface PatientInfoUpdateFormProps {
   user?: Partial<User>;
@@ -28,6 +30,8 @@ export function PatientInfoUpdateForm({
   onSkip,
   isFirstTime = false,
 }: PatientInfoUpdateFormProps) {
+  const { updateUser, isLoading: isUpdating, error: updateError } = useUpdateUser();
+  
   const [formData, setFormData] = useState<PatientFormData>({
     avatar: user.avatar || "",
     name: user.name || "",
@@ -44,6 +48,7 @@ export function PatientInfoUpdateForm({
 
   const [errors, setErrors] = useState<Partial<PatientFormData>>({});
   const [isLoading, setIsLoading] = useState(false);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string>(
     typeof user.avatar === "string" ? user.avatar : ""
   );
@@ -76,20 +81,23 @@ export function PatientInfoUpdateForm({
       newErrors.address = "Địa chỉ là bắt buộc";
     }
 
-    if (!formData.height.trim()) {
-      newErrors.height = "Chiều cao là bắt buộc";
-    } else if (!/^[0-9]{1,3}$/.test(formData.height) || parseInt(formData.height) < 50 || parseInt(formData.height) > 250) {
-      newErrors.height = "Chiều cao không hợp lệ (50-250cm)";
-    }
+    // Chỉ validate thông tin sức khỏe khi không phải lần đầu đăng nhập
+    if (!isFirstTime) {
+      if (!formData.height.trim()) {
+        newErrors.height = "Chiều cao là bắt buộc";
+      } else if (!/^[0-9]{1,3}$/.test(formData.height) || parseInt(formData.height) < 50 || parseInt(formData.height) > 250) {
+        newErrors.height = "Chiều cao không hợp lệ (50-250cm)";
+      }
 
-    if (!formData.weight.trim()) {
-      newErrors.weight = "Cân nặng là bắt buộc";
-    } else if (!/^[0-9]{1,3}$/.test(formData.weight) || parseInt(formData.weight) < 20 || parseInt(formData.weight) > 200) {
-      newErrors.weight = "Cân nặng không hợp lệ (20-200kg)";
-    }
+      if (!formData.weight.trim()) {
+        newErrors.weight = "Cân nặng là bắt buộc";
+      } else if (!/^[0-9]{1,3}$/.test(formData.weight) || parseInt(formData.weight) < 20 || parseInt(formData.weight) > 200) {
+        newErrors.weight = "Cân nặng không hợp lệ (20-200kg)";
+      }
 
-    if (!formData.bloodType.trim()) {
-      newErrors.bloodType = "Nhóm máu là bắt buộc";
+      if (!formData.bloodType.trim()) {
+        newErrors.bloodType = "Nhóm máu là bắt buộc";
+      }
     }
 
     setErrors(newErrors);
@@ -161,9 +169,53 @@ export function PatientInfoUpdateForm({
 
     setIsLoading(true);
     try {
-      onSubmit(formData);
+      // Chuẩn bị dữ liệu cho API update user
+      const updateData = {
+        userId: user.id || '',
+        fullName: formData.name,
+        gender: formData.gender.toUpperCase(), // Chuyển thành uppercase như backend yêu cầu
+        dob: formData.dateOfBirth ? new Date(formData.dateOfBirth).toISOString().split('T')[0] : undefined,
+        phone: formData.phone,
+        address: formData.address,
+        role: 'PATIENT' // Mặc định role là PATIENT
+      };
+
+      // Kiểm tra dữ liệu bắt buộc
+      if (!updateData.userId) {
+        alert('Không tìm thấy ID người dùng. Vui lòng đăng nhập lại.');
+        return;
+      }
+
+      // Debug: Log dữ liệu gửi lên API
+      console.log('Sending update data:', updateData);
+      console.log('User object:', user);
+
+      // Gọi API update user
+      const result = await updateUser(updateData);
+      
+      if (result) {
+        // Nếu update thành công, hiển thị thông báo và đóng form
+        setSuccessMessage('Cập nhật thông tin thành công!');
+        
+        // Gọi onSubmit với formData
+        onSubmit(formData);
+        
+        // Đóng form sau 2 giây
+        setTimeout(() => {
+          if (isFirstTime) {
+            onSkip?.();
+          } else {
+            onClose?.();
+          }
+        }, 2000);
+      } else {
+        // Nếu update thất bại, hiển thị lỗi
+        console.error('Update user failed:', updateError);
+        alert(updateError || 'Có lỗi xảy ra khi cập nhật thông tin');
+      }
     } catch (error) {
       console.error("Form submission error:", error);
+      alert('Có lỗi xảy ra khi cập nhật thông tin');
     } finally {
       setIsLoading(false);
     }
@@ -381,85 +433,87 @@ export function PatientInfoUpdateForm({
                   />
                 </div>
 
-                {/* Health Information */}
-                <div className="bg-blue-50 rounded-xl p-3 border border-blue-200">
-                  <h3 className="text-sm font-semibold text-gray-900 mb-3">
-                    Thông tin sức khỏe
-                  </h3>
-                  <div className="space-y-3">
-                    <FormInput
-                      label="Chiều cao (cm)"
-                      type="number"
-                      placeholder="170"
-                      value={formData.height}
-                      onChange={(value) => handleInputChange("height", value)}
-                      min="50"
-                      max="250"
-                      error={errors.height}
-                      required
-                    />
+                {/* Health Information - Chỉ hiển thị khi không phải lần đầu đăng nhập */}
+                {!isFirstTime && (
+                  <div className="bg-blue-50 rounded-xl p-3 border border-blue-200">
+                    <h3 className="text-sm font-semibold text-gray-900 mb-3">
+                      Thông tin sức khỏe
+                    </h3>
+                    <div className="space-y-3">
+                      <FormInput
+                        label="Chiều cao (cm)"
+                        type="number"
+                        placeholder="170"
+                        value={formData.height}
+                        onChange={(value) => handleInputChange("height", value)}
+                        min="50"
+                        max="250"
+                        error={errors.height}
+                        required
+                      />
 
-                    <FormInput
-                      label="Cân nặng (kg)"
-                      type="number"
-                      placeholder="65"
-                      value={formData.weight}
-                      onChange={(value) => handleInputChange("weight", value)}
-                      min="20"
-                      max="200"
-                      error={errors.weight}
-                      required
-                    />
+                      <FormInput
+                        label="Cân nặng (kg)"
+                        type="number"
+                        placeholder="65"
+                        value={formData.weight}
+                        onChange={(value) => handleInputChange("weight", value)}
+                        min="20"
+                        max="200"
+                        error={errors.weight}
+                        required
+                      />
 
-                    {/* BMI Field - Read-only with auto-calculation */}
-                    <div className="space-y-2">
-                      <label className="block text-sm font-medium text-gray-700">
-                        Chỉ số BMI
-                      </label>
-                      <div className="relative">
-                        <input
-                          type="text"
-                          value={formData.bmi ? `${formData.bmi} kg/m²` : ""}
-                          readOnly
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-600 cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          placeholder="Tự động tính khi nhập chiều cao và cân nặng"
-                        />
-                        {formData.bmi && (
-                          <div className="mt-1">
-                            {(() => {
-                              const bmiNum = parseFloat(formData.bmi);
-                              const bmiInfo = getBMICategory(bmiNum);
-                              return (
-                                <span className={`text-xs font-medium ${bmiInfo.color}`}>
-                                  {bmiInfo.category} ({bmiInfo.description})
-                                </span>
-                              );
-                            })()}
-                          </div>
-                        )}
+                      {/* BMI Field - Read-only with auto-calculation */}
+                      <div className="space-y-2">
+                        <label className="block text-sm font-medium text-gray-700">
+                          Chỉ số BMI
+                        </label>
+                        <div className="relative">
+                          <input
+                            type="text"
+                            value={formData.bmi ? `${formData.bmi} kg/m²` : ""}
+                            readOnly
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-600 cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            placeholder="Tự động tính khi nhập chiều cao và cân nặng"
+                          />
+                          {formData.bmi && (
+                            <div className="mt-1">
+                              {(() => {
+                                const bmiNum = parseFloat(formData.bmi);
+                                const bmiInfo = getBMICategory(bmiNum);
+                                return (
+                                  <span className={`text-xs font-medium ${bmiInfo.color}`}>
+                                    {bmiInfo.category} ({bmiInfo.description})
+                                  </span>
+                                );
+                              })()}
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    </div>
 
-                    <FormSelect
-                      label="Nhóm máu"
-                      value={formData.bloodType}
-                      onChange={(value) => handleInputChange("bloodType", value)}
-                      options={[
-                        { value: "A+", label: "A+" },
-                        { value: "A-", label: "A-" },
-                        { value: "B+", label: "B+" },
-                        { value: "B-", label: "B-" },
-                        { value: "AB+", label: "AB+" },
-                        { value: "AB-", label: "AB-" },
-                        { value: "O+", label: "O+" },
-                        { value: "O-", label: "O-" }
-                      ]}
-                      placeholder="Chọn nhóm máu"
-                      error={errors.bloodType}
-                      required
-                    />
+                      <FormSelect
+                        label="Nhóm máu"
+                        value={formData.bloodType}
+                        onChange={(value) => handleInputChange("bloodType", value)}
+                        options={[
+                          { value: "A+", label: "A+" },
+                          { value: "A-", label: "A-" },
+                          { value: "B+", label: "B+" },
+                          { value: "B-", label: "B-" },
+                          { value: "AB+", label: "AB+" },
+                          { value: "AB-", label: "AB-" },
+                          { value: "O+", label: "O+" },
+                          { value: "O-", label: "O-" }
+                        ]}
+                        placeholder="Chọn nhóm máu"
+                        error={errors.bloodType}
+                        required
+                      />
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             </div>
 
@@ -476,16 +530,32 @@ export function PatientInfoUpdateForm({
               )}
               <button
                 type="submit"
-                disabled={isLoading}
+                disabled={isLoading || isUpdating}
                 className="flex items-center justify-center space-x-2 px-8 py-3 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 hover:shadow-lg"
               >
                 <Save className="w-4 h-4" />
-                <span>{isLoading ? "Đang lưu..." : "Lưu thông tin"}</span>
+                <span>{(isLoading || isUpdating) ? "Đang lưu..." : "Lưu thông tin"}</span>
               </button>
             </div>
           </div>
         </form>
       </div>
+
+      {/* Success Snackbar */}
+      <Snackbar
+        open={!!successMessage}
+        autoHideDuration={3000}
+        onClose={() => setSuccessMessage(null)}
+        anchorOrigin={{ vertical: "top", horizontal: "center" }}
+      >
+        <Alert 
+          onClose={() => setSuccessMessage(null)} 
+          severity="success" 
+          sx={{ width: "100%" }}
+        >
+          {successMessage}
+        </Alert>
+      </Snackbar>
     </div>
   );
 }

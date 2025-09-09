@@ -10,9 +10,9 @@ import { Alert } from '@/features/patient';
 
 export const mockUser: User = {
   id: '1',
-  name: '', // User mới chưa có tên
+  name: 'Nguyễn Văn An', // Full name của user
   email: 'nguyenvanan@email.com', // Chỉ có email từ lúc đăng ký
-  phone: '', // Chưa có số điện thoại
+  phone: '0123456789', // Số điện thoại
   avatar: '', // Chưa có avatar
   ckdStage: 3,
   lastEgfr: 45,

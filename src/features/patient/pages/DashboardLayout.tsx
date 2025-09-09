@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { usePathname } from "next/navigation";
 import { usePatientNavigation } from "@/hooks/navigation";
 import { useLogout } from "@/hooks/auth/useLogout";
+import { useGetMe } from "@/hooks/auth/useGetMe";
 import { navigationItems } from "@/features/patient/navigation";
 import { usePatientContext } from "../context/PatientContext";
 import {
@@ -34,6 +35,7 @@ const navigationItemsShared = navigationItems as NavigationItem[];
 export function DashboardLayout({ children }: DashboardLayoutProps) {
   // In Phase 4, consume user from context
   const { user } = usePatientContext();
+  const { data: userData, isLoading } = useGetMe();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const { navigate, currentId } = usePatientNavigation();
   const { logout } = useLogout();
@@ -55,6 +57,9 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const handleLogout = () => {
     logout();
   };
+
+  // Use API data if available, fallback to context data
+  const displayName = userData?.fullName || user.name;
 
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden">
@@ -182,7 +187,11 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                   <User className="w-5 h-5 text-white" />
                 </div>
                 <span className="hidden md:block text-sm font-medium text-gray-700">
-                  {user.name}
+                  {isLoading ? (
+                    <span className="animate-pulse">...</span>
+                  ) : (
+                    displayName || 'Bạn'
+                  )}
                 </span>
               </button>
             </div>
