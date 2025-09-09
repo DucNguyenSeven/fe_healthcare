@@ -2,7 +2,7 @@
 import React from "react";
 import "../globals.css";
 import { DoctorLayout } from "@/features/doctor";
-import AuthGuard from "@/components/common/AuthGuard";
+import { RoleGuard } from "@/components/common";
 
 export default function DoctorRootLayout({
   children,
@@ -10,8 +10,8 @@ export default function DoctorRootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <AuthGuard>
+    <RoleGuard allowedRoles={['DOCTOR']} redirectToHome={true}>
       <DoctorLayout>{children}</DoctorLayout>
-    </AuthGuard>
+    </RoleGuard>
   ) as React.ReactElement;
 }

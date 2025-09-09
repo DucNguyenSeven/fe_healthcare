@@ -3,6 +3,7 @@ export { default as DoctorCard } from './DoctorCard';
 export { default as FeedbackCard } from './FeedbackCard';
 export { default as FAQItem } from './FAQItem';
 export { default as AuthGuard } from './AuthGuard';
+export { default as RoleGuard } from './RoleGuard';
 export { default as UnauthorizedAccess } from './UnauthorizedAccess';
 export { ErrorBoundary } from './ErrorBoundary';
 export { LoadingSpinner } from './LoadingSpinner';

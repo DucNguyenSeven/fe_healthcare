@@ -3,7 +3,7 @@
 import React from "react";
 import { DashboardLayout, PatientInfoFormWrapper } from "@/features/patient";
 import { PatientProvider } from "@/features/patient/context/PatientContext";
-import AuthGuard from "@/components/common/AuthGuard";
+import { RoleGuard } from "@/components/common";
 
 interface PatientLayoutProps {
   children: React.ReactNode;
@@ -11,12 +11,12 @@ interface PatientLayoutProps {
 
 export default function PatientLayout({ children }: PatientLayoutProps) {
   return (
-    <AuthGuard>
+    <RoleGuard allowedRoles={['PATIENT']} redirectToHome={true}>
       <PatientProvider>
         <PatientInfoFormWrapper>
           <DashboardLayout>{children}</DashboardLayout>
         </PatientInfoFormWrapper>
       </PatientProvider>
-    </AuthGuard>
+    </RoleGuard>
   );
 }

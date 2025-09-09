@@ -12,6 +12,7 @@ import {
   Award,
   X,
   Calendar,
+  Edit3,
 } from "lucide-react";
 const specialties = [
   "Thận học",
@@ -197,30 +198,28 @@ export const DoctorProfilePage = () => {
               {!isEditing ? (
                 <button
                   onClick={() => setIsEditing(true)}
-                  className="bg-white/20 hover:bg-white/30 px-6 py-3 rounded-2xl font-medium transition-colors flex items-center gap-2"
+                  className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors"
                 >
-                  <User size={20} />
+                  <Edit3 className="w-4 h-4" />
                   <span>Chỉnh sửa</span>
                 </button>
               ) : (
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => setIsEditing(false)}
-                    className="bg-white/20 hover:bg-white/30 px-6 py-3 rounded-2xl font-medium transition-colors"
-                  >
-                    <span>Hủy</span>
-                  </button>
+                <div className="flex space-x-2">
                   <button
                     onClick={handleSave}
                     disabled={isSaving}
-                    className="bg-white text-[#1E75FF] hover:bg-gray-100 px-6 py-3 rounded-2xl font-medium transition-colors flex items-center gap-2 disabled:opacity-50"
+                    className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {isSaving ? (
-                      <div className="w-5 h-5 border-2 border-[#1E75FF] border-t-transparent rounded-full animate-spin" />
-                    ) : (
-                      <Save size={20} />
-                    )}
-                    <span>{isSaving ? "Đang lưu..." : "Lưu thay đổi"}</span>
+                    <Save className="w-4 h-4" />
+                    <span>{isSaving ? "Đang lưu..." : "Lưu thông tin"}</span>
+                  </button>
+                  <button
+                    onClick={() => setIsEditing(false)}
+                    disabled={isSaving}
+                    className="flex items-center space-x-2 px-4 py-2 bg-gray-600 text-white rounded-xl hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <X className="w-4 h-4" />
+                    <span>Hủy</span>
                   </button>
                 </div>
               )}

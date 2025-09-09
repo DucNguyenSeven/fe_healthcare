@@ -26,3 +26,39 @@ export function clearTokens() {
   localStorage.removeItem(ACCESS);
   localStorage.removeItem(REFRESH);
 }
+
+// JWT decode functions
+export function decodeJWT(token: string): Record<string, unknown> | null {
+  try {
+    const payload = token.split('.')[1];
+    const decodedPayload = atob(payload);
+    return JSON.parse(decodedPayload);
+  } catch (error) {
+    console.error('Failed to decode JWT:', error);
+    return null;
+  }
+}
+
+export function getRoleFromToken(token?: string | null): string | null {
+  const accessToken = token || getAccessToken();
+  if (!accessToken) return null;
+
+  const decoded = decodeJWT(accessToken);
+  return decoded?.role as string || null;
+}
+
+export function getUserIdFromToken(token?: string | null): string | null {
+  const accessToken = token || getAccessToken();
+  if (!accessToken) return null;
+
+  const decoded = decodeJWT(accessToken);
+  return decoded?.userId as string || null;
+}
+
+export function getEmailFromToken(token?: string | null): string | null {
+  const accessToken = token || getAccessToken();
+  if (!accessToken) return null;
+
+  const decoded = decodeJWT(accessToken);
+  return decoded?.email as string || null;
+}

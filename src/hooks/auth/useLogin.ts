@@ -3,8 +3,9 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { AuthAPI } from '@/lib/api/user';
 import type { LoginPayload } from './types';
-import { setAccessToken, setRefreshToken } from '@/utils/auth/token';
+import { setAccessToken, setRefreshToken, getRoleFromToken } from '@/utils/auth/token';
 import { useAuthContext } from '@/contexts/AuthContext';
+import { ROUTES } from '@/constants/routes';
 
 export function useLogin() {
   const router = useRouter();
@@ -23,10 +24,19 @@ export function useLogin() {
 
       // Set basic user data in context first
       if (d) {
+        // Get role from response (primary method)
+        let userRole = d.role;
+
+        // Fallback: get role from JWT token (secondary method)
+        if (!userRole && at) {
+          const tokenRole = getRoleFromToken(at);
+          userRole = tokenRole as 'PATIENT' | 'DOCTOR' | 'ADMIN';
+        }
+
         const basicUserData = {
           userId: d.userId,
           email: d.email,
-          role: d.role,
+          role: userRole || 'PATIENT', // default fallback
         };
         setUser(basicUserData);
 
@@ -76,8 +86,12 @@ export function useLogin() {
           // Continue with basic user data if getMe fails
         }
 
-        // Redirect to patient dashboard after successful login
-        router.push('/patient/dashboard');
+        // Role-based redirect
+        const redirectPath = userRole === 'DOCTOR'
+          ? ROUTES.DOCTOR_DASHBOARD
+          : ROUTES.PATIENT_DASHBOARD;
+
+        router.push(redirectPath);
       }
     },
   });
