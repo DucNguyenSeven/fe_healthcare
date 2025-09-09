@@ -3,3 +3,4 @@ export * from './useRegister';
 export * from './useVerifyAccount';
 export * from './useLogin';
 export * from './useLogout';
+export * from './useGetMe';

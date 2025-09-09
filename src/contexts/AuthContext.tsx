@@ -12,6 +12,19 @@ interface User {
   userId: string;
   email: string;
   role: string;
+  name?: string | null;
+  phone?: string | null;
+  avatar?: string | null;
+  gender?: string | null;
+  dateOfBirth?: string | null;
+  address?: string | null;
+  height?: number;
+  weight?: number;
+  bloodType?: string | null;
+  bmi?: number;
+  status?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 interface AuthContextType {

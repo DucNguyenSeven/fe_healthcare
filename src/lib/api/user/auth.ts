@@ -1,5 +1,5 @@
 import api from '../client';
-import type { ApiEnvelope, RegisterResponse, LoginResponse } from '@/types/auth';
+import type { ApiEnvelope, RegisterResponse, LoginResponse, GetMeResponse } from '@/types/auth';
 import type { RegisterPayload } from '@/hooks/auth/types';
 
 export const AuthAPI = {
@@ -13,6 +13,9 @@ export const AuthAPI = {
   },
   login(payload: { email: string; password: string }) {
     return api.post<ApiEnvelope<LoginResponse>>('/api/v1/auth/login', payload).then(r => r.data);
+  },
+  getMe() {
+    return api.get<ApiEnvelope<GetMeResponse>>('/api/v1/auth/getMe').then(r => r.data);
   },
   // Legacy methods for backward compatibility
   sendOtpRegister(email: string) {

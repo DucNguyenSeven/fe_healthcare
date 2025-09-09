@@ -10,8 +10,10 @@ export interface PatientFormData {
   phone: string;
   email: string;
   address: string;
-  emergencyContact: string;
-  emergencyPhone: string;
+  height: string;
+  weight: string;
+  bmi: string;
+  bloodType: string;
 }
 
 export interface UsePatientInfoFormProps {
@@ -77,10 +79,53 @@ export function usePatientInfoForm({
 // Hook to check if user needs to complete profile
 export function useProfileCompletion(user: any) {
   const isProfileIncomplete = !user?.name || !user?.phone || !user?.email;
-  const shouldShowFirstTimeForm = isProfileIncomplete;
+  
+  // Check if user has previously skipped the form with enhanced validation
+  const hasSkippedForm = typeof window !== 'undefined' 
+    ? (() => {
+        try {
+          const skipData = localStorage.getItem('patient_info_form_skipped');
+          if (!skipData) return false;
+          
+          // Parse skip data
+          const parsed = JSON.parse(skipData);
+          
+          // Check if skip data is valid and recent (within 30 days)
+          if (parsed.skipped && parsed.timestamp) {
+            const skipDate = new Date(parsed.timestamp);
+            const thirtyDaysAgo = new Date();
+            thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+            
+            // If skip is older than 30 days, consider it expired
+            if (skipDate < thirtyDaysAgo) {
+              localStorage.removeItem('patient_info_form_skipped');
+              return false;
+            }
+            
+            // Check if skip is for current user - sử dụng userId từ AuthContext
+            if (parsed.userId && user?.userId && parsed.userId !== user.userId) {
+              return false;
+            }
+            
+            return true;
+          }
+          
+          return false;
+        } catch (error) {
+          console.error('Error parsing skip data:', error);
+          // Clear invalid data
+          localStorage.removeItem('patient_info_form_skipped');
+          return false;
+        }
+      })()
+    : false;
+  
+  // Only show form if profile is incomplete AND user hasn't skipped it before
+  const shouldShowFirstTimeForm = isProfileIncomplete && !hasSkippedForm;
 
   return {
     isProfileIncomplete,
     shouldShowFirstTimeForm,
+    hasSkippedForm,
   };
 }

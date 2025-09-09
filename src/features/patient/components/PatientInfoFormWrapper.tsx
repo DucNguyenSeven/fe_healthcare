@@ -4,14 +4,16 @@ import React, { useEffect } from "react";
 import { PatientInfoUpdateForm } from "./PatientInfoUpdateForm";
 import { usePatientInfoForm, useProfileCompletion, PatientFormData } from "../hooks/usePatientInfoForm";
 import { usePatientContext } from "../context/PatientContext";
+import { useAuthContext } from "../../../contexts/AuthContext";
 
 interface PatientInfoFormWrapperProps {
   children: React.ReactNode;
 }
 
 export function PatientInfoFormWrapper({ children }: PatientInfoFormWrapperProps) {
-  const { user } = usePatientContext();
-  const { shouldShowFirstTimeForm } = useProfileCompletion(user);
+  const { user: patientUser } = usePatientContext();
+  const { user: authUser, isAuthenticated } = useAuthContext();
+  const { shouldShowFirstTimeForm } = useProfileCompletion(authUser);
   
   const {
     isFormOpen,
@@ -30,6 +32,24 @@ export function PatientInfoFormWrapper({ children }: PatientInfoFormWrapperProps
       // Here you would show an error notification
     },
   });
+
+  const handleSkip = async () => {
+    try {
+      // Log skip event for analytics
+      console.log('Patient info form skip requested by user:', authUser?.userId);
+      
+      // Close form
+      closeForm();
+      
+      // Optional: Send skip event to analytics/tracking service
+      // await trackEvent('patient_info_form_skipped', { userId: authUser?.userId });
+      
+    } catch (error) {
+      console.error('Error handling skip:', error);
+      // Still close form even if logging fails
+      closeForm();
+    }
+  };
 
   // Auto-open form for first-time users
   useEffect(() => {
@@ -50,9 +70,16 @@ export function PatientInfoFormWrapper({ children }: PatientInfoFormWrapperProps
       {/* Form Modal */}
       {isFormOpen && (
         <PatientInfoUpdateForm
-          user={user}
+          user={authUser ? {
+            id: authUser.userId,
+            name: authUser.name || '',
+            email: authUser.email,
+            phone: authUser.phone || '',
+            avatar: authUser.avatar || ''
+          } : undefined}
           onSubmit={submitForm}
           onClose={shouldShowFirstTimeForm ? undefined : closeForm}
+          onSkip={shouldShowFirstTimeForm ? handleSkip : undefined}
           isFirstTime={shouldShowFirstTimeForm}
         />
       )}

@@ -97,3 +97,71 @@ export const capitalizeFirst = (text: string): string => {
 export const formatName = (firstName: string, lastName: string): string => {
   return `${firstName} ${lastName}`.trim();
 };
+
+// BMI calculation and formatting
+export const calculateBMI = (height: number, weight: number): number => {
+  if (height <= 0 || weight <= 0) return 0;
+  // Convert height from cm to meters
+  const heightInMeters = height / 100;
+  return Number((weight / (heightInMeters * heightInMeters)).toFixed(1));
+};
+
+export const getBMICategory = (bmi: number): { category: string; color: string; description: string } => {
+  if (bmi < 18.5) {
+    return {
+      category: "Thiếu cân",
+      color: "text-blue-600",
+      description: "BMI dưới 18.5"
+    };
+  } else if (bmi >= 18.5 && bmi < 25) {
+    return {
+      category: "Bình thường",
+      color: "text-green-600",
+      description: "BMI 18.5 - 24.9"
+    };
+  } else if (bmi >= 25 && bmi < 30) {
+    return {
+      category: "Thừa cân",
+      color: "text-yellow-600",
+      description: "BMI 25.0 - 29.9"
+    };
+  } else {
+    return {
+      category: "Béo phì",
+      color: "text-red-600",
+      description: "BMI từ 30.0 trở lên"
+    };
+  }
+};
+
+// Authentication utilities
+export const isAuthenticated = (): boolean => {
+  if (typeof window === 'undefined') return false;
+  
+  try {
+    const token = localStorage.getItem('auth_token');
+    if (!token) return false;
+    
+    // Basic token validation - in real app, you might want to decode and check expiry
+    return token.length > 0;
+  } catch (error) {
+    console.error('Error checking authentication:', error);
+    return false;
+  }
+};
+
+export const getUserId = (): string | null => {
+  if (typeof window === 'undefined') return null;
+  
+  try {
+    const userData = localStorage.getItem('user_data');
+    if (userData) {
+      const parsed = JSON.parse(userData);
+      return parsed.id || null;
+    }
+    return null;
+  } catch (error) {
+    console.error('Error getting user ID:', error);
+    return null;
+  }
+};

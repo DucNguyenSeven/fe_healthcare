@@ -4,39 +4,28 @@ import React, { useState, useRef } from "react";
 import {
   User as UserIcon,
   Camera,
-  Phone,
-  Mail,
-  MapPin,
   Save,
   AlertCircle,
 } from "lucide-react";
 import { User } from "../types";
 import { FormInput, FormTextArea, FormSelect } from "../../../components/ui/FormInput";
+import { PatientFormData } from "../hooks/usePatientInfoForm";
+import { calculateBMI, getBMICategory, isAuthenticated, getUserId } from "../../../utils/formatting";
 
 interface PatientInfoUpdateFormProps {
   user?: Partial<User>;
   onSubmit: (data: PatientFormData) => void;
   onClose?: () => void;
+  onSkip?: () => void;
   isFirstTime?: boolean;
 }
 
-interface PatientFormData {
-  avatar?: File | string;
-  name: string;
-  gender: "male" | "female" | "other";
-  dateOfBirth: string;
-  phone: string;
-  email: string;
-  address: string;
-  height: string;
-  weight: string;
-  bloodType: string;
-}
 
 export function PatientInfoUpdateForm({
   user = {},
   onSubmit,
   onClose,
+  onSkip,
   isFirstTime = false,
 }: PatientInfoUpdateFormProps) {
   const [formData, setFormData] = useState<PatientFormData>({
@@ -49,6 +38,7 @@ export function PatientInfoUpdateForm({
     address: "",
     height: "",
     weight: "",
+    bmi: "",
     bloodType: "",
   });
 
@@ -133,8 +123,30 @@ export function PatientInfoUpdateForm({
     }
   };
 
+  // Function to calculate BMI automatically
+  const calculateAndUpdateBMI = (height: string, weight: string) => {
+    const heightNum = parseFloat(height);
+    const weightNum = parseFloat(weight);
+    
+    if (heightNum > 0 && weightNum > 0) {
+      const bmi = calculateBMI(heightNum, weightNum);
+      return bmi.toString();
+    }
+    return "";
+  };
+
   const handleInputChange = (field: keyof PatientFormData, value: string) => {
-    setFormData({ ...formData, [field]: value });
+    const newFormData = { ...formData, [field]: value };
+    
+    // Auto-calculate BMI when height or weight changes
+    if (field === "height" || field === "weight") {
+      const height = field === "height" ? value : formData.height;
+      const weight = field === "weight" ? value : formData.weight;
+      const calculatedBMI = calculateAndUpdateBMI(height, weight);
+      newFormData.bmi = calculatedBMI;
+    }
+    
+    setFormData(newFormData);
     if (errors[field]) {
       setErrors({ ...errors, [field]: undefined });
     }
@@ -157,6 +169,54 @@ export function PatientInfoUpdateForm({
     }
   };
 
+  const handleSkip = async () => {
+    try {
+      // Xác thực người dùng trước khi skip
+      if (isFirstTime) {
+        // Kiểm tra xác thực người dùng - sử dụng user context thay vì token
+        if (!user || !user.id) {
+          console.warn('User not authenticated, cannot skip form');
+          // Hiển thị thông báo cho người dùng
+          alert('Vui lòng đăng nhập để tiếp tục sử dụng ứng dụng');
+          return;
+        }
+
+        // Lấy user ID từ context
+        const userId = user.id || 'unknown';
+        
+        // Lưu trạng thái đã bỏ qua form với timestamp và metadata
+        const skipData = {
+          skipped: true,
+          timestamp: new Date().toISOString(),
+          userId: userId,
+          userAgent: navigator.userAgent,
+          sessionId: Date.now().toString()
+        };
+        localStorage.setItem('patient_info_form_skipped', JSON.stringify(skipData));
+        
+        // Log skip event for analytics/audit
+        console.log('Patient info form skipped:', skipData);
+        
+        // Có thể gửi event đến analytics service
+        // await sendAnalyticsEvent('form_skipped', skipData);
+        
+        onSkip?.();
+      } else {
+        // Đối với form cập nhật thông thường, chỉ cần đóng
+        onClose?.();
+      }
+    } catch (error) {
+      console.error('Error handling skip:', error);
+      // Fallback: vẫn cho phép đóng form nhưng log lỗi
+      console.warn('Fallback: allowing form close despite error');
+      if (isFirstTime) {
+        onSkip?.();
+      } else {
+        onClose?.();
+      }
+    }
+  };
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[95vh] flex flex-col overflow-hidden">
@@ -175,7 +235,7 @@ export function PatientInfoUpdateForm({
               </p>
             </div>
             <button
-              onClick={onClose}
+              onClick={handleSkip}
               className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
             >
               Cập nhật sau
@@ -248,7 +308,6 @@ export function PatientInfoUpdateForm({
                       onChange={(value) => handleInputChange("name", value)}
                       error={errors.name}
                       required
-                      icon={UserIcon}
                     />
 
                     <FormSelect
@@ -289,7 +348,6 @@ export function PatientInfoUpdateForm({
                       onChange={(value) => handleInputChange("phone", value)}
                       error={errors.phone}
                       required
-                      icon={Phone}
                     />
 
                     <FormInput
@@ -300,7 +358,6 @@ export function PatientInfoUpdateForm({
                       onChange={(value) => handleInputChange("email", value)}
                       error={errors.email}
                       required
-                      icon={Mail}
                     />
                   </div>
                 </div>
@@ -321,7 +378,6 @@ export function PatientInfoUpdateForm({
                     rows={2}
                     error={errors.address}
                     required
-                    icon={MapPin}
                   />
                 </div>
 
@@ -354,6 +410,35 @@ export function PatientInfoUpdateForm({
                       error={errors.weight}
                       required
                     />
+
+                    {/* BMI Field - Read-only with auto-calculation */}
+                    <div className="space-y-2">
+                      <label className="block text-sm font-medium text-gray-700">
+                        Chỉ số BMI
+                      </label>
+                      <div className="relative">
+                        <input
+                          type="text"
+                          value={formData.bmi ? `${formData.bmi} kg/m²` : ""}
+                          readOnly
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-600 cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          placeholder="Tự động tính khi nhập chiều cao và cân nặng"
+                        />
+                        {formData.bmi && (
+                          <div className="mt-1">
+                            {(() => {
+                              const bmiNum = parseFloat(formData.bmi);
+                              const bmiInfo = getBMICategory(bmiNum);
+                              return (
+                                <span className={`text-xs font-medium ${bmiInfo.color}`}>
+                                  {bmiInfo.category} ({bmiInfo.description})
+                                </span>
+                              );
+                            })()}
+                          </div>
+                        )}
+                      </div>
+                    </div>
 
                     <FormSelect
                       label="Nhóm máu"

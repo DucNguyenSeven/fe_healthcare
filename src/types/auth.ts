@@ -15,6 +15,29 @@ export type LoginResponse = {
   role: 'ADMIN' | 'DOCTOR' | 'PATIENT';
 };
 
+// GetMe response - thông tin user đầy đủ
+export type GetMeResponse = {
+  createdAt: string;
+  updatedAt: string;
+  userId: string;
+  password: string; // hashed password
+  email: string;
+  fullName: string | null;
+  gender: string | null;
+  dob: string | null; // date of birth
+  phone: string | null;
+  address: string | null;
+  avatarUrl: string | null;
+  role: 'ADMIN' | 'DOCTOR' | 'PATIENT';
+  status: 'ACTIVE' | 'INACTIVE';
+  medicalHistories: any[];
+  height: number;
+  weight: number;
+  bloodType: string | null;
+  bmi: number;
+  insurance: string | null;
+};
+
 export type ApiEnvelope<T> = {
   statusCode: number;
   message: string;
