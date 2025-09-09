@@ -10,10 +10,10 @@ import { Alert } from '@/features/patient';
 
 export const mockUser: User = {
   id: '1',
-  name: 'Nguyễn Văn An',
-  email: 'nguyenvanan@email.com',
-  phone: '0123456789',
-  avatar: '/api/placeholder/40/40',
+  name: '', // User mới chưa có tên
+  email: 'nguyenvanan@email.com', // Chỉ có email từ lúc đăng ký
+  phone: '', // Chưa có số điện thoại
+  avatar: '', // Chưa có avatar
   ckdStage: 3,
   lastEgfr: 45,
   lastCreatinine: 1.8,

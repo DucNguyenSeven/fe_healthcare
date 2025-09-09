@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { DashboardLayout } from "@/features/patient";
+import { DashboardLayout, PatientInfoFormWrapper } from "@/features/patient";
 import { PatientProvider } from "@/features/patient/context/PatientContext";
 import AuthGuard from "@/components/common/AuthGuard";
 
@@ -13,7 +13,9 @@ export default function PatientLayout({ children }: PatientLayoutProps) {
   return (
     <AuthGuard>
       <PatientProvider>
-        <DashboardLayout>{children}</DashboardLayout>
+        <PatientInfoFormWrapper>
+          <DashboardLayout>{children}</DashboardLayout>
+        </PatientInfoFormWrapper>
       </PatientProvider>
     </AuthGuard>
   );

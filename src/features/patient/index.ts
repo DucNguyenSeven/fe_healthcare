@@ -20,3 +20,10 @@ export { TodaySchedule } from './components/TodaySchedule';
 export { MedicationReminders } from './components/MedicationReminders';
 export { RecentConsultations } from './components/RecentConsultations';
 export { SuggestedArticles } from './components/SuggestedArticles';
+
+// Patient Info Form Components
+export { PatientInfoUpdateForm } from './components/PatientInfoUpdateForm';
+export { PatientInfoFormWrapper } from './components/PatientInfoFormWrapper';
+
+// Hooks
+export { usePatientInfoForm, useProfileCompletion } from './hooks/usePatientInfoForm';
