@@ -183,7 +183,7 @@ export const DoctorProfilePage = () => {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-6">
               <div className="relative">
-                <div className="w-24 h-24 rounded-full bg-white/20 flex items-center justify-center overflow-hidden">
+                <div className="w-20 h-20 bg-gradient-to-br from-blue-100 to-blue-200 rounded-full flex items-center justify-center overflow-hidden border-4 border-white shadow-lg">
                   {avatarPreview || avatar || userData?.avatarUrl ? (
                     <img
                       src={avatarPreview || avatar || (userData?.avatarUrl as string) || ""}
@@ -191,10 +191,10 @@ export const DoctorProfilePage = () => {
                       className="w-full h-full object-cover"
                     />
                   ) : (
-                    <User size={40} className="text-white" />
+                    <User size={32} className="text-blue-500" />
                   )}
                   {isUploading && (
-                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-full">
                       <div className="text-white text-xs font-medium">{uploadProgress}%</div>
                     </div>
                   )}
@@ -202,12 +202,12 @@ export const DoctorProfilePage = () => {
                 <button
                   onClick={() => !isUploading && fileInputRef.current?.click()}
                   disabled={isUploading}
-                  className={`absolute -bottom-2 -right-2 w-8 h-8 rounded-full flex items-center justify-center transition-all shadow-lg ${
-                    isUploading ? "bg-gray-400 cursor-not-allowed" : "bg-white"
+                  className={`absolute -bottom-1 -right-1 w-7 h-7 rounded-full flex items-center justify-center transition-all duration-200 shadow-lg hover:scale-110 ${
+                    isUploading ? "bg-gray-400 cursor-not-allowed" : "bg-blue-500 hover:bg-blue-600"
                   }`}
                   title={isUploading ? "Đang upload..." : "Thay đổi ảnh đại diện"}
                 >
-                  <Camera size={16} className="text-[#1E75FF]" />
+                  <Camera className="w-4 h-4 text-white" />
                 </button>
                 <input
                   ref={fileInputRef}

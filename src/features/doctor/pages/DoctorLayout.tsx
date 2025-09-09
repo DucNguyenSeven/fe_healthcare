@@ -16,6 +16,7 @@ export function DoctorLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const { user } = useAuthContext();
+  const hideTopBarActions = pathname === ROUTES.DOCTOR_PROFILE;
   const currentLabel =
     navigationItems.find((item) => item.path === pathname)?.label ||
     "Tổng quan";
@@ -129,20 +130,34 @@ export function DoctorLayout({ children }: { children: React.ReactNode }) {
               </div>
             </div>
             <div className="flex items-center space-x-4">
-              <button
-                className="relative p-2 rounded-lg hover:bg-gray-100 transition-colors"
-                aria-label="Thông báo"
-              >
-                <Bell className="w-5 h-5 text-gray-600" />
-              </button>
-              <button className="flex items-center space-x-3 p-2 rounded-lg hover:bg-gray-100 transition-colors">
-                <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
-                  <User className="w-5 h-5 text-white" />
+              {hideTopBarActions ? (
+                <div className="flex items-center space-x-4 opacity-0 pointer-events-none select-none">
+                  <button className="relative p-2 rounded-lg" aria-label="Thông báo">
+                    <Bell className="w-5 h-5" />
+                  </button>
+                  <button className="flex items-center space-x-3 p-2 rounded-lg">
+                    <div className="w-8 h-8 rounded-full" />
+                    <span className="hidden md:block text-sm font-medium">{user?.email ? user.email.split("@")[0] : "Người dùng"}</span>
+                  </button>
                 </div>
-                <span className="hidden md:block text-sm font-medium text-gray-700">
-                  {user?.email ? user.email.split("@")[0] : "Người dùng"}
-                </span>
-              </button>
+              ) : (
+                <>
+                  <button
+                    className="relative p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                    aria-label="Thông báo"
+                  >
+                    <Bell className="w-5 h-5 text-gray-600" />
+                  </button>
+                  <button className="flex items-center space-x-3 p-2 rounded-lg hover:bg-gray-100 transition-colors">
+                    <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
+                      <User className="w-5 h-5 text-white" />
+                    </div>
+                    <span className="hidden md:block text-sm font-medium text-gray-700">
+                      {user?.email ? user.email.split("@")[0] : "Người dùng"}
+                    </span>
+                  </button>
+                </>
+              )}
             </div>
           </div>
         </header>
