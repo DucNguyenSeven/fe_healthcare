@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { useGetMe } from "@/hooks/auth/useGetMe";
 import {
   User as UserIcon,
@@ -22,7 +22,7 @@ import {
   Check,
 } from "lucide-react";
 import { User } from "../types";
-import { useUpdateUser } from "../../../hooks/auth";
+import { useUpdateUser, useUpdateAvatar } from "../../../hooks/auth";
 import { FormInput, FormTextArea, FormSelect } from "../../../components/ui/FormInput";
 import { Alert, Snackbar } from "@mui/material";
 interface ProfileRecordsPageProps {
@@ -52,6 +52,7 @@ interface Allergy {
 export function ProfileRecordsPage({ user }: ProfileRecordsPageProps) {
   const { data: userData, isLoading, refetch } = useGetMe();
   const { updateUser, isLoading: isUpdating, error: updateError } = useUpdateUser();
+  const { updateAvatar, isLoading: isUploading, error: uploadError, progress: uploadProgress } = useUpdateAvatar();
   const [activeTab, setActiveTab] = useState<"personal" | "medical" | "files">(
     "personal"
   );
@@ -68,6 +69,8 @@ export function ProfileRecordsPage({ user }: ProfileRecordsPageProps) {
   const [isSelectionMode, setIsSelectionMode] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<string[]>([]);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState<string>("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Mock data
   const [medicalHistory, setMedicalHistory] = useState<MedicalHistory[]>([
@@ -297,6 +300,51 @@ export function ProfileRecordsPage({ user }: ProfileRecordsPageProps) {
       address: ""
     });
   };
+
+  const handleAvatarChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      // Clear previous errors
+      if (formErrors.avatarUrl) {
+            const newErrors = { ...formErrors };
+            delete newErrors.avatarUrl;
+            setFormErrors(newErrors);
+      }
+
+      // Show preview immediately for better UX
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setAvatarPreview(e.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+
+      // Upload avatar to server
+      if (userData?.userId) {
+        try {
+          const avatarUrl = await updateAvatar(userData.userId, file);
+          if (avatarUrl) {
+            // Update avatar preview with the new URL
+            setAvatarPreview(avatarUrl);
+            setSuccessMessage('Cập nhật ảnh đại diện thành công!');
+            // Refresh user data to get updated avatar
+            refetch();
+          } else {
+            // If upload failed, revert preview to original
+            setAvatarPreview(userData.avatarUrl || "");
+            setFormErrors({ ...formErrors, avatarUrl: uploadError || "Không thể cập nhật ảnh đại diện" });
+          }
+        } catch (error) {
+          console.error('Avatar upload error:', error);
+          setAvatarPreview(userData.avatarUrl || "");
+          setFormErrors({ ...formErrors, avatarUrl: "Có lỗi xảy ra khi upload ảnh" });
+        }
+      } else {
+        // If no user ID, just update form data with file for later processing
+        setAvatarPreview(URL.createObjectURL(file));
+      }
+    }
+  };
+
   const handleSelectFile = (fileId: string) => {
     setSelectedFiles((prev) =>
       prev.includes(fileId)
@@ -352,17 +400,55 @@ export function ProfileRecordsPage({ user }: ProfileRecordsPageProps) {
       <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-2xl p-6 text-white">
         <div className="flex items-center space-x-4 mb-6">
           <div className="relative">
-            <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center">
-              <UserIcon className="w-8 h-8 text-blue-500" />
+            <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center overflow-hidden border-4 border-white shadow-lg relative">
+              {avatarPreview || userData?.avatarUrl ? (
+                <img
+                  src={avatarPreview || userData?.avatarUrl || ""}
+                  alt="Avatar"
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <UserIcon className="w-8 h-8 text-blue-500" />
+              )}
+
+              {/* Upload Progress Overlay */}
+              {isUploading && (
+                <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center rounded-full">
+                  <div className="text-white text-xs font-medium">
+                    {uploadProgress}%
+                  </div>
+                </div>
+              )}
+
+              {/* Loading Spinner */}
+              {isUploading && (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                </div>
+              )}
             </div>
             <button
-              className="absolute -bottom-1 -right-1 w-6 h-6 bg-blue-500 hover:bg-blue-600 rounded-full flex items-center justify-center transition-colors cursor-pointer shadow-lg"
-              style={{
-                background: "oklch(50.94% 0 196.37deg)",
-              }}
+              onClick={() => !isUploading && fileInputRef.current?.click()}
+              disabled={isUploading}
+              className={`absolute -bottom-1 -right-1 w-6 h-6 rounded-full flex items-center justify-center transition-all duration-200 shadow-lg hover:scale-110 ${
+                isUploading
+                  ? 'bg-gray-400 cursor-not-allowed'
+                  : 'bg-blue-500 hover:bg-blue-600'
+              }`}
+              title={isUploading ? "Đang upload..." : "Thay đổi ảnh đại diện"}
             >
               <Camera className="w-3 h-3 text-white" />
             </button>
+
+            {/* Hidden file input */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleAvatarChange}
+              disabled={isUploading}
+              className="hidden"
+            />
           </div>
           <div className="flex-1">
             <h3 className="text-xl font-bold">
@@ -422,6 +508,18 @@ export function ProfileRecordsPage({ user }: ProfileRecordsPageProps) {
           </div>
         </div>
       </div>
+
+      {/* Avatar Error Message */}
+      {(formErrors.avatarUrl || uploadError) && (
+        <div className="mt-3 text-center">
+          <div className="inline-flex items-center space-x-2 bg-red-50 text-red-700 px-4 py-2 rounded-lg border border-red-200">
+            <AlertTriangle className="w-4 h-4" />
+            <span className="text-sm font-medium">
+              {typeof formErrors.avatarUrl === 'string' ? formErrors.avatarUrl : uploadError}
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* Personal Information */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">

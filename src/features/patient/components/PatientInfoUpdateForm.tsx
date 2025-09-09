@@ -183,44 +183,44 @@ export function PatientInfoUpdateForm({
 
     setIsLoading(true);
     try {
-      // Chuẩn bị dữ liệu cho API update user
+      const userId = user.id || '';
+
+      // Kiểm tra dữ liệu bắt buộc
+      if (!userId) {
+        alert('Không tìm thấy ID người dùng. Vui lòng đăng nhập lại.');
+        return;
+      }
+
+      // Chuẩn bị dữ liệu cho API update user (không bao gồm avatar)
       const updateData = {
-        userId: user.id || '',
+        userId: userId,
         fullName: formData.name,
         gender: formData.gender.toUpperCase(), // Chuyển thành uppercase như backend yêu cầu
         dob: formData.dateOfBirth ? new Date(formData.dateOfBirth).toISOString().split('T')[0] : undefined,
         phone: formData.phone,
         address: formData.address,
         role: 'PATIENT', // Mặc định role là PATIENT
-        // Chỉ gửi avatarUrl nếu đã upload thành công (không phải File object)
-        ...(typeof formData.avatar === 'string' && formData.avatar && { avatarUrl: formData.avatar })
       };
 
-      // Kiểm tra dữ liệu bắt buộc
-      if (!updateData.userId) {
-        alert('Không tìm thấy ID người dùng. Vui lòng đăng nhập lại.');
-        return;
-      }
-
-
-      // Gọi API update user
+      // Note: Avatar đã được upload riêng biệt trong handleAvatarChange
+      // Khi user chọn file, nó sẽ upload ngay lập tức và cập nhật formData.avatar với URL
+      // Ở đây chúng ta chỉ cần update thông tin user khác
+      console.log('Updating user info...');
       const result = await updateUser(updateData);
-      
+
       if (result) {
         // Nếu update thành công, hiển thị thông báo và đóng form
         setSuccessMessage('Cập nhật thông tin thành công!');
-        
+
         // Gọi onSubmit với formData
         onSubmit(formData);
-        
-        // Đóng form sau 2 giây
-        setTimeout(() => {
-          if (isFirstTime) {
-            onSkip?.();
-          } else {
-            onClose?.();
-          }
-        }, 2000);
+
+        // Đóng form ngay lập tức (thay vì chờ 2 giây)
+        if (isFirstTime) {
+          onSkip?.();
+        } else {
+          onClose?.();
+        }
       } else {
         // Nếu update thất bại, hiển thị lỗi
         console.error('Update user failed:', updateError);
