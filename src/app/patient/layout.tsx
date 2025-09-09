@@ -3,6 +3,7 @@
 import React from "react";
 import { DashboardLayout } from "@/features/patient";
 import { PatientProvider } from "@/features/patient/context/PatientContext";
+import AuthGuard from "@/components/common/AuthGuard";
 
 interface PatientLayoutProps {
   children: React.ReactNode;
@@ -10,8 +11,10 @@ interface PatientLayoutProps {
 
 export default function PatientLayout({ children }: PatientLayoutProps) {
   return (
-    <PatientProvider>
-      <DashboardLayout>{children}</DashboardLayout>
-    </PatientProvider>
+    <AuthGuard>
+      <PatientProvider>
+        <DashboardLayout>{children}</DashboardLayout>
+      </PatientProvider>
+    </AuthGuard>
   );
 }

@@ -1,7 +1,8 @@
 import React from 'react';
 import { Box } from '@mui/material';
 import MainLayout from '../../../layouts/MainLayout';
-import { 
+import { MessageNotifier } from '../../../components/common';
+import {
   HeroSection,
   FeatureSection,
   DoctorSection,
@@ -21,6 +22,7 @@ const LandingPage: React.FC = () => {
         <FAQSection id="faq" />
         <FooterSection />
       </Box>
+      <MessageNotifier messageKey="logoutSuccessMessage" />
     </MainLayout>
   );
 };

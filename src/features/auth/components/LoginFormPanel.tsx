@@ -25,13 +25,19 @@ import {
   VisibilityOff,
 } from "@mui/icons-material";
 import { useRouter } from "next/navigation";
-import { LoginFormData } from "../../../types";
+// Login form data interface
 import { ROUTES } from "@/constants/routes";
+
+interface LoginFormData {
+  email: string;
+  password: string;
+  rememberMe: boolean;
+}
 
 interface LoginFormPanelProps {
   formData?: LoginFormData;
   onInputChange?: (
-    field: keyof LoginFormData
+    field: "email" | "password" | "rememberMe"
   ) => (event: React.ChangeEvent<HTMLInputElement>) => void;
   onSubmit?: (event: React.SyntheticEvent) => void;
   onSocialLogin?: (provider: string) => void;

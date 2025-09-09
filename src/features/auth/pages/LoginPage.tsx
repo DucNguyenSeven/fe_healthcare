@@ -3,8 +3,7 @@
 import React, { useState, useEffect, Suspense } from "react";
 import { Box, useTheme, useMediaQuery, Alert, Snackbar } from "@mui/material";
 import { LoginFormPanel, LoginHeroPanel } from "../components";
-import { LoginFormData } from "../../../types";
-import { useAuth } from "../../../hooks";
+import { useLogin } from "../../../hooks/auth";
 import { useSearchParams } from "next/navigation";
 
 // Component that handles search params and must be wrapped in Suspense
@@ -28,7 +27,7 @@ const SuccessMessageHandler: React.FC<{
 };
 
 const LoginPage: React.FC = () => {
-  const [formData, setFormData] = useState<LoginFormData>({
+  const [formData, setFormData] = useState({
     email: "",
     password: "",
     rememberMe: false,
@@ -37,15 +36,14 @@ const LoginPage: React.FC = () => {
 
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
-  const { login, isLoading, error, clearError } = useAuth();
+  const loginMutation = useLogin();
 
   const handleInputChange =
-    (field: keyof LoginFormData) =>
+    (field: keyof typeof formData) =>
     (event: React.ChangeEvent<HTMLInputElement>) => {
       setFormData({
         ...formData,
-        [field]:
-          field === "rememberMe" ? event.target.checked : event.target.value,
+        [field]: field === "rememberMe" ? event.target.checked : event.target.value,
       });
     };
 
@@ -57,10 +55,14 @@ const LoginPage: React.FC = () => {
       return;
     }
 
-    await login({
-      email: formData.email,
-      password: formData.password,
-    });
+    try {
+      await loginMutation.mutateAsync({
+        email: formData.email,
+        password: formData.password,
+      });
+    } catch (error) {
+      console.error("Login failed:", error);
+    }
   };
 
   const handleSocialLogin = (provider: string): void => {
@@ -102,7 +104,7 @@ const LoginPage: React.FC = () => {
           onInputChange={handleInputChange}
           onSubmit={handleSubmit}
           onSocialLogin={handleSocialLogin}
-          isLoading={isLoading}
+          isLoading={loginMutation.isPending}
         />
       </Box>
 
@@ -121,13 +123,13 @@ const LoginPage: React.FC = () => {
 
       {/* Error Snackbar */}
       <Snackbar
-        open={!!error}
+        open={!!loginMutation.error}
         autoHideDuration={6000}
-        onClose={clearError}
+        onClose={() => loginMutation.reset()}
         anchorOrigin={{ vertical: "top", horizontal: "center" }}
       >
-        <Alert onClose={clearError} severity="error" sx={{ width: "100%" }}>
-          {error}
+        <Alert onClose={() => loginMutation.reset()} severity="error" sx={{ width: "100%" }}>
+          {(loginMutation.error as Error)?.message || "Đã xảy ra lỗi"}
         </Alert>
       </Snackbar>
 

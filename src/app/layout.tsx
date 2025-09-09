@@ -1,6 +1,7 @@
 import React from "react";
 import ThemeRegistry from "../theme/ThemeRegistry";
 import { AuthProvider } from "../contexts/AuthContext";
+import { QueryProvider } from "../components/providers/QueryProvider";
 import "./globals.css";
 import "./output.css";
 
@@ -26,7 +27,9 @@ export default function RootLayout({
     <html lang="vi">
       <body>
         <ThemeRegistry>
-          <AuthProvider>{children}</AuthProvider>
+          <QueryProvider>
+            <AuthProvider>{children}</AuthProvider>
+          </QueryProvider>
         </ThemeRegistry>
       </body>
     </html>

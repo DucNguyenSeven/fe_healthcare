@@ -1,45 +1,23 @@
-// Authentication related types
-export interface LoginFormData {
+// Register trả về snake_case trong data
+export type RegisterResponse = {
+  access_token: string;
+  refresh_token: string;
+  token_type?: string; // "Bearer"
+  expires_in?: number; // seconds
+};
+
+// Login trả về camelCase trong data
+export type LoginResponse = {
+  accessToken: string;
+  refreshToken: string;
   email: string;
-  password: string;
-  rememberMe: boolean;
-}
-
-export interface RegisterFormData {
-  emailOrPhone: string;
-  password: string;
-  confirmPassword: string;
-}
-
-export interface ForgotFormData {
-  email: string;
-}
-
-export interface ResetPasswordFormData {
-  password: string;
-  confirmPassword: string;
-}
-
-export interface User {
   userId: string;
-  email: string;
-  role: 'patient' | 'doctor' | 'admin';
-  firstName?: string;
-  lastName?: string;
-  avatar?: string;
-  createdAt: string;
-  updatedAt: string;
-}
+  role: 'ADMIN' | 'DOCTOR' | 'PATIENT';
+};
 
-export interface AuthResponse {
+export type ApiEnvelope<T> = {
+  statusCode: number;
+  message: string;
   success: boolean;
-  data?: {
-    user: User;
-    accessToken: string;
-    refreshToken: string;
-    userId: string;
-    email: string;
-    role: string;
-  };
-  message?: string;
-}
+  data: T;
+};

@@ -1,6 +1,7 @@
 "use client";
 import React from "react";
 import { DoctorDashboardPage } from "@/features/doctor/DoctorDashboardPage";
+import { MessageNotifier } from "@/components/common";
 import type {
   User,
   Appointment,
@@ -53,5 +54,10 @@ export default function Page() {
     },
   ];
   const onNavigate = (_: NavigationItem) => {};
-  return <DoctorDashboardPage onNavigate={() => {}} />;
+  return (
+    <>
+      <DoctorDashboardPage onNavigate={() => {}} />
+      <MessageNotifier messageKey="loginSuccessMessage" />
+    </>
+  );
 }

@@ -3,7 +3,9 @@
 import React, { useState } from "react";
 import { usePathname } from "next/navigation";
 import { usePatientNavigation } from "@/hooks/navigation";
+import { useLogout } from "@/hooks/auth/useLogout";
 import { navigationItems } from "@/features/patient/navigation";
+import { usePatientContext } from "../context/PatientContext";
 import {
   Activity,
   Settings,
@@ -31,11 +33,10 @@ const navigationItemsShared = navigationItems as NavigationItem[];
 
 export function DashboardLayout({ children }: DashboardLayoutProps) {
   // In Phase 4, consume user from context
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const { usePatientContext } = require("../context/PatientContext");
   const { user } = usePatientContext();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const { navigate, currentId } = usePatientNavigation();
+  const { logout } = useLogout();
   const pathname = usePathname();
 
   // Determine current page from pathname
@@ -52,10 +53,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const handleNavigate = (pageId: string) => navigate(pageId as any);
 
   const handleLogout = () => {
-    // Xử lý đăng xuất ở đây
-    console.log("Đăng xuất");
-    // Navigate to login
-    navigate("dashboard");
+    logout();
   };
 
   return (

@@ -20,8 +20,14 @@ import {
   VisibilityOff,
 } from "@mui/icons-material";
 import { useRouter } from "next/navigation";
-import { RegisterFormData } from "../../../types";
+// Register form data type
 import { ROUTES } from "@/constants/routes";
+
+interface RegisterFormData {
+  email: string;
+  password: string;
+  confirmPassword: string;
+}
 
 interface RegisterFormPanelProps {
   formData?: RegisterFormData;
@@ -40,6 +46,7 @@ const RegisterFormPanel: React.FC<RegisterFormPanelProps> = ({
 }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [passwordError, setPasswordError] = useState('');
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const router = useRouter();
@@ -54,6 +61,30 @@ const RegisterFormPanel: React.FC<RegisterFormPanelProps> = ({
 
   const handleLogin = () => {
     router.push(ROUTES.LOGIN);
+  };
+
+  const handlePasswordChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const newPassword = event.target.value;
+    onInputChange?.("password")(event);
+
+    // Validate confirm password if it exists
+    if (formData?.confirmPassword && newPassword !== formData.confirmPassword) {
+      setPasswordError('Mật khẩu xác nhận không khớp');
+    } else if (formData?.confirmPassword && newPassword === formData.confirmPassword) {
+      setPasswordError('');
+    }
+  };
+
+  const handleConfirmPasswordChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const newConfirmPassword = event.target.value;
+    onInputChange?.("confirmPassword")(event);
+
+    // Validate confirm password
+    if (formData?.password && newConfirmPassword !== formData.password) {
+      setPasswordError('Mật khẩu xác nhận không khớp');
+    } else if (newConfirmPassword === formData?.password) {
+      setPasswordError('');
+    }
   };
 
   return (
@@ -158,8 +189,8 @@ const RegisterFormPanel: React.FC<RegisterFormPanelProps> = ({
             name="email"
             label="Email"
             type="email"
-            value={formData?.emailOrPhone || ""}
-            onChange={onInputChange?.("emailOrPhone")}
+            value={formData?.email || ""}
+            onChange={onInputChange?.("email")}
             required
             size="small"
             disabled={isLoading}
@@ -200,7 +231,7 @@ const RegisterFormPanel: React.FC<RegisterFormPanelProps> = ({
             label="Mật khẩu"
             type={showPassword ? "text" : "password"}
             value={formData?.password || ""}
-            onChange={onInputChange?.("password")}
+            onChange={handlePasswordChange}
             required
             size="small"
             disabled={isLoading}
@@ -257,7 +288,9 @@ const RegisterFormPanel: React.FC<RegisterFormPanelProps> = ({
             label="Xác nhận lại mật khẩu"
             type={showConfirmPassword ? "text" : "password"}
             value={formData?.confirmPassword || ""}
-            onChange={onInputChange?.("confirmPassword")}
+            onChange={handleConfirmPasswordChange}
+            error={!!passwordError}
+            helperText={passwordError}
             required
             size="small"
             disabled={isLoading}

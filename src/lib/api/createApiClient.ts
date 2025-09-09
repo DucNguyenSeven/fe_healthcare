@@ -1,28 +1,13 @@
-import axios, { AxiosInstance, CreateAxiosDefaults } from 'axios';
-import { setupInterceptors } from './interceptors';
+import axios from 'axios';
 
-export interface ApiClientConfig extends CreateAxiosDefaults {
-  enableInterceptors?: boolean;
-}
+const baseURL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080';
+const timeout = Number(process.env.NEXT_PUBLIC_API_TIMEOUT ?? 15000);
 
-export const createApiClient = (config: ApiClientConfig): AxiosInstance => {
-  const { enableInterceptors = true, ...axiosConfig } = config;
-
-  // Create axios instance with default config
-  const api = axios.create({
-    timeout: 15000,
-    withCredentials: true,
-    headers: {
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
-    },
-    ...axiosConfig,
+export function createApiClient() {
+  const instance = axios.create({
+    baseURL,
+    timeout,
+    headers: { Accept: 'application/json' },
   });
-
-  // Setup interceptors if enabled
-  if (enableInterceptors) {
-    setupInterceptors(api);
-  }
-
-  return api;
-};
+  return instance;
+}

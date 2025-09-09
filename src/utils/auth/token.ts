@@ -1,8 +1,28 @@
-type TokenPair = { accessToken?: string; refreshToken?: string } | null;
-let _tokens: TokenPair = null;
+export const ACCESS = 'accessToken';
+export const REFRESH = 'refreshToken';
 
-export const tokenStore = {
-  set(tokens: TokenPair) { _tokens = tokens; },
-  get(): TokenPair { return _tokens; },
-  clear() { _tokens = null; },
-};
+export function setAccessToken(token?: string | null) {
+  if (typeof window === 'undefined') return;
+  if (!token) return localStorage.removeItem(ACCESS);
+  localStorage.setItem(ACCESS, token);
+}
+export function setRefreshToken(token?: string | null) {
+  if (typeof window === 'undefined') return;
+  if (!token) return localStorage.removeItem(REFRESH);
+  localStorage.setItem(REFRESH, token);
+}
+
+export function getAccessToken(): string | null {
+  if (typeof window === 'undefined') return null;
+  try { return localStorage.getItem(ACCESS); } catch { return null; }
+}
+export function getRefreshToken(): string | null {
+  if (typeof window === 'undefined') return null;
+  try { return localStorage.getItem(REFRESH); } catch { return null; }
+}
+
+export function clearTokens() {
+  if (typeof window === 'undefined') return;
+  localStorage.removeItem(ACCESS);
+  localStorage.removeItem(REFRESH);
+}

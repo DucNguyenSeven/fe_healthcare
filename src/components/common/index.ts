@@ -5,4 +5,5 @@ export { default as FAQItem } from './FAQItem';
 export { default as AuthGuard } from './AuthGuard';
 export { default as UnauthorizedAccess } from './UnauthorizedAccess';
 export { ErrorBoundary } from './ErrorBoundary';
-export { LoadingSpinner } from './LoadingSpinner'; 
+export { LoadingSpinner } from './LoadingSpinner';
+export { MessageNotifier } from './MessageNotifier'; 

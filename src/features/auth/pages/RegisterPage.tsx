@@ -1,24 +1,25 @@
 "use client";
 
 import React, { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Box, useTheme, useMediaQuery, Alert, Snackbar } from "@mui/material";
 import { RegisterFormPanel, RegisterHeroPanel } from "../components";
-import { RegisterFormData } from "../../../types";
-import { useRegister } from "../../../hooks";
+import { useRegister, RegisterPayload } from "../../../hooks/auth";
 
 const RegisterPage: React.FC = () => {
-  const [formData, setFormData] = useState<RegisterFormData>({
-    emailOrPhone: "",
+  const router = useRouter();
+  const [formData, setFormData] = useState<RegisterPayload & { confirmPassword: string }>({
+    email: "",
     password: "",
     confirmPassword: "",
   });
 
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
-  const { register, isLoading, error, clearError } = useRegister();
+  const registerMutation = useRegister();
 
   const handleInputChange =
-    (field: keyof RegisterFormData) =>
+    (field: keyof (RegisterPayload & { confirmPassword: string })) =>
     (event: React.ChangeEvent<HTMLInputElement>) => {
       setFormData({
         ...formData,
@@ -30,15 +31,26 @@ const RegisterPage: React.FC = () => {
     event.preventDefault();
 
     // Basic validation
-    if (
-      !formData.emailOrPhone ||
-      !formData.password ||
-      !formData.confirmPassword
-    ) {
+    if (!formData.email || !formData.password || !formData.confirmPassword) {
       return;
     }
 
-    await register(formData);
+    // Validation password confirmation (handled by RegisterFormPanel)
+    if (formData.password !== formData.confirmPassword) {
+      return;
+    }
+
+    try {
+      await registerMutation.mutateAsync({
+        email: formData.email,
+        password: formData.password,
+      });
+
+      // Chuyển đến trang OTP với email trong query params
+      router.push(`/otp?email=${encodeURIComponent(formData.email)}`);
+    } catch (error) {
+      console.error("Registration failed:", error);
+    }
   };
 
   return (
@@ -70,7 +82,7 @@ const RegisterPage: React.FC = () => {
           formData={formData}
           onInputChange={handleInputChange}
           onSubmit={handleSubmit}
-          isLoading={isLoading}
+          isLoading={registerMutation.isPending}
         />
       </Box>
 
@@ -89,13 +101,13 @@ const RegisterPage: React.FC = () => {
 
       {/* Error Snackbar */}
       <Snackbar
-        open={!!error}
+        open={!!registerMutation.error}
         autoHideDuration={6000}
-        onClose={clearError}
+        onClose={() => registerMutation.reset()}
         anchorOrigin={{ vertical: "top", horizontal: "center" }}
       >
-        <Alert onClose={clearError} severity="error" sx={{ width: "100%" }}>
-          {error}
+        <Alert onClose={() => registerMutation.reset()} severity="error" sx={{ width: "100%" }}>
+          {(registerMutation.error as Error)?.message || "Đã xảy ra lỗi"}
         </Alert>
       </Snackbar>
     </Box>

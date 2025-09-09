@@ -7,10 +7,12 @@ import { useDoctorNavigation } from "@/hooks/navigation/useDoctorNavigation";
 import { Menu, X, Bell, User, ChevronRight, Activity, LogOut } from "lucide-react";
 import { ROUTES } from "@/constants/routes";
 import { useAuthContext } from "@/contexts/AuthContext";
+import { useLogout } from "@/hooks/auth/useLogout";
 
 export function DoctorLayout({ children }: { children: React.ReactNode }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const { navigate } = useDoctorNavigation();
+  const { logout } = useLogout();
   const pathname = usePathname();
   const router = useRouter();
   const { user } = useAuthContext();
@@ -18,7 +20,7 @@ export function DoctorLayout({ children }: { children: React.ReactNode }) {
     navigationItems.find((item) => item.path === pathname)?.label ||
     "Tổng quan";
   const handleLogout = () => {
-    router.push(ROUTES.LOGIN);
+    logout();
   };
 
   return (

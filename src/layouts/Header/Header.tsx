@@ -29,7 +29,7 @@ import {
 } from '@mui/icons-material';
 import Link from 'next/link';
 import { useHeaderNavigation } from '../../hooks/navigation';
-import { useAuth } from '../../hooks';
+import { useAuthContext } from '../../contexts/AuthContext';
 
 interface NavItem {
   label: string;
@@ -46,8 +46,16 @@ const Header: React.FC = () => {
   // Use navigation hook
   const { navItems, handleNavigation, handleRegister, handleLogin } = useHeaderNavigation();
   
-  // Use auth hook
-  const { isAuthenticated, user, logout } = useAuth();
+  // Use auth context
+  const { isAuthenticated, user, setUser } = useAuthContext();
+
+  // Logout function
+  const logout = (): void => {
+    setUser(null);
+    localStorage.removeItem("user");
+    localStorage.removeItem("accessToken");
+    localStorage.removeItem("refreshToken");
+  };
 
   const handleDrawerToggle = (): void => {
     setMobileOpen(!mobileOpen);

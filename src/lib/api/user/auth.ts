@@ -1,27 +1,38 @@
-import { api } from "@/lib/api/client";
-import type {
-  MessageResponse,
-  AuthenticationResponse,
-  LoginResponse,
-  RegisterRequest,
-  AuthenticationRequest,
-  ResetPasswordRequest,
-  ResetPasswordResponse,
-} from "@/lib/api/types";
+import api from '../client';
+import type { ApiEnvelope, RegisterResponse, LoginResponse } from '@/types/auth';
+import type { RegisterPayload } from '@/hooks/auth/types';
 
-export const AuthApi = {
-  register: (payload: RegisterRequest) =>
-    api.post<MessageResponse<AuthenticationResponse>>("/api/user/auth/register", payload).then(res => res.data),
-  login: (payload: AuthenticationRequest) =>
-    api.post<MessageResponse<LoginResponse>>("/api/user/auth/login", payload).then(res => res.data),
-  refreshToken: () =>
-    api.post<MessageResponse<AuthenticationResponse>>("/api/user/auth/refresh-token").then(res => res.data),
-  sendOtpRegister: (email: string) =>
-    api.get<MessageResponse<boolean>>(`/api/user/auth/send-otp-register/${encodeURIComponent(email)}`).then(res => res.data),
-  validateOtp: (email: string, otp: string) =>
-    api.get<MessageResponse<boolean>>(`/api/user/auth/validate-otp?email=${encodeURIComponent(email)}&otp=${encodeURIComponent(otp)}`).then(res => res.data),
-  sendOtpResetPassword: (email: string) =>
-    api.get<MessageResponse<ResetPasswordResponse>>(`/api/user/auth/send-otp-reset-password/${encodeURIComponent(email)}`).then(res => res.data),
-  resetPassword: (payload: ResetPasswordRequest) =>
-    api.post<MessageResponse<boolean>>("/api/user/auth/reset-password", payload).then(res => res.data),
+export const AuthAPI = {
+  register(payload: RegisterPayload) {
+    return api.post<ApiEnvelope<RegisterResponse>>('/api/v1/auth/register', payload).then(r => r.data);
+  },
+  verifyAccount(email: string, otp: string) {
+    return api.post<ApiEnvelope<boolean>>(`/api/v1/auth/verify-account`, null, {
+      params: { email, otp },
+    }).then(r => r.data);
+  },
+  login(payload: { email: string; password: string }) {
+    return api.post<ApiEnvelope<LoginResponse>>('/api/v1/auth/login', payload).then(r => r.data);
+  },
+  // Legacy methods for backward compatibility
+  sendOtpRegister(email: string) {
+    return api.get<ApiEnvelope<boolean>>(`/api/v1/auth/send-otp-register/${encodeURIComponent(email)}`).then(r => r.data);
+  },
+  sendOtpResetPassword(email: string) {
+    return api.get<ApiEnvelope<string>>(`/api/v1/auth/send-otp-reset-password/${encodeURIComponent(email)}`).then(r => r.data);
+  },
+  validateOtp(email: string, otp: string) {
+    return api.get<ApiEnvelope<boolean>>(`/api/v1/auth/validate-otp`, {
+      params: { email, otp },
+    }).then(r => r.data);
+  },
+  forgotPassword(payload: { email: string }) {
+    return api.post<ApiEnvelope<boolean>>('/api/v1/auth/forgot-password', payload).then(r => r.data);
+  },
+  resetPassword(payload: { email: string; otp: string; newPassword: string }) {
+    return api.post<ApiEnvelope<boolean>>('/api/v1/auth/reset-password', payload).then(r => r.data);
+  },
 };
+
+// Export với tên cũ để tương thích ngược
+export const AuthApi = AuthAPI;

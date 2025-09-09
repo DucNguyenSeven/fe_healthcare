@@ -1,6 +1,5 @@
-// Export all auth hooks
-export { useAuth } from './useAuth';
-export { useLogin } from './useLogin';
-export { useLogout } from './useLogout';
-export { useUserState } from './useUserState';
-export type * from './types';
+export * from './types';
+export * from './useRegister';
+export * from './useVerifyAccount';
+export * from './useLogin';
+export * from './useLogout';

@@ -1,9 +1,7 @@
 import { createApiClient } from './createApiClient';
+import { attachInterceptors } from './interceptors';
 
-// Create main API client with full configuration
-const api = createApiClient({
-  baseURL: process.env.NEXT_PUBLIC_API_URL,
-  enableInterceptors: true,
-});
+const api = createApiClient();
+attachInterceptors(api);
 
-export { api };
+export default api;
