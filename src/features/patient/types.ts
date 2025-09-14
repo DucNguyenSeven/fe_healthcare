@@ -128,3 +128,40 @@ export interface UploadAnalysis {
   summary?: string;
   abnormalities?: string[];
 }
+
+export interface CKDFormData {
+  // Numerical features
+  serum_creatinine: number;
+  gfr: number;
+  bun: number;
+  serum_calcium: number;
+  c3_c4: number;
+  oxalate_levels: number;
+  urine_ph: number;
+  blood_pressure_systolic: number;
+  blood_pressure_diastolic: number;
+  water_intake: number;
+  months: number;
+  cluster: number;
+
+  // Binary features
+  ana: boolean;
+  hematuria: boolean;
+  smoking: boolean;
+  painkiller_usage: boolean;
+  family_history: boolean;
+
+  // Categorical features
+  physical_activity: 'daily' | 'weekly' | 'rarely' | '';
+  diet: 'high protein' | 'low salt' | 'balanced' | '';
+  alcohol: 'daily' | 'occasionally' | 'never' | '';
+  weight_changes: 'stable' | 'loss' | 'gain' | '';
+  stress_level: number; // 1-3
+}
+
+export interface CKDPredictionResult {
+  risk: 'low' | 'moderate' | 'high';
+  percentage: number;
+  stage: string;
+  recommendations: string[];
+}

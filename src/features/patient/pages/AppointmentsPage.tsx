@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Calendar,
   Clock,
@@ -73,6 +73,27 @@ export function AppointmentsPage({ appointments }: AppointmentsPageProps) {
     "direct"
   );
 
+  // Kiểm tra localStorage để tự động mở form đặt lịch
+  useEffect(() => {
+    const shouldOpenForm = localStorage.getItem('open_booking_form');
+    if (shouldOpenForm === 'true') {
+      setShowBookingForm(true);
+      
+      // Tự động chọn dịch vụ phù hợp dựa trên kết quả dự đoán CKD
+      const predictionData = localStorage.getItem('ckd_prediction_result');
+      if (predictionData) {
+        const prediction = JSON.parse(predictionData);
+        // Chọn dịch vụ "Khám chuyên khoa Thận - Tiết niệu" cho bệnh nhân CKD
+        const ckdService = services.find(service => service.name === "Khám chuyên khoa Thận - Tiết niệu");
+        if (ckdService) {
+          setSelectedService(ckdService);
+        }
+      }
+      
+      localStorage.removeItem('open_booking_form'); // Xóa flag sau khi sử dụng
+    }
+  }, []);
+
   const services: Service[] = [
     {
       id: "1",
@@ -85,6 +106,15 @@ export function AppointmentsPage({ appointments }: AppointmentsPageProps) {
     },
     {
       id: "2",
+      name: "Khám chuyên khoa Thận - Tiết niệu",
+      description: "Theo dõi và điều trị bệnh thận mạn (CKD)",
+      duration: "45 phút",
+      price: "400.000đ",
+      type: "both",
+      category: "specialist",
+    },
+    {
+      id: "3",
       name: "Khám tổng quát",
       description: "Khám sức khỏe tổng quát và tư vấn chế độ sinh hoạt",
       duration: "45 phút",
@@ -93,7 +123,7 @@ export function AppointmentsPage({ appointments }: AppointmentsPageProps) {
       category: "checkup",
     },
     {
-      id: "3",
+      id: "4",
       name: "Tư vấn dinh dưỡng",
       description: "Tư vấn chế độ ăn uống phù hợp với bệnh thận",
       duration: "30 phút",
@@ -102,7 +132,7 @@ export function AppointmentsPage({ appointments }: AppointmentsPageProps) {
       category: "consultation",
     },
     {
-      id: "4",
+      id: "5",
       name: "Theo dõi định kỳ",
       description: "Khám theo dõi tình trạng bệnh định kỳ",
       duration: "20 phút",

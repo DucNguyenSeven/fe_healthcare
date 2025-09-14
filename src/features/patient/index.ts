@@ -5,7 +5,7 @@ export { DashboardLayout } from './pages/DashboardLayout';
 
 // Pages
 export { DashboardPage } from './pages/DashboardPage';
-export { AIAssistantPage } from './pages/AIAssistantPage';
+export { AIAssistantPage } from './components/AIAssistantPage';
 export { AppointmentsPage } from './pages/AppointmentsPage';
 export { TelehealthPage } from './pages/TelehealthPage';
 export { MonitoringPage } from './pages/MonitoringPage';
