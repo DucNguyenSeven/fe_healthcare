@@ -32,8 +32,8 @@ export const UploadApi = {
   // Upload avatar
   avatar: (file: File) => {
     const form = new FormData();
-    form.append('file', file);
-    return api.post<MessageResponse<UploadFile>>('/api/user/upload/avatar', form, {
+    form.append("file", file);
+    return api.post<UploadFile>(`/api/user/upload/avatar`, form, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
