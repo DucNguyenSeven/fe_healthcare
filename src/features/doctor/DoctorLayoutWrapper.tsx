@@ -3,7 +3,7 @@
 import React, { useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Menu, Bell, User, LayoutDashboard, Users, Calendar, Video, Clock, BookOpen, MessageSquare, Activity, ChevronRight } from 'lucide-react'
+import { Menu, Bell, User, Home, Users, Calendar, Video, Clock, BookOpen, MessageSquare, Activity, ChevronRight } from 'lucide-react'
 
 interface DoctorLayoutWrapperProps {
   children: React.ReactNode
@@ -14,7 +14,7 @@ type DoctorNavigationItem = 'dashboard' | 'profile' | 'patients' | 'appointments
 const navigationItems = [{
   id: 'dashboard',
   label: "Tổng quan",
-  icon: LayoutDashboard
+  icon: Home
 }, {
   id: 'profile',
   label: 'Hồ sơ cá nhân',
