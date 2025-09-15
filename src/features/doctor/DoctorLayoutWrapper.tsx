@@ -103,14 +103,12 @@ export function DoctorLayoutWrapper({ children }: DoctorLayoutWrapperProps) {
         }} transition={{
           duration: 0.3
         }} className="w-70 bg-white border-r border-gray-200 flex flex-col h-full">
-            <div className="p-6 border-b border-gray-100">
+            <div className="p-6 border-b border-gray-200">
               <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center">
-                  <Activity className="w-6 h-6 text-white" />
+                <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+                  <Activity className="w-5 h-5 text-white" />
                 </div>
-                <div>
-                  <h1 className="text-xl font-bold text-gray-900">HealthCare+</h1>
-                </div>
+                <h1 className="text-xl font-bold text-gray-900">HealthCare+</h1>
               </div>
             </div>
 
@@ -152,7 +150,7 @@ export function DoctorLayoutWrapper({ children }: DoctorLayoutWrapperProps) {
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col h-full overflow-hidden">
-        <header className="bg-white border-b border-gray-200 px-6 py-4">
+        <header className="bg-white shadow-sm border-b border-gray-200 px-4 lg:px-6" style={{ paddingTop: '22px', paddingBottom: '22px' }}>
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
               <button onClick={() => setSidebarOpen(!sidebarOpen)} className="lg:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors">
