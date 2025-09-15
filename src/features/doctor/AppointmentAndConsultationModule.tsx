@@ -143,12 +143,12 @@ const chatMessages = [{
 }] as any[];
 const quickSuggestions = ['Anh có uống đủ nước không?', 'Huyết áp của anh thế nào?', 'Anh có tuân thủ chế độ ăn không?', 'Khi nào anh cần tái khám?'];
 interface AppointmentAndConsultationModuleProps {
-  activeView: string;
+  activeView?: string;
 }
 
 // @component: AppointmentAndConsultationModule
 export const AppointmentAndConsultationModule = ({
-  activeView
+  activeView = 'appointments'
 }: AppointmentAndConsultationModuleProps) => {
   const [appointmentTab, setAppointmentTab] = useState('upcoming');
   const [selectedAppointment, setSelectedAppointment] = useState<any>(null);

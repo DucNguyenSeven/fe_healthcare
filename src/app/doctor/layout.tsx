@@ -1,6 +1,7 @@
 // DEVELOPMENT MODE: Authentication temporarily disabled for easier development
 // import AuthGuard from "@/components/common/AuthGuard"
 // import RoleGuard from "@/components/common/RoleGuard"
+import { DoctorLayoutWrapper } from "@/features/doctor/DoctorLayoutWrapper"
 
 export default function DoctorLayout({ 
   children 
@@ -11,11 +12,17 @@ export default function DoctorLayout({
   // return (
   //   <AuthGuard>
   //     <RoleGuard allow={["doctor"]}>
-  //       {children}
+  //       <DoctorLayoutWrapper>
+  //         {children}
+  //       </DoctorLayoutWrapper>
   //     </RoleGuard>
   //   </AuthGuard>
   // )
   
   // Development mode: Direct access without authentication
-  return <>{children}</>
+  return (
+    <DoctorLayoutWrapper>
+      {children}
+    </DoctorLayoutWrapper>
+  )
 }

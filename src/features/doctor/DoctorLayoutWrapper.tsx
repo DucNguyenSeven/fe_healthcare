@@ -1,0 +1,164 @@
+'use client'
+
+import React, { useState } from 'react'
+import { useRouter, usePathname } from 'next/navigation'
+import { motion, AnimatePresence } from 'framer-motion'
+import { Menu, Bell, User, LayoutDashboard, Users, Calendar, Video, Clock, BookOpen, MessageSquare, Activity, ChevronRight } from 'lucide-react'
+
+interface DoctorLayoutWrapperProps {
+  children: React.ReactNode
+}
+
+type DoctorNavigationItem = 'dashboard' | 'profile' | 'patients' | 'appointments' | 'consultation' | 'schedule' | 'forum'
+
+const navigationItems = [{
+  id: 'dashboard',
+  label: "Tổng quan",
+  icon: LayoutDashboard
+}, {
+  id: 'profile',
+  label: 'Hồ sơ cá nhân',
+  icon: User
+}, {
+  id: 'patients',
+  label: 'Bệnh nhân',
+  icon: Users
+}, {
+  id: 'appointments',
+  label: 'Lịch hẹn',
+  icon: Calendar
+}, {
+  id: 'consultation',
+  label: 'Tư vấn trực tuyến',
+  icon: Video
+}, {
+  id: 'schedule',
+  label: 'Lịch làm việc',
+  icon: Clock
+}, {
+  id: 'forum',
+  label: 'Diễn đàn',
+  icon: MessageSquare
+}]
+
+export function DoctorLayoutWrapper({ children }: DoctorLayoutWrapperProps) {
+  const router = useRouter()
+  const pathname = usePathname()
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+
+  // Determine current page from pathname
+  const getCurrentPage = (): DoctorNavigationItem => {
+    if (pathname.includes('/dashboard')) return 'dashboard'
+    if (pathname.includes('/profile')) return 'profile'
+    if (pathname.includes('/patients')) return 'patients'
+    if (pathname.includes('/appointments')) return 'appointments'
+    if (pathname.includes('/consultation')) return 'consultation'
+    if (pathname.includes('/schedule')) return 'schedule'
+    if (pathname.includes('/forum')) return 'forum'
+    return 'dashboard' // default
+  }
+
+  const activeTab = getCurrentPage()
+
+  // Navigate using Next.js router
+  const handleNavigate = (page: DoctorNavigationItem) => {
+    const routes = {
+      dashboard: '/doctor/dashboard',
+      profile: '/doctor/profile',
+      patients: '/doctor/patients',
+      appointments: '/doctor/appointments',
+      consultation: '/doctor/consultation',
+      schedule: '/doctor/schedule',
+      forum: '/doctor/forum'
+    }
+    
+    router.push(routes[page])
+  }
+
+  return (
+    <div className="flex h-screen bg-gray-50">
+      {/* Sidebar */}
+      <AnimatePresence>
+        {(sidebarOpen || (typeof window !== 'undefined' && window.innerWidth >= 900)) && <motion.aside initial={{
+          x: -280
+        }} animate={{
+          x: 0
+        }} exit={{
+          x: -280
+        }} transition={{
+          duration: 0.3
+        }} className="w-70 bg-white border-r border-gray-200 flex flex-col h-full">
+            <div className="p-6 border-b border-gray-100">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center">
+                  <Activity className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h1 className="text-xl font-bold text-gray-900">HealthCare+</h1>
+                  <p className="text-sm text-gray-500">Bác sĩ</p>
+                </div>
+              </div>
+            </div>
+
+            <nav className="flex-1 px-4 py-6">
+              {navigationItems.map(item => {
+                const Icon = item.icon;
+                const isActive = activeTab === item.id;
+                return <button key={item.id} onClick={() => {
+                  handleNavigate(item.id as DoctorNavigationItem);
+                  if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+                    setSidebarOpen(false);
+                  }
+                }} className={`
+                    w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-left transition-all duration-200 mb-2
+                    ${isActive ? 'bg-blue-50 text-blue-700 shadow-sm' : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'}
+                  `}>
+                    <Icon className={`w-5 h-5 ${isActive ? 'text-blue-600' : 'text-gray-500'}`} />
+                    <span className="font-medium">{item.label}</span>
+                    {isActive && <ChevronRight className="w-4 h-4 ml-auto text-blue-600" />}
+                  </button>;
+              })}
+            </nav>
+
+          </motion.aside>}
+      </AnimatePresence>
+
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col h-full overflow-hidden">
+        <header className="bg-white border-b border-gray-200 px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <button onClick={() => setSidebarOpen(!sidebarOpen)} className="lg:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors">
+                <Menu className="w-5 h-5 text-gray-600" />
+              </button>
+              <h1 className="text-xl font-semibold text-gray-900">
+                {navigationItems.find(item => item.id === activeTab)?.label}
+              </h1>
+            </div>
+            <div className="flex items-center space-x-4">
+              <button className="relative p-2 rounded-lg hover:bg-gray-100 transition-colors">
+                <Bell className="w-5 h-5 text-gray-600" />
+                <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"></span>
+              </button>
+              
+              {/* User Profile in Header - Simple display like Patient page */}
+              <div className="flex items-center space-x-3">
+                <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
+                  <User className="w-4 h-4 text-white" />
+                </div>
+                <span className="text-sm font-medium text-gray-900">BS. Nguyễn Văn A</span>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        <main className="flex-1 overflow-auto">
+          {children}
+        </main>
+      </div>
+
+      {/* Mobile Sidebar Overlay */}
+      {sidebarOpen && <div className="lg:hidden fixed inset-0 bg-black bg-opacity-50 z-40" onClick={() => setSidebarOpen(false)} />}
+    </div>
+  )
+}

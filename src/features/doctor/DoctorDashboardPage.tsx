@@ -75,12 +75,12 @@ const recentPatients = [{
   status: 'improving'
 }] as any[];
 interface DoctorDashboardPageProps {
-  onNavigate: (tab: string) => void;
+  onNavigate?: (tab: string) => void;
 }
 
 // @component: DoctorDashboardPage
 export const DoctorDashboardPage = ({
-  onNavigate
+  onNavigate = () => {}
 }: DoctorDashboardPageProps) => {
   // @return
   return <div className="p-6 space-y-6 max-w-7xl mx-auto">
