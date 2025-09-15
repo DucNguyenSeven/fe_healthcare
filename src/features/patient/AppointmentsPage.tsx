@@ -295,7 +295,7 @@ export function AppointmentsPage({
         </div>
       </div>;
   };
-  const renderBookingForm = () => <div className="bg-white rounded-2xl border border-gray-200 shadow-sm mb-8">
+  const renderBookingForm = () => <div className="bg-white rounded-2xl border border-gray-200 shadow-sm mb-8 booking-form">
       <div className="p-6 border-b border-gray-100">
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-semibold text-gray-900">Đặt lịch hẹn mới</h3>

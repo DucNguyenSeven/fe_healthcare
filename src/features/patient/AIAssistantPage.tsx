@@ -590,7 +590,7 @@ Bạn có thể đặt thêm câu hỏi cụ thể hoặc sử dụng các gợi
         </div>
       </div>
     </div>;
-  const renderCKDPrediction = () => <div className="max-w-6xl mx-auto space-y-6 h-full overflow-y-auto">
+  const renderCKDPrediction = () => <div className="max-w-6xl mx-auto space-y-6 p-6">
       {/* Header */}
       <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-6 text-white" style={{
       background: "linear-gradient(90deg, oklch(0.546 0.245 262.881) 0%, oklch(0.558 0.288 302.321) 100%)",
@@ -1137,7 +1137,7 @@ Bạn có thể đặt thêm câu hỏi cụ thể hoặc sử dụng các gợi
       </div>
 
       {/* Content */}
-      <div className={`flex-1 ${currentView === 'chat' ? '' : 'p-4 lg:p-6'} overflow-hidden`}>
+      <div className={`flex-1 ${currentView === 'chat' ? '' : 'p-4 lg:p-6'} ${currentView === 'chat' ? 'overflow-hidden' : 'overflow-auto'}`}>
         {currentView === 'chat' && renderChat()}
         {currentView === 'upload' && renderUpload()}
         {currentView === 'ckd-prediction' && renderCKDPrediction()}

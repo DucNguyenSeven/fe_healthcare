@@ -55,16 +55,15 @@ export function AppLayout({
   alertCount,
   children
 }: AppLayoutProps) {
-  return <div className="flex min-h-screen bg-gray-50">
+  return <div className="flex h-screen bg-gray-50">
       {/* Mobile Sidebar Overlay */}
       {isSidebarOpen && <div className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden" onClick={onToggleSidebar} />}
 
       {/* Sidebar */}
       <aside className={`
-        fixed lg:static inset-y-0 left-0 z-50 w-64 bg-white shadow-lg transform transition-transform duration-300 ease-in-out
+        fixed lg:static inset-y-0 left-0 z-50 w-64 bg-white shadow-lg transform transition-transform duration-300 ease-in-out flex flex-col h-full
         ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
       `}>
-        <div className="flex flex-col h-full">
           {/* Logo & Close Button */}
           <div className="flex items-center justify-between p-6 border-b border-gray-200">
             <div className="flex items-center space-x-3">
@@ -79,7 +78,7 @@ export function AppLayout({
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 px-4 py-6 space-y-2">
+          <nav className="px-4 py-6 space-y-2 overflow-y-auto">
             {navigationItems.map(item => {
             const Icon = item.icon;
             const isActive = currentPage === item.id;
@@ -99,6 +98,19 @@ export function AppLayout({
           })}
           </nav>
 
+          {/* Spacer to push logout to bottom */}
+          <div className="flex-1"></div>
+
+          {/* Logout Button - Always at bottom */}
+          <div className="p-4 border-t border-gray-200">
+            <button className="w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-left transition-all duration-200 text-red-600 hover:bg-red-50">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+              </svg>
+              <span className="font-medium">Đăng xuất</span>
+            </button>
+          </div>
+
           {/* User Profile */}
           <div className="p-4 border-t border-gray-200" style={{
           display: "none"
@@ -111,11 +123,10 @@ export function AppLayout({
               </div>
             </div>
           </div>
-        </div>
       </aside>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col h-full overflow-hidden">
         {/* Top App Bar */}
         <header className="bg-white shadow-sm border-b border-gray-200 px-4 lg:px-6 py-4">
           <div className="flex items-center justify-between">
@@ -151,7 +162,7 @@ export function AppLayout({
         </header>
 
         {/* Main Content Area */}
-        <main className="flex-1">
+        <main className="flex-1 overflow-auto">
           {children}
         </main>
       </div>
