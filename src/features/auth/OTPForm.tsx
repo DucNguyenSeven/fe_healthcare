@@ -6,6 +6,7 @@ import { HealthcareLogo } from '../../shared/ui/HealthcareLogo';
 import { useVerifyAccount } from '../../hooks/auth/useVerifyAccount';
 import { AuthAPI } from '../../lib/api/user';
 import { toast } from 'sonner';
+import { getVietnameseErrorMessage, ERROR_MESSAGES } from '@/utils/errorMessages';
 interface OTPFormProps {
   onNavigate: (page: 'login' | 'register' | 'forgot-password' | 'otp', email?: string) => void;
   userEmail: string;
@@ -112,15 +113,16 @@ export const OTPForm = ({
         },
         onError: (error: any) => {
           // Handle API errors
-          const errorMessage = error?.response?.data?.message || 'Mã OTP không hợp lệ hoặc đã hết hạn';
+          const apiMessage = error?.response?.data?.message || '';
+          const vietnameseMessage = getVietnameseErrorMessage(apiMessage, ERROR_MESSAGES.OTP.DEFAULT);
           
           // Show error toast
           toast.error('Xác thực thất bại', {
-            description: errorMessage,
+            description: vietnameseMessage,
             duration: 4000,
           });
           
-          setError(errorMessage);
+          setError(vietnameseMessage);
         }
       }
     );

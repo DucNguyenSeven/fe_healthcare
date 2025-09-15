@@ -1,6 +1,8 @@
 import React from 'react';
 import { Home, User, Calendar, Video, Activity, Bot, Users, Bell, Menu, X, ChevronRight } from 'lucide-react';
 import { NavigationItem, User as UserType } from './HealthcarePlusApp';
+import { useLogout } from '@/hooks/auth/useLogout';
+import { toast } from 'sonner';
 interface AppLayoutProps {
   user: UserType;
   currentPage: NavigationItem;
@@ -55,6 +57,15 @@ export function AppLayout({
   alertCount,
   children
 }: AppLayoutProps) {
+  const { logout } = useLogout();
+
+  const handleLogout = () => {
+    toast.success('Đăng xuất thành công!', {
+      description: 'Hẹn gặp lại bạn',
+      duration: 2000,
+    });
+    logout();
+  };
   return <div className="flex h-screen bg-gray-50">
       {/* Mobile Sidebar Overlay */}
       {isSidebarOpen && <div className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden" onClick={onToggleSidebar} />}
@@ -103,7 +114,10 @@ export function AppLayout({
 
           {/* Logout Button - Always at bottom */}
           <div className="p-4 border-t border-gray-200">
-            <button className="w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-left transition-all duration-200 text-red-600 hover:bg-red-50">
+            <button 
+              onClick={handleLogout}
+              className="w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-left transition-all duration-200 text-red-600 hover:bg-red-50"
+            >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
               </svg>

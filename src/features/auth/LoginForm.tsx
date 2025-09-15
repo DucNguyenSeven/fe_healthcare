@@ -6,6 +6,7 @@ import { Mail, Lock } from 'lucide-react';
 import { HealthcareLogo } from '../../shared/ui/HealthcareLogo';
 import { useLogin } from '@/hooks/auth/useLogin';
 import { toast } from 'sonner';
+import { getVietnameseErrorMessage, ERROR_MESSAGES } from '@/utils/errorMessages';
 interface LoginFormProps {
   onNavigate: (page: 'login' | 'register' | 'forgot-password' | 'otp', email?: string) => void;
   onLoginSuccess?: (email: string) => void;
@@ -27,7 +28,7 @@ export const LoginForm = ({
     // Validation cơ bản
     if (!email || !password) {
       toast.error('Thiếu thông tin', {
-        description: 'Vui lòng nhập đầy đủ email và mật khẩu',
+        description: ERROR_MESSAGES.LOGIN.VALIDATION,
         duration: 3000,
       });
       return;
@@ -46,14 +47,15 @@ export const LoginForm = ({
         onError: (error: any) => {
           console.error('Đăng nhập thất bại:', error);
           
+          // Get error message from API and convert to Vietnamese
+          const apiMessage = (error as any)?.response?.data?.message || '';
+          const vietnameseMessage = getVietnameseErrorMessage(apiMessage, ERROR_MESSAGES.LOGIN.DEFAULT);
+          
           // Show error toast
-          const errorMessage = (error as any)?.response?.data?.message || 'Đăng nhập thất bại. Vui lòng kiểm tra email và mật khẩu.';
           toast.error('Đăng nhập thất bại', {
-            description: errorMessage,
+            description: vietnameseMessage,
             duration: 4000,
           });
-          
-          // Error message sẽ được hiển thị dưới form
         }
       }
     );
@@ -116,16 +118,6 @@ export const LoginForm = ({
           </button>
         </div>
 
-        {/* Error Message */}
-        {error && (
-          <div className="pt-2">
-            <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-              <p className="text-sm text-red-600">
-                {(error as any)?.response?.data?.message || 'Đăng nhập thất bại. Vui lòng kiểm tra email và mật khẩu.'}
-              </p>
-            </div>
-          </div>
-        )}
 
         {/* Submit Button */}
         <div className="pt-3">

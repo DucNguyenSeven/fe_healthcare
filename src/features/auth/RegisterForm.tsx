@@ -6,6 +6,7 @@ import { Mail, Lock } from 'lucide-react';
 import { HealthcareLogo } from '../../shared/ui/HealthcareLogo';
 import { useRegister } from '../../hooks/auth/useRegister';
 import { toast } from 'sonner';
+import { getVietnameseErrorMessage, ERROR_MESSAGES } from '@/utils/errorMessages';
 interface RegisterFormProps {
   onNavigate: (page: 'login' | 'register' | 'forgot-password' | 'otp', email?: string) => void;
 }
@@ -77,15 +78,16 @@ export const RegisterForm = ({
         },
         onError: (error: any) => {
           // Handle API errors
-          const errorMessage = error?.response?.data?.message || 'Có lỗi xảy ra khi đăng ký';
+          const apiMessage = error?.response?.data?.message || '';
+          const vietnameseMessage = getVietnameseErrorMessage(apiMessage, ERROR_MESSAGES.REGISTER.DEFAULT);
           
           // Show error toast
           toast.error('Đăng ký thất bại', {
-            description: errorMessage,
+            description: vietnameseMessage,
             duration: 4000,
           });
           
-          setErrors({ submit: errorMessage });
+          setErrors({ submit: vietnameseMessage });
         }
       }
     );

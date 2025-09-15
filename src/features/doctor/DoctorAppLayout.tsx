@@ -8,6 +8,8 @@ import { DoctorProfilePage } from './DoctorProfilePage';
 import { PatientManagementModule } from './PatientManagementModule';
 import { AppointmentAndConsultationModule } from './AppointmentAndConsultationModule';
 import { ForumModule } from './ForumModule';
+import { useLogout } from '@/hooks/auth/useLogout';
+import { toast } from 'sonner';
 const navigationItems = [{
   id: 'dashboard',
   label: "Tổng quan",
@@ -43,6 +45,15 @@ export const DoctorAppLayout = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const { logout } = useLogout();
+
+  const handleLogout = () => {
+    toast.success('Đăng xuất thành công!', {
+      description: 'Hẹn gặp lại bạn',
+      duration: 2000,
+    });
+    logout();
+  };
   const renderContent = () => {
     switch (activeTab) {
       case 'dashboard':
@@ -186,7 +197,10 @@ export const DoctorAppLayout = () => {
                       </button>
                       
                       <hr className="my-2 border-gray-100" />
-                      <button className="w-full px-4 py-2 text-left hover:bg-gray-50 transition-colors text-red-600">
+                      <button 
+                        onClick={handleLogout}
+                        className="w-full px-4 py-2 text-left hover:bg-gray-50 transition-colors text-red-600"
+                      >
                         <span>Đăng xuất</span>
                       </button>
                     </motion.div>}
