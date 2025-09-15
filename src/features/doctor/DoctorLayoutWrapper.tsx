@@ -5,6 +5,7 @@ import { useRouter, usePathname } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Menu, Bell, User, Home, Users, Calendar, Video, Clock, BookOpen, MessageSquare, Activity, ChevronRight } from 'lucide-react'
 import { useLogout } from '@/hooks/auth/useLogout'
+import { useGetMe } from '@/hooks/auth/useGetMe'
 import { toast } from 'sonner'
 
 interface DoctorLayoutWrapperProps {
@@ -48,6 +49,9 @@ export function DoctorLayoutWrapper({ children }: DoctorLayoutWrapperProps) {
   const pathname = usePathname()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const { logout } = useLogout()
+  
+  // Get real user data from API
+  const { data: userData, isLoading: isUserLoading, error: userError } = useGetMe()
 
   const handleLogout = () => {
     toast.success('Đăng xuất thành công!', {
@@ -106,7 +110,6 @@ export function DoctorLayoutWrapper({ children }: DoctorLayoutWrapperProps) {
                 </div>
                 <div>
                   <h1 className="text-xl font-bold text-gray-900">HealthCare+</h1>
-                  <p className="text-sm text-gray-500">Bác sĩ</p>
                 </div>
               </div>
             </div>
@@ -159,20 +162,44 @@ export function DoctorLayoutWrapper({ children }: DoctorLayoutWrapperProps) {
                 {navigationItems.find(item => item.id === activeTab)?.label}
               </h1>
             </div>
-            <div className="flex items-center space-x-4">
-              <button className="relative p-2 rounded-lg hover:bg-gray-100 transition-colors">
-                <Bell className="w-5 h-5 text-gray-600" />
-                <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"></span>
-              </button>
-              
-              {/* User Profile in Header - Simple display like Patient page */}
-              <div className="flex items-center space-x-3">
-                <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
-                  <User className="w-4 h-4 text-white" />
+            {/* Hide notification bell and user info when on profile page, but keep header height */}
+            {activeTab !== 'profile' ? (
+              <div className="flex items-center space-x-4">
+                <button className="relative p-2 rounded-lg hover:bg-gray-100 transition-colors">
+                  <Bell className="w-5 h-5 text-gray-600" />
+                  <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"></span>
+                </button>
+                
+                {/* User Profile in Header - Real data from API */}
+                <div className="flex items-center space-x-3">
+                  {userData?.avatarUrl ? (
+                    <img 
+                      src={userData.avatarUrl} 
+                      alt="Avatar" 
+                      className="w-8 h-8 rounded-full object-cover" 
+                    />
+                  ) : (
+                    <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
+                      <User className="w-4 h-4 text-white" />
+                    </div>
+                  )}
+                  <span className="text-sm font-medium text-gray-900">
+                    {userData?.fullName ? `BS. ${userData.fullName}` : 'BS. Đang tải...'}
+                  </span>
                 </div>
-                <span className="text-sm font-medium text-gray-900">BS. Nguyễn Văn A</span>
               </div>
-            </div>
+            ) : (
+              <div className="flex items-center space-x-4">
+                {/* Invisible elements to maintain exact same height as when visible */}
+                <div className="p-2 opacity-0 pointer-events-none">
+                  <Bell className="w-5 h-5" />
+                </div>
+                <div className="flex items-center space-x-3 opacity-0 pointer-events-none">
+                  <div className="w-8 h-8 rounded-full"></div>
+                  <span className="text-sm font-medium">BS. Placeholder</span>
+                </div>
+              </div>
+            )}
           </div>
         </header>
 

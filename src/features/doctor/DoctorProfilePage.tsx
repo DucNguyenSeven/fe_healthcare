@@ -1,10 +1,13 @@
 'use client'
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { User, Mail, Phone, Upload, Save, Camera, CheckCircle, Plus, Award, X, Calendar, IdCard } from 'lucide-react';
-const specialties = ['Thận học', 'Tim mạch', 'Nội tiết', 'Tiêu hóa', 'Hô hấp', 'Thần kinh', 'Da liễu', 'Mắt', 'Tai mũi họng', 'Xương khớp'];
-const subSpecialties = ['Bệnh thận mạn', 'Lọc máu', 'Ghép thận', 'Sỏi thận', 'Viêm thận', 'Hội chứng thận hư', 'Tăng huyết áp thận', 'Rối loạn điện giải'];
+import { User, Mail, Phone, Upload, Save, Camera, CheckCircle, Plus, Award, X, Calendar, MapPin } from 'lucide-react';
+import { useGetMe } from '@/hooks/auth/useGetMe';
+import { useUpdateUser } from '@/hooks/auth/useUpdateUser';
+import { useUpdateAvatar } from '@/hooks/auth/useUpdateAvatar';
+import type { GetMeResponse } from '@/types/auth';
+import type { UpdateUserRequest } from '@/lib/api/types';
 const currentYear = new Date().getFullYear();
 const years = Array.from({
   length: 50
@@ -18,16 +21,23 @@ interface Certificate {
 
 // @component: DoctorProfilePage
 export const DoctorProfilePage = () => {
+  // Get user data from API
+  const { data: user, isLoading, error, refetch } = useGetMe();
+  
+  // Update user hook
+  const { updateUser, isLoading: isUpdating, error: updateError } = useUpdateUser();
+  
+  // Update avatar hook
+  const { updateAvatar, isLoading: isUploadingAvatar, error: avatarError, progress } = useUpdateAvatar();
+
   const [formData, setFormData] = useState({
-    fullName: 'Bác sĩ Nguyễn Văn An',
-    email: 'bs.nguyenvanan@healthcare.vn',
-    phone: '0123456789',
-    dateOfBirth: '15/03/1985',
-    gender: 'Nam',
-    idNumber: '123456789012',
-    mainSpecialty: 'Thận học',
-    subSpecialties: ['Bệnh thận mạn', 'Lọc máu'],
-    introduction: 'Bác sĩ chuyên khoa Thận học với hơn 10 năm kinh nghiệm trong điều trị các bệnh lý thận mạn tính. Tốt nghiệp Đại học Y Hà Nội, có chứng chỉ chuyên khoa cấp II về Thận học.'
+    fullName: '',
+    email: '',
+    phone: '',
+    dateOfBirth: '',
+    gender: '',
+    address: '',
+    introduction: ''
   });
   const [certificates, setCertificates] = useState<Certificate[]>([{
     id: '1',
@@ -55,33 +65,340 @@ export const DoctorProfilePage = () => {
     year: currentYear
   });
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
-  const handleInputChange = (field: string, value: string | string[]) => {
+  const [showUpdateSuccessNotification, setShowUpdateSuccessNotification] = useState(false);
+  const [showUpdateErrorNotification, setShowUpdateErrorNotification] = useState(false);
+  const [showAvatarSuccessNotification, setShowAvatarSuccessNotification] = useState(false);
+  const [showAvatarErrorNotification, setShowAvatarErrorNotification] = useState(false);
+  const [dateError, setDateError] = useState<string>('');
+
+  // Update form data when user data is loaded
+  useEffect(() => {
+    if (user) {
+      const formatDate = (dateString: string | null) => {
+        if (!dateString) return '';
+        try {
+          const date = new Date(dateString);
+          return date.toLocaleDateString('vi-VN');
+        } catch {
+          return '';
+        }
+      };
+
+      setFormData({
+        fullName: user.fullName || '',
+        email: user.email || '',
+        phone: user.phone || '',
+        dateOfBirth: formatDate(user.dob),
+        gender: mapGenderFromAPI(user.gender || ''),
+        address: user.address || '',
+        introduction: ''
+      });
+      
+      // Set avatar if available
+      if (user.avatarUrl) {
+        setAvatar(user.avatarUrl);
+      }
+    }
+  }, [user]);
+
+  const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
     }));
-  };
-  const handleSubSpecialtyToggle = (specialty: string) => {
-    const current = formData.subSpecialties;
-    const updated = current.includes(specialty) ? current.filter(s => s !== specialty) : [...current, specialty];
-    handleInputChange('subSpecialties', updated);
+    
+    // Clear date error when user types
+    if (field === 'dateOfBirth') {
+      setDateError('');
+    }
   };
   const handleSave = async () => {
+    if (!user?.userId) {
+      setShowUpdateErrorNotification(true);
+      setTimeout(() => setShowUpdateErrorNotification(false), 3000);
+      return;
+    }
+
+    // Validate date before saving
+    if (formData.dateOfBirth) {
+      const dateValidationError = validateDate(formData.dateOfBirth);
+      if (dateValidationError) {
+        setDateError(dateValidationError);
+        return;
+      }
+    }
+
     setIsSaving(true);
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    setIsSaving(false);
+
+    try {
+      // Prepare data for API - only include fields that have values
+      const updateData: UpdateUserRequest = {
+        userId: user.userId,
+      };
+
+      // Add fields that have actual values
+      if (formData.fullName && formData.fullName.trim()) {
+        updateData.fullName = formData.fullName.trim();
+      }
+      if (formData.gender) {
+        // Sử dụng validateGender để đảm bảo format đúng
+        const validatedGender = validateGender(formData.gender);
+        if (validatedGender) {
+          updateData.gender = validatedGender;
+        }
+      }
+      if (formData.dateOfBirth) {
+        updateData.dob = formatDateForAPI(formData.dateOfBirth);
+      }
+      if (formData.phone && formData.phone.trim()) {
+        updateData.phone = formData.phone.trim();
+      }
+      if (formData.address && formData.address.trim()) {
+        updateData.address = formData.address.trim();
+      }
+      
+      // Always include role for user updates
+      updateData.role = 'DOCTOR';
+
+      // Check if there are any fields to update (besides userId)
+      const fieldsToUpdate = Object.keys(updateData).filter(key => key !== 'userId' && key !== 'role');
+      if (fieldsToUpdate.length === 0) {
+        // No fields to update, just exit edit mode
+        setIsEditing(false);
+        setShowUpdateSuccessNotification(true);
+        setTimeout(() => setShowUpdateSuccessNotification(false), 3000);
+        return;
+      }
+
+      // Call update API
+      const result = await updateUser(updateData);
+
+      if (result) {
+        // Success - refetch user data and show success notification
+        await refetch();
+        setIsEditing(false);
+        setShowUpdateSuccessNotification(true);
+        setTimeout(() => setShowUpdateSuccessNotification(false), 3000);
+      } else {
+        // Error - show error notification
+        setShowUpdateErrorNotification(true);
+        setTimeout(() => setShowUpdateErrorNotification(false), 3000);
+      }
+    } catch (error) {
+      console.error('Error updating user:', error);
+      setShowUpdateErrorNotification(true);
+      setTimeout(() => setShowUpdateErrorNotification(false), 3000);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Helper function to format date for API
+  const formatDateForAPI = (dateString: string): string => {
+    try {
+      // Convert from dd/mm/yyyy to YYYY-MM-DD format (not full ISO)
+      const [day, month, year] = dateString.split('/');
+      const paddedDay = day.padStart(2, '0');
+      const paddedMonth = month.padStart(2, '0');
+      return `${year}-${paddedMonth}-${paddedDay}`;
+    } catch {
+      return dateString; // Return as-is if parsing fails
+    }
+  };
+
+  // Validation function để đảm bảo gender đúng format
+  const validateGender = (value: string): 'MALE' | 'FEMALE' | 'OTHER' | undefined => {
+    if (!value) return undefined;
+    
+    const upperValue = value.toUpperCase();
+    const validValues = ['MALE', 'FEMALE', 'OTHER'];
+    
+    return validValues.includes(upperValue) 
+      ? upperValue as 'MALE' | 'FEMALE' | 'OTHER'
+      : undefined;
+  };
+
+  // Helper function to convert gender API value to display value for UI
+  const mapGenderFromAPI = (apiGender: string): string => {
+    switch (apiGender) {
+      case 'MALE':
+        return 'MALE'; // Trả về giá trị form để tương thích với dropdown
+      case 'FEMALE':
+        return 'FEMALE';
+      case 'OTHER':
+        return 'OTHER';
+      default:
+        return apiGender || ''; // Return as-is if unknown
+    }
+  };
+
+  // Helper function to format date for HTML date input (YYYY-MM-DD)
+  const formatDateForInput = (dateString: string): string => {
+    if (!dateString) return '';
+    
+    try {
+      // If it's already in YYYY-MM-DD format, return as-is
+      if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+        return dateString;
+      }
+      
+      // If it's in dd/mm/yyyy format, convert to YYYY-MM-DD
+      if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(dateString)) {
+        const [day, month, year] = dateString.split('/');
+        return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+      }
+      
+      // Try to parse as date and format
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return '';
+      
+      return date.toISOString().split('T')[0];
+    } catch {
+      return '';
+    }
+  };
+
+  // Helper function to handle date change from date picker
+  const handleDateChange = (dateValue: string) => {
+    if (!dateValue) {
+      handleInputChange('dateOfBirth', '');
+      return;
+    }
+    
+    try {
+      // Convert YYYY-MM-DD to dd/mm/yyyy for display consistency
+      const [year, month, day] = dateValue.split('-');
+      const formattedDate = `${day}/${month}/${year}`;
+      handleInputChange('dateOfBirth', formattedDate);
+    } catch {
+      // If parsing fails, use the raw value
+      handleInputChange('dateOfBirth', dateValue);
+    }
+  };
+
+  // Helper function to validate date format
+  const validateDate = (dateString: string): string => {
+    if (!dateString) return '';
+    
+    let date: Date;
+    
+    // Check if it's in dd/mm/yyyy format
+    const ddmmyyyyPattern = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/;
+    const match = dateString.match(ddmmyyyyPattern);
+    
+    if (match) {
+      const [, day, month, year] = match;
+      const dayNum = parseInt(day, 10);
+      const monthNum = parseInt(month, 10);
+      const yearNum = parseInt(year, 10);
+      
+      // Basic validation
+      if (monthNum < 1 || monthNum > 12) {
+        return 'Tháng không hợp lệ (1-12)';
+      }
+      
+      if (dayNum < 1 || dayNum > 31) {
+        return 'Ngày không hợp lệ (1-31)';
+      }
+      
+      // Check if date is valid
+      date = new Date(yearNum, monthNum - 1, dayNum);
+      if (date.getDate() !== dayNum || date.getMonth() !== monthNum - 1 || date.getFullYear() !== yearNum) {
+        return 'Ngày không tồn tại';
+      }
+    } else {
+      // Try to parse as ISO date from date picker
+      date = new Date(dateString);
+      if (isNaN(date.getTime())) {
+        return 'Ngày không hợp lệ';
+      }
+    }
+    
+    // Check if date is not in future
+    const today = new Date();
+    today.setHours(23, 59, 59, 999); // Set to end of today
+    if (date > today) {
+      return 'Ngày sinh không thể trong tương lai';
+    }
+    
+    // Check if date is reasonable (not too old)
+    const minYear = today.getFullYear() - 150;
+    if (date.getFullYear() < minYear) {
+      return 'Năm sinh không hợp lệ';
+    }
+    
+    return '';
+  };
+
+  const handleCancel = () => {
+    if (user) {
+      const formatDate = (dateString: string | null) => {
+        if (!dateString) return '';
+        try {
+          const date = new Date(dateString);
+          return date.toLocaleDateString('vi-VN');
+        } catch {
+          return '';
+        }
+      };
+
+      setFormData({
+        fullName: user.fullName || '',
+        email: user.email || '',
+        phone: user.phone || '',
+        dateOfBirth: formatDate(user.dob),
+        gender: mapGenderFromAPI(user.gender || ''),
+        address: user.address || '',
+        introduction: ''
+      });
+    }
+    setDateError(''); // Clear date error
     setIsEditing(false);
   };
-  const handleAvatarUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+
+  const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (file) {
+    if (!file || !user?.userId) {
+      return;
+    }
+
+    try {
+      // Show loading state by updating avatar with a loading preview
       const reader = new FileReader();
       reader.onload = e => {
         setAvatar(e.target?.result as string);
       };
       reader.readAsDataURL(file);
+
+      // Call API to upload avatar
+      const avatarUrl = await updateAvatar(user.userId, file);
+      
+      if (avatarUrl) {
+        // Success - update avatar state with the actual URL from Cloudinary
+        setAvatar(avatarUrl);
+        
+        // Refetch user data to get updated avatar
+        await refetch();
+        
+        // Show success notification
+        setShowAvatarSuccessNotification(true);
+        setTimeout(() => setShowAvatarSuccessNotification(false), 3000);
+      } else {
+        // Error - revert to original avatar
+        setAvatar(user.avatarUrl || null);
+        setShowAvatarErrorNotification(true);
+        setTimeout(() => setShowAvatarErrorNotification(false), 3000);
+      }
+    } catch (error) {
+      console.error('Error uploading avatar:', error);
+      // Revert to original avatar
+      setAvatar(user.avatarUrl || null);
+      setShowAvatarErrorNotification(true);
+      setTimeout(() => setShowAvatarErrorNotification(false), 3000);
     }
+    
+    // Clear the input value so the same file can be selected again
+    event.target.value = '';
   };
   const handleAddCertificate = () => {
     if (newCertificate.name.trim() && newCertificate.issuer.trim()) {
@@ -105,8 +422,126 @@ export const DoctorProfilePage = () => {
     setShowDeleteConfirm(null);
   };
 
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="p-6 max-w-4xl mx-auto">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="flex flex-col items-center gap-4">
+            <div className="w-8 h-8 border-4 border-[#1E75FF] border-t-transparent rounded-full animate-spin"></div>
+            <p className="text-gray-600">Đang tải thông tin bác sĩ...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="p-6 max-w-4xl mx-auto">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <div className="text-red-500 text-5xl mb-4">⚠️</div>
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">Không thể tải thông tin</h3>
+            <p className="text-gray-600 mb-4">Đã xảy ra lỗi khi tải thông tin bác sĩ. Vui lòng thử lại sau.</p>
+            <button 
+              onClick={() => window.location.reload()} 
+              className="px-4 py-2 bg-[#1E75FF] text-white rounded-xl hover:bg-[#1659C9] transition-colors"
+            >
+              Thử lại
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // No user data
+  if (!user) {
+    return (
+      <div className="p-6 max-w-4xl mx-auto">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <div className="text-gray-400 text-5xl mb-4">👨‍⚕️</div>
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">Không tìm thấy thông tin bác sĩ</h3>
+            <p className="text-gray-600">Vui lòng đăng nhập lại để xem thông tin cá nhân.</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // @return
   return <div className="p-6 max-w-4xl mx-auto">
+      {/* Update Success Notification */}
+      <AnimatePresence>
+        {showUpdateSuccessNotification && <motion.div initial={{
+        opacity: 0,
+        y: -50
+      }} animate={{
+        opacity: 1,
+        y: 0
+      }} exit={{
+        opacity: 0,
+        y: -50
+      }} className="fixed top-4 right-4 z-[10001] bg-green-500 text-white px-6 py-3 rounded-xl shadow-lg flex items-center gap-2">
+            <CheckCircle size={20} />
+            <span>Cập nhật thông tin thành công!</span>
+          </motion.div>}
+      </AnimatePresence>
+
+      {/* Update Error Notification */}
+      <AnimatePresence>
+        {showUpdateErrorNotification && <motion.div initial={{
+        opacity: 0,
+        y: -50
+      }} animate={{
+        opacity: 1,
+        y: 0
+      }} exit={{
+        opacity: 0,
+        y: -50
+      }} className="fixed top-4 right-4 z-[10001] bg-red-500 text-white px-6 py-3 rounded-xl shadow-lg flex items-center gap-2">
+            <X size={20} />
+            <span>Có lỗi xảy ra khi cập nhật thông tin. Vui lòng thử lại!</span>
+          </motion.div>}
+      </AnimatePresence>
+
+      {/* Avatar Success Notification */}
+      <AnimatePresence>
+        {showAvatarSuccessNotification && <motion.div initial={{
+        opacity: 0,
+        y: -50
+      }} animate={{
+        opacity: 1,
+        y: 0
+      }} exit={{
+        opacity: 0,
+        y: -50
+      }} className="fixed top-4 right-4 z-[10001] bg-green-500 text-white px-6 py-3 rounded-xl shadow-lg flex items-center gap-2">
+            <CheckCircle size={20} />
+            <span>Cập nhật ảnh đại diện thành công!</span>
+          </motion.div>}
+      </AnimatePresence>
+
+      {/* Avatar Error Notification */}
+      <AnimatePresence>
+        {showAvatarErrorNotification && <motion.div initial={{
+        opacity: 0,
+        y: -50
+      }} animate={{
+        opacity: 1,
+        y: 0
+      }} exit={{
+        opacity: 0,
+        y: -50
+      }} className="fixed top-4 right-4 z-[10001] bg-red-500 text-white px-6 py-3 rounded-xl shadow-lg flex items-center gap-2">
+            <X size={20} />
+            <span>{avatarError || 'Có lỗi xảy ra khi upload ảnh đại diện. Vui lòng thử lại!'}</span>
+          </motion.div>}
+      </AnimatePresence>
+
       <motion.div initial={{
       opacity: 0,
       y: 20
@@ -121,27 +556,43 @@ export const DoctorProfilePage = () => {
               <div className="relative">
                 <div className="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center overflow-hidden">
                   {avatar ? <img src={avatar} alt="Avatar" className="w-full h-full object-cover" /> : <User size={28} className="text-white" />}
+                  
+                  {/* Loading overlay when uploading */}
+                  {isUploadingAvatar && (
+                    <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center">
+                      <div className="text-white text-center">
+                        <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto mb-1"></div>
+                        <div className="text-xs">{progress}%</div>
+                      </div>
+                    </div>
+                  )}
                 </div>
-                {isEditing && <label className="absolute -bottom-1 -right-1 w-6 h-6 bg-white rounded-full flex items-center justify-center cursor-pointer shadow-lg hover:shadow-xl transition-shadow">
+                {isEditing && <label className={`absolute -bottom-1 -right-1 w-6 h-6 bg-white rounded-full flex items-center justify-center shadow-lg hover:shadow-xl transition-shadow ${isUploadingAvatar ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}>
                     <Camera size={12} className="text-[#1E75FF]" />
-                    <input type="file" accept="image/*" onChange={handleAvatarUpload} className="hidden" />
+                    <input 
+                      type="file" 
+                      accept="image/*" 
+                      onChange={handleAvatarUpload} 
+                      className="hidden" 
+                      disabled={isUploadingAvatar}
+                    />
                   </label>}
               </div>
               <div>
-                <h1 className="text-xl font-bold mb-1">{formData.fullName}</h1>
-                <p className="text-white/80 text-sm">Bác sĩ #{formData.idNumber.slice(-6)} • Tham gia từ tháng 6/2023</p>
+                <h1 className="text-xl font-bold mb-1">{formData.fullName || 'Chưa cập nhật tên'}</h1>
+                <p className="text-white/80 text-sm">Bác sĩ</p>
               </div>
             </div>
             <div className="flex gap-3">
-              {!isEditing ? <button onClick={() => setIsEditing(true)} className="bg-white/20 hover:bg-white/30 px-4 py-2 rounded-xl font-medium transition-colors text-sm">
+              {!isEditing ?                 <button onClick={() => setIsEditing(true)} className="bg-white/20 hover:bg-white/30 px-4 py-2 rounded-xl font-medium transition-colors text-sm">
                   <span>Chỉnh sửa</span>
                 </button> : <div className="flex gap-2">
-                  <button onClick={() => setIsEditing(false)} className="bg-white/20 hover:bg-white/30 px-4 py-2 rounded-xl font-medium transition-colors text-sm">
+                  <button onClick={handleCancel} className="bg-white/20 hover:bg-white/30 px-4 py-2 rounded-xl font-medium transition-colors text-sm">
                     <span>Hủy</span>
                   </button>
-                  <button onClick={handleSave} disabled={isSaving} className="bg-white text-[#1E75FF] hover:bg-gray-100 px-4 py-2 rounded-xl font-medium transition-colors flex items-center gap-2 disabled:opacity-50 text-sm">
-                    {isSaving ? <div className="w-4 h-4 border-2 border-[#1E75FF] border-t-transparent rounded-full animate-spin" /> : <Save size={16} />}
-                    <span>{isSaving ? 'Đang lưu...' : 'Lưu thay đổi'}</span>
+                  <button onClick={handleSave} disabled={isSaving || isUpdating} className="bg-white text-[#1E75FF] hover:bg-gray-100 px-4 py-2 rounded-xl font-medium transition-colors flex items-center gap-2 disabled:opacity-50 text-sm">
+                    {(isSaving || isUpdating) ? <div className="w-4 h-4 border-2 border-[#1E75FF] border-t-transparent rounded-full animate-spin" /> : <Save size={16} />}
+                    <span>{(isSaving || isUpdating) ? 'Đang lưu...' : 'Lưu thay đổi'}</span>
                   </button>
                 </div>}
             </div>
@@ -164,7 +615,7 @@ export const DoctorProfilePage = () => {
                 </label>
                 {isEditing ? <input type="text" value={formData.fullName} onChange={e => handleInputChange('fullName', e.target.value)} className="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent transition-all" /> : <div className="flex items-center gap-3 px-4 py-3 bg-gray-50 rounded-2xl">
                     <User size={20} className="text-[#334155]" />
-                    <span className="text-[#0F172A]">{formData.fullName}</span>
+                    <span className="text-[#0F172A]">{formData.fullName || 'Chưa cập nhật'}</span>
                   </div>}
               </div>
 
@@ -172,10 +623,28 @@ export const DoctorProfilePage = () => {
                 <label className="block text-sm font-medium text-[#334155]">
                   Ngày sinh
                 </label>
-                {isEditing ? <input type="text" value={formData.dateOfBirth} onChange={e => handleInputChange('dateOfBirth', e.target.value)} placeholder="dd/mm/yyyy" className="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent transition-all" /> : <div className="flex items-center gap-3 px-4 py-3 bg-gray-50 rounded-2xl">
+                {isEditing ? (
+                  <div className="relative">
+                    {/* Date input with picker support */}
+                    <input 
+                      type="date" 
+                      value={formatDateForInput(formData.dateOfBirth)} 
+                      onChange={e => handleDateChange(e.target.value)}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent transition-all" 
+                    />
+                    {dateError && (
+                      <p className="mt-1 text-sm text-red-600 flex items-center gap-1">
+                        <X size={14} />
+                        {dateError}
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-3 px-4 py-3 bg-gray-50 rounded-2xl">
                     <Calendar size={20} className="text-[#334155]" />
-                    <span className="text-[#0F172A]">{formData.dateOfBirth}</span>
-                  </div>}
+                    <span className="text-[#0F172A]">{formData.dateOfBirth || 'Chưa cập nhật'}</span>
+                  </div>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -183,21 +652,18 @@ export const DoctorProfilePage = () => {
                   Giới tính
                 </label>
                 {isEditing ? <select value={formData.gender} onChange={e => handleInputChange('gender', e.target.value)} className="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent transition-all">
-                    <option value="Nam">Nam</option>
-                    <option value="Nữ">Nữ</option>
+                    <option value="">Chọn giới tính</option>
+                    <option value="MALE">Nam</option>
+                    <option value="FEMALE">Nữ</option>
+                    <option value="OTHER">Khác</option>
                   </select> : <div className="flex items-center gap-3 px-4 py-3 bg-gray-50 rounded-2xl">
                     <User size={20} className="text-[#334155]" />
-                    <span className="text-[#0F172A]">{formData.gender}</span>
-                  </div>}
-              </div>
-
-              <div className="space-y-2">
-                <label className="block text-sm font-medium text-[#334155]">
-                  CCCD/CMND
-                </label>
-                {isEditing ? <input type="text" value={formData.idNumber} onChange={e => handleInputChange('idNumber', e.target.value)} placeholder="123456789012" className="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent transition-all" /> : <div className="flex items-center gap-3 px-4 py-3 bg-gray-50 rounded-2xl">
-                    <IdCard size={20} className="text-[#334155]" />
-                    <span className="text-[#0F172A]">{formData.idNumber}</span>
+                    <span className="text-[#0F172A]">
+                      {formData.gender === 'MALE' ? 'Nam' : 
+                       formData.gender === 'FEMALE' ? 'Nữ' : 
+                       formData.gender === 'OTHER' ? 'Khác' : 
+                       'Chưa cập nhật'}
+                    </span>
                   </div>}
               </div>
 
@@ -207,7 +673,7 @@ export const DoctorProfilePage = () => {
                 </label>
                 {isEditing ? <input type="tel" value={formData.phone} onChange={e => handleInputChange('phone', e.target.value)} className="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent transition-all" /> : <div className="flex items-center gap-3 px-4 py-3 bg-gray-50 rounded-2xl">
                     <Phone size={20} className="text-[#334155]" />
-                    <span className="text-[#0F172A]">{formData.phone}</span>
+                    <span className="text-[#0F172A]">{formData.phone || 'Chưa cập nhật'}</span>
                   </div>}
               </div>
 
@@ -217,40 +683,22 @@ export const DoctorProfilePage = () => {
                 </label>
                 {isEditing ? <input type="email" value={formData.email} onChange={e => handleInputChange('email', e.target.value)} className="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent transition-all" /> : <div className="flex items-center gap-3 px-4 py-3 bg-gray-50 rounded-2xl">
                     <Mail size={20} className="text-[#334155]" />
-                    <span className="text-[#0F172A]">{formData.email}</span>
+                    <span className="text-[#0F172A]">{formData.email || 'Chưa cập nhật'}</span>
                   </div>}
               </div>
 
               <div className="space-y-2">
                 <label className="block text-sm font-medium text-[#334155]">
-                  Chuyên khoa chính
+                  Địa chỉ
                 </label>
-                {isEditing ? <select value={formData.mainSpecialty} onChange={e => handleInputChange('mainSpecialty', e.target.value)} className="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent transition-all">
-                    {specialties.map(specialty => <option key={specialty} value={specialty}>{specialty}</option>)}
-                  </select> : <div className="px-4 py-3 bg-gray-50 rounded-2xl">
-                    <span className="text-[#0F172A]">{formData.mainSpecialty}</span>
+                {isEditing ? <input type="text" value={formData.address} onChange={e => handleInputChange('address', e.target.value)} className="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent transition-all" /> : <div className="flex items-center gap-3 px-4 py-3 bg-gray-50 rounded-2xl">
+                    <MapPin size={20} className="text-[#334155]" />
+                    <span className="text-[#0F172A]">{formData.address || 'Chưa cập nhật'}</span>
                   </div>}
               </div>
             </div>
           </div>
 
-          {/* Sub-specialties */}
-          <div className="space-y-6">
-            <h2 className="text-2xl font-semibold text-[#0F172A] border-b border-gray-100 pb-3">
-              Chuyên khoa phụ
-            </h2>
-            
-            {isEditing ? <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                {subSpecialties.map(specialty => <button key={specialty} onClick={() => handleSubSpecialtyToggle(specialty)} className={`p-3 rounded-2xl text-sm font-medium transition-all ${formData.subSpecialties.includes(specialty) ? 'bg-[#1E75FF] text-white' : 'bg-gray-100 text-[#334155] hover:bg-gray-200'}`}>
-                    {specialty}
-                  </button>)}
-              </div> : <div className="flex flex-wrap gap-3">
-                {formData.subSpecialties.map(specialty => <span key={specialty} className="px-4 py-2 bg-[#1E75FF]/10 text-[#1E75FF] rounded-2xl text-sm font-medium flex items-center gap-2">
-                    <CheckCircle size={16} />
-                    {specialty}
-                  </span>)}
-              </div>}
-          </div>
 
           {/* Introduction */}
           <div className="space-y-6">
@@ -259,7 +707,7 @@ export const DoctorProfilePage = () => {
             </h2>
             
             {isEditing ? <textarea value={formData.introduction} onChange={e => handleInputChange('introduction', e.target.value)} rows={6} className="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent transition-all resize-none" placeholder="Nhập giới thiệu về bản thân..." /> : <div className="px-4 py-3 bg-gray-50 rounded-2xl">
-                <p className="text-[#0F172A] leading-relaxed">{formData.introduction}</p>
+                <p className="text-[#0F172A] leading-relaxed">{formData.introduction || 'Chưa có giới thiệu'}</p>
               </div>}
           </div>
 
