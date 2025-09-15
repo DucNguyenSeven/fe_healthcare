@@ -34,7 +34,7 @@ export function decodeJWT(token: string): Record<string, unknown> | null {
     const decodedPayload = atob(payload);
     return JSON.parse(decodedPayload);
   } catch (error) {
-    console.error('Không thể giải mã JWT:', error);
+    // Unable to decode JWT
     return null;
   }
 }

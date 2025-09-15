@@ -10,8 +10,7 @@ export const UsersApi = {
     }).then(res => {
       return res.data;
     }).catch(err => {
-      console.error('API call failed:', err);
-      console.error('Error response:', err.response?.data);
+      // API call failed
       throw err;
     });
   },

@@ -35,7 +35,7 @@ function App() {
   };
 
   const handleLoginSuccess = (email: string) => {
-    console.log('Login with email:', email); // Debug log
+    // Handle login success
     if (email.toLowerCase().trim() === 'patient') {
       setCurrentPage('patient-app');
     } else if (email.toLowerCase().trim() === 'doctor') {

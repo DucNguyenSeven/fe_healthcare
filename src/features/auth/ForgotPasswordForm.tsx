@@ -4,8 +4,11 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Mail, CheckCircle } from 'lucide-react';
 import { HealthcareLogo } from '../../shared/ui/HealthcareLogo';
+import { AuthAPI } from '../../lib/api/user';
+import { toast } from 'sonner';
+import { getVietnameseErrorMessage, ERROR_MESSAGES } from '@/utils/errorMessages';
 interface ForgotPasswordFormProps {
-  onNavigate: (page: 'login' | 'register' | 'forgot-password' | 'otp', email?: string) => void;
+  onNavigate: (page: 'login' | 'register' | 'forgot-password' | 'otp-forgot-password', email?: string) => void;
 }
 export const ForgotPasswordForm = ({
   onNavigate
@@ -27,19 +30,82 @@ export const ForgotPasswordForm = ({
       setError('Email không hợp lệ');
       return;
     }
+    
     setError('');
     setIsLoading(true);
-    setTimeout(() => {
+    
+    try {
+      // Call API to send OTP for password reset
+      await AuthAPI.sendOtpResetPassword(email);
+      
+      // Store email securely in sessionStorage instead of URL params
+      sessionStorage.setItem('forgot-password-email', email);
+      sessionStorage.setItem('forgot-password-timestamp', Date.now().toString());
+      
+      // Show success toast
+      toast.success('Gửi mã OTP thành công!', {
+        description: 'Chúng tôi đã gửi mã OTP đến email của bạn',
+        duration: 3000,
+      });
+      
       setIsLoading(false);
-      // Chuyển đến OTP form ngay sau khi gửi email thành công
-      onNavigate('otp', email);
-    }, 2000);
+      setIsSubmitted(true);
+      
+      // Chuyển đến OTP form sau 1.5 giây để user đọc được toast
+      setTimeout(() => {
+        onNavigate('otp-forgot-password');
+      }, 1500);
+      
+    } catch (error: any) {
+      setIsLoading(false);
+      
+      // Handle API errors
+      const apiMessage = error?.response?.data?.message || '';
+      const vietnameseMessage = getVietnameseErrorMessage(apiMessage, ERROR_MESSAGES.FORGOT_PASSWORD.DEFAULT);
+      
+      // Show error toast
+      toast.error('Gửi mã OTP thất bại', {
+        description: vietnameseMessage,
+        duration: 4000,
+      });
+      
+      setError(vietnameseMessage);
+    }
   };
-  const handleResend = () => {
+  const handleResend = async () => {
     setIsLoading(true);
-    setTimeout(() => {
+    setError('');
+    
+    try {
+      // Call API to resend OTP for password reset
+      await AuthAPI.sendOtpResetPassword(email);
+      
+      // Update timestamp
+      sessionStorage.setItem('forgot-password-timestamp', Date.now().toString());
+      
+      // Show success toast
+      toast.success('Gửi lại mã OTP thành công!', {
+        description: 'Chúng tôi đã gửi lại mã OTP đến email của bạn',
+        duration: 3000,
+      });
+      
       setIsLoading(false);
-    }, 1500);
+      
+    } catch (error: any) {
+      setIsLoading(false);
+      
+      // Handle API errors
+      const apiMessage = error?.response?.data?.message || '';
+      const vietnameseMessage = getVietnameseErrorMessage(apiMessage, ERROR_MESSAGES.FORGOT_PASSWORD.DEFAULT);
+      
+      // Show error toast
+      toast.error('Gửi lại mã OTP thất bại', {
+        description: vietnameseMessage,
+        duration: 4000,
+      });
+      
+      setError(vietnameseMessage);
+    }
   };
   return <motion.div initial={{
     opacity: 0,

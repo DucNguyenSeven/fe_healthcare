@@ -45,8 +45,6 @@ export const LoginForm = ({
           }
         },
         onError: (error: any) => {
-          console.error('Đăng nhập thất bại:', error);
-          
           // Get error message from API and convert to Vietnamese
           const apiMessage = (error as any)?.response?.data?.message || '';
           const vietnameseMessage = getVietnameseErrorMessage(apiMessage, ERROR_MESSAGES.LOGIN.DEFAULT);

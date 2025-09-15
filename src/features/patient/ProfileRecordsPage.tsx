@@ -232,7 +232,7 @@ export function ProfileRecordsPage({
     setSelectedFiles(prev => prev.includes(fileId) ? prev.filter(id => id !== fileId) : [...prev, fileId]);
   };
   const handleDownloadSelected = () => {
-    console.log('Downloading files:', selectedFiles);
+    // Download selected files
     setSelectedFiles([]);
     setIsSelectionMode(false);
   };

@@ -254,7 +254,7 @@ export const AppointmentAndConsultationModule = ({
     }
   };
   const handleSaveScheduleFromModal = (data: any) => {
-    console.log('Saving schedule data:', data);
+    // Save schedule data
     alert('Đã đăng ký lịch làm việc thành công!');
     // Here you would typically save to your backend
   };

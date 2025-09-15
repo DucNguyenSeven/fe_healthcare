@@ -20,7 +20,7 @@ export function getUserRole(): UserRole | null {
     
     return null;
   } catch (error) {
-    console.error('Không thể lấy role người dùng:', error);
+    // Unable to get user role
     return null;
   }
 }

@@ -168,13 +168,14 @@ export function AppointmentsPage({
     }
   };
   const handleBookAppointment = () => {
-    console.log('Booking appointment:', {
+    // Booking appointment with data
+    const appointmentData = {
       service: selectedService,
       doctor: selectedDoctor,
       date: selectedDate,
       time: selectedTime,
       type: appointmentType
-    });
+    };
     setShowBookingForm(false);
     // Reset form
     setSelectedService(null);
@@ -417,7 +418,7 @@ export function AppointmentsPage({
         // Clear localStorage sau khi đã sử dụng
         localStorage.removeItem('ckd_prediction_result');
       } catch (error) {
-        console.error('Error parsing CKD prediction data:', error);
+        // Error parsing CKD prediction data
       }
     }
   }, []);

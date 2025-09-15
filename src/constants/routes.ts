@@ -7,7 +7,9 @@ export const ROUTES = {
     LOGIN: '/auth/login',
     REGISTER: '/auth/register',
     FORGOT_PASSWORD: '/auth/forgot-password',
-    OTP: '/auth/otp'
+    OTP: '/auth/otp',
+    OTP_FORGOT_PASSWORD: '/auth/otp-forgot-password',
+    RESET_PASSWORD: '/auth/reset-password'
   },
   
   // Protected routes

@@ -35,7 +35,7 @@ export const LoginPageWrapper = () => {
   }
 
   const handleLoginSuccess = (email: string) => {
-    console.log('Đăng nhập thành công với email:', email)
+    // Login success handler
     // useLogin hook sẽ tự động handle redirect dựa trên role
     // Không cần handle redirect tại đây nữa
   }

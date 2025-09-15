@@ -39,7 +39,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
           const response = await AuthAPI.getMe();
           setUser(response.data);
         } catch (error) {
-          console.error('Failed to get user:', error);
+          // Failed to get user info
           clearTokens();
         }
       }

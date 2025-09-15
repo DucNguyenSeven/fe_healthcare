@@ -83,7 +83,7 @@ export function useLogin() {
             queryClient.invalidateQueries({ queryKey: ['user', 'me'] });
           }
         } catch (error) {
-          console.error('Không thể lấy thông tin chi tiết người dùng:', error);
+          // Unable to get detailed user info
           // Continue with basic user data if getMe fails
         }
 

@@ -16,7 +16,7 @@ const healthcareIllustration = "/assets/images/login_hero_doctor_patient.png"
 export const ForgotPasswordPageWrapper = () => {
   const router = useRouter()
 
-  const handleNavigate = (page: 'login' | 'register' | 'forgot-password' | 'otp', email?: string) => {
+  const handleNavigate = (page: 'login' | 'register' | 'forgot-password' | 'otp-forgot-password', email?: string) => {
     switch (page) {
       case 'login':
         router.push(ROUTES.AUTH.LOGIN)
@@ -24,9 +24,9 @@ export const ForgotPasswordPageWrapper = () => {
       case 'register':
         router.push(ROUTES.AUTH.REGISTER)
         break
-      case 'otp':
-        // Pass email as query parameter
-        router.push(`${ROUTES.AUTH.OTP}?email=${encodeURIComponent(email || '')}`)
+      case 'otp-forgot-password':
+        // Navigate to forgot password OTP page without exposing email in URL
+        router.push(ROUTES.AUTH.OTP_FORGOT_PASSWORD)
         break
       default:
         router.push(ROUTES.AUTH.FORGOT_PASSWORD)

@@ -47,7 +47,7 @@ export function useChat() {
       };
       setMessages((m) => [...m, aiMessage]);
     } catch (error) {
-      console.error('Chat API error:', error);
+      // Chat API error
       const errorMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
         role: "ai", 

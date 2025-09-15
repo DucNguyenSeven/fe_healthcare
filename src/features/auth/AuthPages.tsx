@@ -6,11 +6,12 @@ import { LoginForm } from './LoginForm';
 import { RegisterForm } from './RegisterForm';
 import { ForgotPasswordForm } from './ForgotPasswordForm';
 import { OTPForm } from './OTPForm';
+import { OTPForgotPasswordForm } from './OTPForgotPasswordForm';
 interface AuthPagesProps {
   onBackToHome?: () => void;
   onLoginSuccess?: (email: string) => void;
 }
-type AuthPageType = 'login' | 'register' | 'forgot-password' | 'otp';
+type AuthPageType = 'login' | 'register' | 'forgot-password' | 'otp' | 'otp-forgot-password';
 const healthcareQuotes = {
   login: {
     text: "Yên tâm nhé, chúng tôi luôn ở bên khi bạn cần",
@@ -26,6 +27,10 @@ const healthcareQuotes = {
   },
   otp: {
     text: "Niềm tin của bạn – Sứ mệnh của chúng tôi",
+    author: "Healthcare+"
+  },
+  'otp-forgot-password': {
+    text: "Đặt lại mật khẩu - Bắt đầu hành trình mới",
     author: "Healthcare+"
   }
 };
@@ -45,6 +50,17 @@ export const AuthPages = ({
       setUserEmail(email);
     }
   };
+
+  const handleOTPForgotPasswordNavigate = (page: 'login' | 'register' | 'forgot-password' | 'reset-password', email?: string, otp?: string) => {
+    // Convert reset-password to forgot-password for now since we don't have reset-password in AuthPageType
+    if (page === 'reset-password') {
+      // For now, redirect to login or handle differently
+      // In a real app, you'd need to implement reset-password page
+      setCurrentPage('login');
+    } else {
+      handlePageChange(page as AuthPageType, email);
+    }
+  };
   const renderCurrentForm = () => {
     switch (currentPage) {
       case 'login':
@@ -55,6 +71,8 @@ export const AuthPages = ({
         return <ForgotPasswordForm onNavigate={handlePageChange} />;
       case 'otp':
         return <OTPForm onNavigate={handlePageChange} userEmail={userEmail} />;
+      case 'otp-forgot-password':
+        return <OTPForgotPasswordForm onNavigate={handleOTPForgotPasswordNavigate} userEmail={userEmail} />;
       default:
         return <LoginForm onNavigate={handlePageChange} onLoginSuccess={onLoginSuccess} />;
     }

@@ -145,7 +145,7 @@ export const isAuthenticated = (): boolean => {
     // Basic token validation - in real app, you might want to decode and check expiry
     return token.length > 0;
   } catch (error) {
-    console.error('Error checking authentication:', error);
+    // Error checking authentication
     return false;
   }
 };
@@ -161,7 +161,7 @@ export const getUserId = (): string | null => {
     }
     return null;
   } catch (error) {
-    console.error('Error getting user ID:', error);
+    // Error getting user ID
     return null;
   }
 };

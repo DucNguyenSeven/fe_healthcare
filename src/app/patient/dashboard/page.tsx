@@ -6,7 +6,7 @@ import { mockUser, mockAppointments, mockHealthMetrics, mockAlerts } from '@/dat
 export default function PatientDashboard() {
   const handleNavigate = (page: string) => {
     // TODO: Implement navigation logic when needed
-    console.log('Navigate to:', page)
+    // Navigate to page
   }
 
   return (

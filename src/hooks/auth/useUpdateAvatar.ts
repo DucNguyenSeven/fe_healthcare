@@ -79,7 +79,7 @@ export const useUpdateAvatar = (): UseUpdateAvatarReturn => {
         return null;
       }
     } catch (err: unknown) {
-      console.error('Lỗi tải lên avatar:', err);
+      // Avatar upload error
       
       let errorMessage = 'Có lỗi xảy ra khi upload avatar';
       
