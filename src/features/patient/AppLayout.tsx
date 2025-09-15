@@ -155,8 +155,8 @@ export function AppLayout({
               </div>
             </div>
 
-            {/* Hide avatar and notification bell when on profile page */}
-            {currentPage !== 'profile' && (
+            {/* Hide avatar and notification bell when on profile page, but keep header height */}
+            {currentPage !== 'profile' ? (
               <div className="flex items-center space-x-4">
                 {/* Notifications */}
                 <button className="relative p-2 rounded-lg hover:bg-gray-100 transition-colors" aria-label={`Thông báo${alertCount > 0 ? ` (${alertCount} mới)` : ''}`}>
@@ -173,6 +173,17 @@ export function AppLayout({
                     {user.name}
                   </span>
                 </button>
+              </div>
+            ) : (
+              <div className="flex items-center space-x-4">
+                {/* Invisible elements to maintain exact same height as when visible */}
+                <div className="p-2 opacity-0 pointer-events-none">
+                  <Bell className="w-5 h-5" />
+                </div>
+                <div className="flex items-center space-x-3 p-2 opacity-0 pointer-events-none">
+                  <div className="w-8 h-8 rounded-full"></div>
+                  <span className="hidden md:block text-sm font-medium">Placeholder</span>
+                </div>
               </div>
             )}
           </div>
