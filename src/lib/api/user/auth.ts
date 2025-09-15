@@ -15,7 +15,7 @@ export const AuthAPI = {
     }).then(r => r.data);
   },
   login(payload: { email: string; password: string }) {
-    return api.post<ApiEnvelope<LoginResponse>>('/api/v1/auth/login', payload).then(r => r.data);
+    return publicApi.post<ApiEnvelope<LoginResponse>>('/api/v1/auth/login', payload).then(r => r.data);
   },
   getMe() {
     return api.get<ApiEnvelope<GetMeResponse>>('/api/v1/auth/getMe').then(r => r.data);

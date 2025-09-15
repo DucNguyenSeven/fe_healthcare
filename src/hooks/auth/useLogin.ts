@@ -6,6 +6,7 @@ import type { LoginPayload } from './types';
 import { setAccessToken, setRefreshToken, getRoleFromToken } from '@/utils/auth/token';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { ROUTES } from '@/constants/routes';
+import { toast } from 'sonner';
 
 export function useLogin() {
   const router = useRouter();
@@ -82,14 +83,20 @@ export function useLogin() {
             queryClient.invalidateQueries({ queryKey: ['user', 'me'] });
           }
         } catch (error) {
-          console.error('Failed to fetch user details:', error);
+          console.error('Không thể lấy thông tin chi tiết người dùng:', error);
           // Continue with basic user data if getMe fails
         }
 
+        // Show success notification
+        toast.success('Đăng nhập thành công!', {
+          description: 'Chào mừng bạn quay trở lại Healthcare+',
+          duration: 3000,
+        });
+
         // Role-based redirect
         const redirectPath = userRole === 'DOCTOR'
-          ? ROUTES.DOCTOR_DASHBOARD
-          : ROUTES.PATIENT_DASHBOARD;
+          ? ROUTES.DOCTOR.DASHBOARD
+          : ROUTES.PATIENT.DASHBOARD;
 
         router.push(redirectPath);
       }

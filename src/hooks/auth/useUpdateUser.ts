@@ -27,9 +27,9 @@ export const useUpdateUser = (): UseUpdateUserReturn => {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Có lỗi xảy ra khi cập nhật thông tin';
       setError(errorMessage);
-      console.error('Update user error:', err);
-      console.error('Error details:', {
-        message: err instanceof Error ? err.message : 'Unknown error',
+      console.error('Lỗi cập nhật thông tin người dùng:', err);
+      console.error('Chi tiết lỗi:', {
+        message: err instanceof Error ? err.message : 'Lỗi không xác định',
         status: (err as any)?.response?.status,
         statusText: (err as any)?.response?.statusText,
         data: (err as any)?.response?.data

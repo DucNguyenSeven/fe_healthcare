@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { getUserRole, hasRole } from '@/lib/utils/auth'
+import { getUserRole } from '../../lib/utils/auth'
+import { ROUTES } from '@/constants/routes'
 
 interface RoleGuardProps {
   children: React.ReactNode
@@ -14,7 +15,7 @@ interface RoleGuardProps {
 export default function RoleGuard({ 
   children, 
   allow, 
-  redirectTo = '/auth',
+  redirectTo = ROUTES.AUTH.ROOT,
   fallback
 }: RoleGuardProps) {
   const [hasPermission, setHasPermission] = useState<boolean | null>(null)
@@ -24,7 +25,7 @@ export default function RoleGuard({
     const checkRole = () => {
       const userRole = getUserRole()
       
-      if (userRole && hasRole(allow)) {
+      if (userRole && allow.includes(userRole)) {
         setHasPermission(true)
       } else {
         setHasPermission(false)

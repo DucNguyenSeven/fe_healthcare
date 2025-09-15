@@ -10,7 +10,7 @@ export default function DoctorLayout({
 }) {
   return (
     <AuthGuard>
-      <RoleGuard allow={["doctor"]}>
+      <RoleGuard allow={["DOCTOR"]}>
         <DoctorLayoutWrapper>
           {children}
         </DoctorLayoutWrapper>

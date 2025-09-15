@@ -5,3 +5,4 @@ const api = createApiClient();
 attachInterceptors(api);
 
 export default api;
+export { api };

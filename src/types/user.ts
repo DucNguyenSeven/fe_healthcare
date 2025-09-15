@@ -1,4 +1,20 @@
 // User related types
+export interface User {
+  userId: string;
+  email: string;
+  role: 'PATIENT' | 'DOCTOR' | 'ADMIN';
+  name?: string | null;
+  phone?: string | null;
+  avatar?: string | null;
+  fullName?: string | null;
+  gender?: string | null;
+  dateOfBirth?: string | null;
+  address?: string | null;
+  avatarUrl?: string | null;
+  status?: 'ACTIVE' | 'INACTIVE';
+  // ... more fields can be added as needed
+}
+
 export interface UserProfile {
   id: string;
   email: string;
@@ -77,6 +93,12 @@ export interface UserQueryParams {
 }
 
 // Auth form types
+export interface RegisterFormData {
+  email: string;
+  password: string;
+  confirmPassword: string;
+}
+
 export interface ForgotFormData {
   email: string;
 }

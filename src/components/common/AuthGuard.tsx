@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { getAccessToken } from '@/lib/api/token'
+import { getAccessToken } from '@/utils/auth/token'
+import { ROUTES } from '@/constants/routes'
 
 interface AuthGuardProps {
   children: React.ReactNode
@@ -11,7 +12,7 @@ interface AuthGuardProps {
 
 export default function AuthGuard({ 
   children, 
-  redirectTo = '/auth' 
+  redirectTo = ROUTES.AUTH.ROOT 
 }: AuthGuardProps) {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null)
   const router = useRouter()

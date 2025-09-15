@@ -4,6 +4,8 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Mail, Lock } from 'lucide-react';
 import { HealthcareLogo } from '../../shared/ui/HealthcareLogo';
+import { useRegister } from '../../hooks/auth/useRegister';
+import { toast } from 'sonner';
 interface RegisterFormProps {
   onNavigate: (page: 'login' | 'register' | 'forgot-password' | 'otp', email?: string) => void;
 }
@@ -15,8 +17,10 @@ export const RegisterForm = ({
     password: '',
     confirmPassword: ''
   });
-  const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  
+  // Use register hook
+  const { mutate: register, isPending: isLoading, error: registerError } = useRegister();
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({
       ...prev,
@@ -50,11 +54,41 @@ export const RegisterForm = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateForm()) return;
-    setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
-      onNavigate('otp', formData.email);
-    }, 2000);
+    
+    // Clear any previous errors
+    setErrors({});
+    
+    // Call register API
+    register(
+      {
+        email: formData.email,
+        password: formData.password
+      },
+      {
+        onSuccess: () => {
+          // Show success notification
+          toast.success('Đăng ký thành công!', {
+            description: 'Vui lòng kiểm tra email để lấy mã OTP xác thực',
+            duration: 4000,
+          });
+          
+          // Navigate to OTP page on successful registration
+          onNavigate('otp', formData.email);
+        },
+        onError: (error: any) => {
+          // Handle API errors
+          const errorMessage = error?.response?.data?.message || 'Có lỗi xảy ra khi đăng ký';
+          
+          // Show error toast
+          toast.error('Đăng ký thất bại', {
+            description: errorMessage,
+            duration: 4000,
+          });
+          
+          setErrors({ submit: errorMessage });
+        }
+      }
+    );
   };
   return <motion.div initial={{
     opacity: 0,
@@ -140,6 +174,19 @@ export const RegisterForm = ({
               {errors.confirmPassword}
             </motion.p>}
         </div>
+
+        {/* API Error Display */}
+        {errors.submit && (
+          <motion.div 
+            initial={{ opacity: 0, y: -10 }} 
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-red-50 border border-red-200 rounded-xl p-3"
+          >
+            <p className="text-sm text-red-600 text-center">
+              {errors.submit}
+            </p>
+          </motion.div>
+        )}
 
         {/* Submit Button */}
         <div className="pt-3">

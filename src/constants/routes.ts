@@ -2,7 +2,13 @@
 export const ROUTES = {
   // Public routes
   HOME: '/',
-  AUTH: '/auth',
+  AUTH: {
+    ROOT: '/auth',
+    LOGIN: '/auth/login',
+    REGISTER: '/auth/register',
+    FORGOT_PASSWORD: '/auth/forgot-password',
+    OTP: '/auth/otp'
+  },
   
   // Protected routes
   PATIENT: {

@@ -3,6 +3,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { HealthcareLogo } from '../../shared/ui/HealthcareLogo';
+import { useVerifyAccount } from '../../hooks/auth/useVerifyAccount';
+import { AuthAPI } from '../../lib/api/user';
+import { toast } from 'sonner';
 interface OTPFormProps {
   onNavigate: (page: 'login' | 'register' | 'forgot-password' | 'otp', email?: string) => void;
   userEmail: string;
@@ -12,11 +15,13 @@ export const OTPForm = ({
   userEmail
 }: OTPFormProps) => {
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
-  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [resendCooldown, setResendCooldown] = useState(0);
   const [focusedIndex, setFocusedIndex] = useState(0);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+  
+  // Use verify account hook
+  const { mutate: verifyAccount, isPending: isLoading } = useVerifyAccount();
   useEffect(() => {
     // Auto-focus first input on mount
     inputRefs.current[0]?.focus();
@@ -82,24 +87,62 @@ export const OTPForm = ({
       setError('Vui lòng nhập đầy đủ mã OTP');
       return;
     }
-    setIsLoading(true);
-    setError('');
 
-    // Simulate API call
-    setTimeout(() => {
-      setIsLoading(false);
-      // Handle OTP verification logic here
-      // For demo purposes, navigate back to login
-      onNavigate('login');
-    }, 2000);
-  };
-  const handleResend = () => {
-    if (resendCooldown > 0) return;
-    setResendCooldown(60);
-    setOtp(['', '', '', '', '', '']);
+    // Clear any previous errors
     setError('');
-    setFocusedIndex(0);
-    inputRefs.current[0]?.focus();
+    
+    // Call verify account API
+    verifyAccount(
+      {
+        email: userEmail,
+        otp: otpValue
+      },
+      {
+        onSuccess: () => {
+          // Show success notification
+          toast.success('Xác thực thành công!', {
+            description: 'Tài khoản đã được kích hoạt. Bạn có thể đăng nhập ngay bây giờ',
+            duration: 4000,
+          });
+          
+          // Navigate to login page on successful verification
+          setTimeout(() => {
+            onNavigate('login');
+          }, 1000); // Delay để user đọc được toast
+        },
+        onError: (error: any) => {
+          // Handle API errors
+          const errorMessage = error?.response?.data?.message || 'Mã OTP không hợp lệ hoặc đã hết hạn';
+          
+          // Show error toast
+          toast.error('Xác thực thất bại', {
+            description: errorMessage,
+            duration: 4000,
+          });
+          
+          setError(errorMessage);
+        }
+      }
+    );
+  };
+  const handleResend = async () => {
+    if (resendCooldown > 0) return;
+    
+    try {
+      // Call resend OTP API
+      await AuthAPI.sendOtpRegister(userEmail);
+      
+      // Reset form state
+      setResendCooldown(60);
+      setOtp(['', '', '', '', '', '']);
+      setError('');
+      setFocusedIndex(0);
+      inputRefs.current[0]?.focus();
+    } catch (error: any) {
+      // Handle resend error
+      const errorMessage = error?.response?.data?.message || 'Không thể gửi lại mã OTP, vui lòng thử lại';
+      setError(errorMessage);
+    }
   };
   const isComplete = otp.every(digit => digit !== '');
   return <motion.div initial={{

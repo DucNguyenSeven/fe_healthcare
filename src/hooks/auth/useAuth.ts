@@ -12,10 +12,15 @@ export function useAuth(): UseAuthReturn {
 
   return {
     // Login state and actions
-    isLoading: loginState.isLoading,
-    error: loginState.error,
-    login: loginState.login,
-    clearError: loginState.clearError,
+    loading: loginState.isPending,
+    login: async (credentials) => {
+      return new Promise<void>((resolve, reject) => {
+        loginState.mutate(credentials, {
+          onSuccess: () => resolve(),
+          onError: (error) => reject(error),
+        });
+      });
+    },
     
     // Logout actions
     logout: logoutState.logout,

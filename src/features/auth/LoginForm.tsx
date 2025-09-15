@@ -4,6 +4,8 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Mail, Lock } from 'lucide-react';
 import { HealthcareLogo } from '../../shared/ui/HealthcareLogo';
+import { useLogin } from '@/hooks/auth/useLogin';
+import { toast } from 'sonner';
 interface LoginFormProps {
   onNavigate: (page: 'login' | 'register' | 'forgot-password' | 'otp', email?: string) => void;
   onLoginSuccess?: (email: string) => void;
@@ -15,19 +17,46 @@ export const LoginForm = ({
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  
+  // Sử dụng useLogin hook để gọi API
+  const { mutate: login, isPending, error } = useLogin();
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
+    
+    // Validation cơ bản
+    if (!email || !password) {
+      toast.error('Thiếu thông tin', {
+        description: 'Vui lòng nhập đầy đủ email và mật khẩu',
+        duration: 3000,
+      });
+      return;
+    }
 
-    // Simulate API call
-    setTimeout(() => {
-      setIsLoading(false);
-      // Handle login logic based on email
-      if (onLoginSuccess) {
-        onLoginSuccess(email);
+    // Gọi API login thông qua hook
+    login(
+      { email, password },
+      {
+        onSuccess: (data) => {
+          // Login thành công - useLogin hook sẽ tự động handle redirect
+          if (onLoginSuccess) {
+            onLoginSuccess(email);
+          }
+        },
+        onError: (error: any) => {
+          console.error('Đăng nhập thất bại:', error);
+          
+          // Show error toast
+          const errorMessage = (error as any)?.response?.data?.message || 'Đăng nhập thất bại. Vui lòng kiểm tra email và mật khẩu.';
+          toast.error('Đăng nhập thất bại', {
+            description: errorMessage,
+            duration: 4000,
+          });
+          
+          // Error message sẽ được hiển thị dưới form
+        }
       }
-    }, 1000);
+    );
   };
   return <motion.div initial={{
     opacity: 0,
@@ -87,14 +116,25 @@ export const LoginForm = ({
           </button>
         </div>
 
+        {/* Error Message */}
+        {error && (
+          <div className="pt-2">
+            <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+              <p className="text-sm text-red-600">
+                {(error as any)?.response?.data?.message || 'Đăng nhập thất bại. Vui lòng kiểm tra email và mật khẩu.'}
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Submit Button */}
         <div className="pt-3">
           <motion.button whileHover={{
           scale: 1.02
         }} whileTap={{
           scale: 0.98
-        }} type="submit" disabled={isLoading} className="w-full h-12 bg-[#2563EB] text-white rounded-xl font-semibold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg">
-            {isLoading ? <div className="flex items-center justify-center gap-2">
+        }} type="submit" disabled={isPending} className="w-full h-12 bg-[#2563EB] text-white rounded-xl font-semibold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg">
+            {isPending ? <div className="flex items-center justify-center gap-2">
                 <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                 <span>Đang đăng nhập...</span>
               </div> : 'Đăng nhập'}
