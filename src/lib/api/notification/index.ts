@@ -1,10 +1,10 @@
-// Notification API - TODO: Implement khi có endpoint từ backend
-const BASE_URL = process.env.NEXT_PUBLIC_NOTIFICATION_API_URL || 'http://localhost:8082';
+// Notification Service API endpoints
+// TODO: Implement notification service API calls
 
-// Placeholder cho các endpoint notifications
-export const NotificationApi = {
-  // TODO: Implement các endpoint cho notifications
-  // getNotifications: () => {},
-  // markAsRead: () => {},
-  // createNotification: () => {},
-};
+export const NOTIFICATION_API_BASE = process.env.NEXT_PUBLIC_NOTIFICATION_API_URL;
+
+// Example function structure for notification service
+export async function getNotifications(userId: string) {
+  // TODO: Implement notifications fetch
+  throw new Error('Not implemented yet');
+}

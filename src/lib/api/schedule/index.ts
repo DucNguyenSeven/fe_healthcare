@@ -1,11 +1,10 @@
-// Schedule API - TODO: Implement khi có endpoint từ backend
-const BASE_URL = process.env.NEXT_PUBLIC_SCHEDULE_API_URL || 'http://localhost:8083';
+// Schedule Service API endpoints
+// TODO: Implement schedule service API calls
 
-// Placeholder cho các endpoint schedules
-export const ScheduleApi = {
-  // TODO: Implement các endpoint cho schedules
-  // getSchedules: () => {},
-  // createAppointment: () => {},
-  // updateAppointment: () => {},
-  // cancelAppointment: () => {},
-};
+export const SCHEDULE_API_BASE = process.env.NEXT_PUBLIC_SCHEDULE_API_URL;
+
+// Example function structure for schedule service
+export async function getAppointments(userId: string) {
+  // TODO: Implement appointments fetch
+  throw new Error('Not implemented yet');
+}

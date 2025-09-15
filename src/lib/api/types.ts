@@ -1,80 +1,50 @@
-// Base response type cho tất cả API responses
-export interface MessageResponse<T = any> {
-  success: boolean;
+export type MessageResponse<T> = {
+  statusCode: number;
   message: string;
-  data?: T;
-  code?: string;
-}
+  success: boolean;
+  data: T;
+};
 
-// Auth related types
-export interface LoginRequest {
-  email: string;
-  password: string;
-}
+export type AuthenticationResponse = {
+  access_token: string;
+  refresh_token: string;
+  token_type: string;
+  expires_in: number;
+};
 
-export interface RegisterRequest {
-  email: string;
-  password: string;
-  firstName: string;
-  lastName: string;
-  role?: 'patient' | 'doctor';
-}
-
-export interface AuthResponse {
+export type LoginResponse = {
   accessToken: string;
   refreshToken: string;
-  user: User;
-}
-
-export interface User {
-  id: string;
   email: string;
-  firstName: string;
-  lastName: string;
-  role: 'patient' | 'doctor';
-  avatar?: string;
-  isVerified: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
+  userId: string;
+  role: string;
+};
 
-export interface UpdateUserRequest {
-  firstName?: string;
-  lastName?: string;
+export type ResetPasswordResponse = {
+  statusCode: number;
+  message: string;
+  email: string;
+};
+
+export type UploadFile = {
+  imageUrls: string[];
+  publicIds: string[];
+};
+
+export type UserResponse = Record<string, unknown>;
+
+export type RegisterRequest = { email: string; password: string };
+export type AuthenticationRequest = { email: string; password: string };
+export type ResetPasswordRequest = { email: string; newPassword: string };
+export type UpdateUserRequest = {
+  userId: string;
+  fullName?: string;
+  gender?: string;
+  dob?: string;
   phone?: string;
   address?: string;
-  dateOfBirth?: string;
-  gender?: 'male' | 'female' | 'other';
-}
+  role?: string;
+};
 
-// Upload related types
-export interface UploadFile {
-  url: string;
-  publicId: string;
-  fileName: string;
-  fileSize: number;
-  mimeType: string;
-}
-
-// OTP related types
-export interface VerifyOTPRequest {
-  email: string;
-  otp: string;
-}
-
-export interface ForgotPasswordRequest {
-  email: string;
-  otp: string;
-  newPassword: string;
-}
-
-// Chat related types
-export interface ChatRequest {
-  message: string;
-  context?: string;
-}
-
-export interface ChatResponse {
-  response: string;
-  timestamp: string;
-}
+export type ChatRequest = { question: string };
+export type ChatResponse = { answer: string };

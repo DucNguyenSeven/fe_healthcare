@@ -1,9 +1,7 @@
-import { AxiosInstance } from 'axios';
-import { getAccessToken, getRefreshToken, setAccessToken, setRefreshToken, clearTokens } from './token';
-import { clearUserRole } from '../utils/auth';
+import type { AxiosInstance } from 'axios';
+import { getAccessToken, getRefreshToken, setAccessToken, setRefreshToken, clearTokens } from '@/utils/auth/token';
 
 export function attachInterceptors(api: AxiosInstance) {
-  // Request interceptor để thêm token vào header
   api.interceptors.request.use((config) => {
     const token = getAccessToken();
     if (token) {
@@ -13,7 +11,6 @@ export function attachInterceptors(api: AxiosInstance) {
     return config;
   });
 
-  // Response interceptor để xử lý refresh token
   api.interceptors.response.use(
     (res) => res,
     async (error) => {
@@ -38,11 +35,6 @@ export function attachInterceptors(api: AxiosInstance) {
             return api(original);
           } catch (_e) {
             clearTokens();
-            clearUserRole();
-            // Redirect to login page
-            if (typeof window !== 'undefined') {
-              window.location.href = '/auth';
-            }
           }
         }
       }

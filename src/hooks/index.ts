@@ -1,6 +1,15 @@
-// Export tất cả hooks theo feature
+// Auth hooks
 export * from './auth';
-export * from './user';
 
-// Export hooks không thuộc feature cụ thể
-export { useIsMobile } from './use-mobile';
+// Performance hooks
+export * from './performance';
+
+// Other hooks
+export { useChat } from './useChat';
+export { useConversations } from './useConversations';
+export { useForgotPassword } from './useForgotPassword';
+export { useMobileSlider } from './useMobileSlider';
+export { useNavigation } from './useNavigation';
+export { useOTP } from './useOTP';
+export { useRegister } from './useRegister';
+export { useResetPassword } from './useResetPassword';

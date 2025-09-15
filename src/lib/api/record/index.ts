@@ -1,11 +1,10 @@
-// Medical Records API - TODO: Implement khi có endpoint từ backend
-const BASE_URL = process.env.NEXT_PUBLIC_RECORD_API_URL || 'http://localhost:8081';
+// Record Service API endpoints
+// TODO: Implement record service API calls
 
-// Placeholder cho các endpoint records
-export const RecordApi = {
-  // TODO: Implement các endpoint cho medical records
-  // getRecords: () => {},
-  // createRecord: () => {},
-  // updateRecord: () => {},
-  // deleteRecord: () => {},
-};
+export const RECORD_API_BASE = process.env.NEXT_PUBLIC_RECORD_API_URL;
+
+// Example function structure for record service
+export async function getMedicalRecords(userId: string) {
+  // TODO: Implement medical records fetch
+  throw new Error('Not implemented yet');
+}

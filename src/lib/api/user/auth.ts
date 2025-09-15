@@ -1,63 +1,42 @@
 import api from '../client';
 import { createApiClient } from '../createApiClient';
-import { 
-  LoginRequest, 
-  RegisterRequest, 
-  AuthResponse, 
-  MessageResponse, 
-  User, 
-  VerifyOTPRequest,
-  ForgotPasswordRequest 
-} from '../types';
+import type { ApiEnvelope, RegisterResponse, LoginResponse, GetMeResponse } from '@/types/auth';
+import type { RegisterPayload } from '@/hooks/auth/types';
 
-// Public client cho các endpoint không cần JWT
-const publicClient = createApiClient();
+const publicApi = createApiClient();
 
 export const AuthAPI = {
-  // Đăng ký tài khoản
-  register: (payload: RegisterRequest) => 
-    api.post<MessageResponse<AuthResponse>>('/api/v1/auth/register', payload)
-      .then(res => res.data),
-
-  // Xác thực OTP sau đăng ký
-  verifyAccount: (payload: VerifyOTPRequest) => 
-    api.post<MessageResponse<any>>(`/api/v1/auth/verify-account?email=${encodeURIComponent(payload.email)}&otp=${payload.otp}`)
-      .then(res => res.data),
-
-  // Đăng nhập
-  login: (payload: LoginRequest) => 
-    api.post<MessageResponse<AuthResponse>>('/api/v1/auth/login', payload)
-      .then(res => res.data),
-
-  // Lấy thông tin user hiện tại (yêu cầu JWT)
-  getMe: () => 
-    api.get<MessageResponse<User>>('/api/v1/auth/getMe')
-      .then(res => res.data),
-
-  // --- Public endpoints (không cần JWT) ---
-  
-  // Gửi OTP đăng ký
-  sendOTPRegister: (email: string) => 
-    publicClient.get<MessageResponse<any>>(`/api/v1/auth/send-otp-register/${encodeURIComponent(email)}`)
-      .then(res => res.data),
-
-  // Gửi OTP reset password
-  sendOTPResetPassword: (email: string) => 
-    publicClient.get<MessageResponse<any>>(`/api/v1/auth/send-otp-reset-password/${encodeURIComponent(email)}`)
-      .then(res => res.data),
-
-  // Validate OTP
-  validateOTP: (email: string, otp: string) => 
-    publicClient.get<MessageResponse<any>>(`/api/v1/auth/validate-otp?email=${encodeURIComponent(email)}&otp=${otp}`)
-      .then(res => res.data),
-
-  // Quên mật khẩu
-  forgotPassword: (payload: ForgotPasswordRequest) => 
-    publicClient.post<MessageResponse<any>>('/api/v1/auth/forgot-password', payload)
-      .then(res => res.data),
-
-  // Reset mật khẩu
-  resetPassword: (payload: ForgotPasswordRequest) => 
-    publicClient.post<MessageResponse<any>>('/api/v1/auth/reset-password', payload)
-      .then(res => res.data),
+  register(payload: RegisterPayload) {
+    return api.post<ApiEnvelope<RegisterResponse>>('/api/v1/auth/register', payload).then(r => r.data);
+  },
+  verifyAccount(email: string, otp: string) {
+    return api.post<ApiEnvelope<boolean>>(`/api/v1/auth/verify-account`, null, {
+      params: { email, otp },
+    }).then(r => r.data);
+  },
+  login(payload: { email: string; password: string }) {
+    return api.post<ApiEnvelope<LoginResponse>>('/api/v1/auth/login', payload).then(r => r.data);
+  },
+  getMe() {
+    return api.get<ApiEnvelope<GetMeResponse>>('/api/v1/auth/getMe').then(r => r.data);
+  },
+  sendOtpRegister(email: string) {
+    return publicApi.get<ApiEnvelope<boolean>>(`/api/v1/auth/send-otp-register/${encodeURIComponent(email)}`).then(r => r.data);
+  },
+  sendOtpResetPassword(email: string) {
+    return publicApi.get<ApiEnvelope<{ statusCode: number; message: string; email: string }>>(`/api/v1/auth/send-otp-reset-password/${encodeURIComponent(email)}`).then(r => r.data);
+  },
+  validateOtp(email: string, otp: string) {
+    return publicApi.get<ApiEnvelope<boolean>>(`/api/v1/auth/validate-otp`, {
+      params: { email, otp },
+    }).then(r => r.data);
+  },
+  forgotPassword(payload: { email: string }) {
+    return publicApi.post<ApiEnvelope<boolean>>('/api/v1/auth/forgot-password', payload).then(r => r.data);
+  },
+  resetPassword(payload: { email: string; otp: string; newPassword: string }) {
+    return publicApi.post<ApiEnvelope<boolean>>('/api/v1/auth/reset-password', payload).then(r => r.data);
+  },
 };
+
+export const AuthApi = AuthAPI;

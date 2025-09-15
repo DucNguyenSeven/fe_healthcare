@@ -1,9 +1,7 @@
-import api from '../client';
-import { ChatRequest, ChatResponse, MessageResponse } from '../types';
+import { api } from "@/lib/api/client";
+import type { ChatRequest, ChatResponse } from "@/lib/api/types";
 
 export const ChatApi = {
-  // Gửi câu hỏi tới AI assistant
-  ask: (payload: ChatRequest) => 
-    api.post<MessageResponse<ChatResponse>>('/api/chat/ask', payload)
-      .then(res => res.data),
+  ask: (payload: ChatRequest) =>
+    api.post<ChatResponse>("/api/chat/ask", payload).then(res => res.data),
 };

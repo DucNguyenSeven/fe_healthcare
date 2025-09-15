@@ -1,3 +1,8 @@
-// Auth-related hooks
-export { useAuth } from './useAuth';
-export { useOTP } from './useOTP';
+export * from './types';
+export * from './useRegister';
+export * from './useVerifyAccount';
+export * from './useLogin';
+export * from './useLogout';
+export * from './useGetMe';
+export * from './useUpdateUser';
+export * from './useUpdateAvatar';
