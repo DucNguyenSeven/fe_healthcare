@@ -1,5 +1,6 @@
 import { AxiosInstance } from 'axios';
 import { getAccessToken, getRefreshToken, setAccessToken, setRefreshToken, clearTokens } from './token';
+import { clearUserRole } from '../utils/auth';
 
 export function attachInterceptors(api: AxiosInstance) {
   // Request interceptor để thêm token vào header
@@ -37,6 +38,7 @@ export function attachInterceptors(api: AxiosInstance) {
             return api(original);
           } catch (_e) {
             clearTokens();
+            clearUserRole();
             // Redirect to login page
             if (typeof window !== 'undefined') {
               window.location.href = '/auth';

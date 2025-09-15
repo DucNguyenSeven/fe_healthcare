@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { AuthAPI, parseApiError, setAccessToken, setRefreshToken, clearTokens } from '@/lib/api';
+import { setUserRole, clearUserRole } from '@/lib/utils/auth';
 import type { LoginRequest, RegisterRequest, AuthResponse, User } from '@/lib/api';
 
 interface UseAuthReturn {
@@ -22,6 +23,22 @@ export const useAuth = (): UseAuthReturn => {
       if (response.data) {
         setAccessToken(response.data.accessToken);
         setRefreshToken(response.data.refreshToken);
+        
+        // Lưu role của user vào localStorage
+        if (response.data.user?.role) {
+          setUserRole(response.data.user.role as any);
+        } else {
+          // Fallback logic dựa trên email (cho demo)
+          const email = payload.email.toLowerCase().trim();
+          if (email === 'patient') {
+            setUserRole('patient');
+          } else if (email === 'doctor') {
+            setUserRole('doctor');
+          } else {
+            setUserRole('patient'); // default
+          }
+        }
+        
         return response.data;
       }
       throw new Error(response.message || 'Đăng nhập thất bại');
@@ -55,6 +72,7 @@ export const useAuth = (): UseAuthReturn => {
 
   const logout = () => {
     clearTokens();
+    clearUserRole();
     // Redirect to login page
     if (typeof window !== 'undefined') {
       window.location.href = '/auth';
