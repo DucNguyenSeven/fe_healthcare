@@ -135,7 +135,7 @@ export function HealthcarePlusApp() {
       case 'dashboard':
         return <DashboardPage user={user} appointments={appointments} healthMetrics={healthMetrics} alerts={alerts} onNavigate={setCurrentPage} />;
       case 'profile':
-        return <ProfileRecordsPage user={user} />;
+        return <ProfileRecordsPage />;
       case 'appointments':
         return <AppointmentsPage appointments={appointments} />;
       case 'telehealth':

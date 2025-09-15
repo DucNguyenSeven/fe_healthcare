@@ -1,12 +1,14 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { User as UserIcon, Phone, Mail, MapPin, Calendar, Heart, AlertTriangle, Upload, FileText, Download, Trash2, Edit3, Save, X, Plus, Clock, Shield, Camera, Check, IdCard, Activity } from 'lucide-react';
-import { User } from './HealthcarePlusApp';
-interface ProfileRecordsPageProps {
-  user: User;
-}
+import { User as UserIcon, Phone, Mail, MapPin, Calendar, Heart, AlertTriangle, Upload, FileText, Download, Trash2, Edit3, Save, X, Plus, Clock, Shield, Camera, Check, Activity } from 'lucide-react';
+import { useGetMe } from '@/hooks/auth/useGetMe';
+import { useUpdateUser } from '@/hooks/auth/useUpdateUser';
+import type { GetMeResponse } from '@/types/auth';
+import type { UpdateUserRequest } from '@/lib/api/types';
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+interface ProfileRecordsPageProps {}
 interface MedicalFile {
   id: string;
   name: string;
@@ -44,9 +46,12 @@ interface NewTestResult {
   systolic: string;
   diastolic: string;
 }
-export function ProfileRecordsPage({
-  user
-}: ProfileRecordsPageProps) {
+export function ProfileRecordsPage(_props: ProfileRecordsPageProps = {}) {
+  // Get user data from API
+  const { data: user, isLoading, error, refetch } = useGetMe();
+  
+  // Update user hook
+  const { updateUser, isLoading: isUpdating, error: updateError } = useUpdateUser();
   const [activeTab, setActiveTab] = useState<'personal' | 'testHistory' | 'medical' | 'files'>('personal');
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -56,6 +61,9 @@ export function ProfileRecordsPage({
   const [showTestModal, setShowTestModal] = useState(false);
   const [isAddingTest, setIsAddingTest] = useState(false);
   const [showSuccessNotification, setShowSuccessNotification] = useState(false);
+  const [showUpdateSuccessNotification, setShowUpdateSuccessNotification] = useState(false);
+  const [showUpdateErrorNotification, setShowUpdateErrorNotification] = useState(false);
+  const [dateError, setDateError] = useState<string>('');
 
   // New test result form data
   const [newTestData, setNewTestData] = useState<NewTestResult>({
@@ -69,21 +77,56 @@ export function ProfileRecordsPage({
 
   // Form data state
   const [formData, setFormData] = useState({
-    fullName: user.name,
-    email: user.email,
-    phone: user.phone,
-    dateOfBirth: '15/03/1985',
-    gender: 'Nam',
-    idNumber: '123456789012',
-    address: '123 Đường ABC, Phường XYZ, Quận 1, TP.HCM',
+    fullName: '',
+    email: '',
+    phone: '',
+    dateOfBirth: '',
+    gender: '',
+    address: '',
     insuranceType: 'BHYT',
-    insuranceNumber: 'DN1234567890123',
-    insuranceExpiry: '31/12/2025',
-    height: '170',
-    weight: '68',
-    bloodType: 'O+',
-    bmi: '23.5'
+    insuranceNumber: '',
+    insuranceExpiry: '',
+    height: '',
+    weight: '',
+    bloodType: '',
+    bmi: ''
   });
+
+  // Update form data when user data is loaded
+  useEffect(() => {
+    if (user) {
+      const formatDate = (dateString: string | null) => {
+        if (!dateString) return '';
+        try {
+          const date = new Date(dateString);
+          return date.toLocaleDateString('vi-VN');
+        } catch {
+          return '';
+        }
+      };
+
+      setFormData({
+        fullName: user.fullName || '',
+        email: user.email || '',
+        phone: user.phone || '',
+        dateOfBirth: formatDate(user.dob),
+        gender: mapGenderFromAPI(user.gender || ''),
+        address: user.address || '',
+        insuranceType: user.insurance || 'BHYT',
+        insuranceNumber: '',
+        insuranceExpiry: '',
+        height: user.height ? user.height.toString() : '',
+        weight: user.weight ? user.weight.toString() : '',
+        bloodType: user.bloodType || '',
+        bmi: user.bmi ? user.bmi.toString() : ''
+      });
+      
+      // Set avatar if available
+      if (user.avatarUrl) {
+        setAvatar(user.avatarUrl);
+      }
+    }
+  }, [user]);
 
   // Mock test results data
   const [testResults, setTestResults] = useState<TestResult[]>([{
@@ -191,31 +234,254 @@ export function ProfileRecordsPage({
       ...prev,
       [field]: value
     }));
+    
+    // Clear date error when user types
+    if (field === 'dateOfBirth') {
+      setDateError('');
+    }
   };
   const handleSave = async () => {
+    if (!user?.userId) {
+      setShowUpdateErrorNotification(true);
+      setTimeout(() => setShowUpdateErrorNotification(false), 3000);
+      return;
+    }
+
+    // Validate date before saving
+    if (formData.dateOfBirth) {
+      const dateValidationError = validateDate(formData.dateOfBirth);
+      if (dateValidationError) {
+        setDateError(dateValidationError);
+        return;
+      }
+    }
+
     setIsSaving(true);
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    setIsSaving(false);
-    setIsEditing(false);
+
+    try {
+      // Prepare data for API - only include fields that have values
+      const updateData: UpdateUserRequest = {
+        userId: user.userId,
+      };
+
+      // Only add fields that have actual values
+      if (formData.fullName && formData.fullName.trim()) {
+        updateData.fullName = formData.fullName.trim();
+      }
+      if (formData.gender) {
+        updateData.gender = mapGenderForAPI(formData.gender);
+      }
+      if (formData.dateOfBirth) {
+        updateData.dob = formatDateForAPI(formData.dateOfBirth);
+      }
+      if (formData.phone && formData.phone.trim()) {
+        updateData.phone = formData.phone.trim();
+      }
+      if (formData.address && formData.address.trim()) {
+        updateData.address = formData.address.trim();
+      }
+
+      // Debug log
+      console.log('Sending update data:', updateData);
+      console.log('Original dateOfBirth:', formData.dateOfBirth);
+      console.log('Formatted dob for API:', updateData.dob);
+
+      // Check if there are any fields to update (besides userId)
+      const fieldsToUpdate = Object.keys(updateData).filter(key => key !== 'userId');
+      if (fieldsToUpdate.length === 0) {
+        // No fields to update, just exit edit mode
+        setIsEditing(false);
+        setShowUpdateSuccessNotification(true);
+        setTimeout(() => setShowUpdateSuccessNotification(false), 3000);
+        return;
+      }
+
+      // Call update API
+      const result = await updateUser(updateData);
+
+      if (result) {
+        // Success - refetch user data and show success notification
+        await refetch();
+        setIsEditing(false);
+        setShowUpdateSuccessNotification(true);
+        setTimeout(() => setShowUpdateSuccessNotification(false), 3000);
+      } else {
+        // Error - show error notification
+        setShowUpdateErrorNotification(true);
+        setTimeout(() => setShowUpdateErrorNotification(false), 3000);
+      }
+    } catch (error) {
+      console.error('Error updating user:', error);
+      setShowUpdateErrorNotification(true);
+      setTimeout(() => setShowUpdateErrorNotification(false), 3000);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Helper function to format date for API
+  const formatDateForAPI = (dateString: string): string => {
+    try {
+      // Convert from dd/mm/yyyy to YYYY-MM-DD format (not full ISO)
+      const [day, month, year] = dateString.split('/');
+      const paddedDay = day.padStart(2, '0');
+      const paddedMonth = month.padStart(2, '0');
+      return `${year}-${paddedMonth}-${paddedDay}`;
+    } catch {
+      return dateString; // Return as-is if parsing fails
+    }
+  };
+
+  // Helper function to convert gender display value to API value
+  const mapGenderForAPI = (displayGender: string): string => {
+    switch (displayGender) {
+      case 'Nam':
+        return 'MALE';
+      case 'Nữ':
+        return 'FEMALE';
+      default:
+        return displayGender; // Return as-is if unknown
+    }
+  };
+
+  // Helper function to convert gender API value to display value
+  const mapGenderFromAPI = (apiGender: string): string => {
+    switch (apiGender) {
+      case 'MALE':
+        return 'Nam';
+      case 'FEMALE':
+        return 'Nữ';
+      default:
+        return apiGender || ''; // Return as-is if unknown
+    }
+  };
+
+  // Helper function to format date for HTML date input (YYYY-MM-DD)
+  const formatDateForInput = (dateString: string): string => {
+    if (!dateString) return '';
+    
+    try {
+      // If it's already in YYYY-MM-DD format, return as-is
+      if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+        return dateString;
+      }
+      
+      // If it's in dd/mm/yyyy format, convert to YYYY-MM-DD
+      if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(dateString)) {
+        const [day, month, year] = dateString.split('/');
+        return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+      }
+      
+      // Try to parse as date and format
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return '';
+      
+      return date.toISOString().split('T')[0];
+    } catch {
+      return '';
+    }
+  };
+
+  // Helper function to handle date change from date picker
+  const handleDateChange = (dateValue: string) => {
+    if (!dateValue) {
+      handleInputChange('dateOfBirth', '');
+      return;
+    }
+    
+    try {
+      // Convert YYYY-MM-DD to dd/mm/yyyy for display consistency
+      const [year, month, day] = dateValue.split('-');
+      const formattedDate = `${day}/${month}/${year}`;
+      handleInputChange('dateOfBirth', formattedDate);
+    } catch {
+      // If parsing fails, use the raw value
+      handleInputChange('dateOfBirth', dateValue);
+    }
+  };
+
+  // Helper function to validate date format
+  const validateDate = (dateString: string): string => {
+    if (!dateString) return '';
+    
+    let date: Date;
+    
+    // Check if it's in dd/mm/yyyy format
+    const ddmmyyyyPattern = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/;
+    const match = dateString.match(ddmmyyyyPattern);
+    
+    if (match) {
+      const [, day, month, year] = match;
+      const dayNum = parseInt(day, 10);
+      const monthNum = parseInt(month, 10);
+      const yearNum = parseInt(year, 10);
+      
+      // Basic validation
+      if (monthNum < 1 || monthNum > 12) {
+        return 'Tháng không hợp lệ (1-12)';
+      }
+      
+      if (dayNum < 1 || dayNum > 31) {
+        return 'Ngày không hợp lệ (1-31)';
+      }
+      
+      // Check if date is valid
+      date = new Date(yearNum, monthNum - 1, dayNum);
+      if (date.getDate() !== dayNum || date.getMonth() !== monthNum - 1 || date.getFullYear() !== yearNum) {
+        return 'Ngày không tồn tại';
+      }
+    } else {
+      // Try to parse as ISO date from date picker
+      date = new Date(dateString);
+      if (isNaN(date.getTime())) {
+        return 'Ngày không hợp lệ';
+      }
+    }
+    
+    // Check if date is not in future
+    const today = new Date();
+    today.setHours(23, 59, 59, 999); // Set to end of today
+    if (date > today) {
+      return 'Ngày sinh không thể trong tương lai';
+    }
+    
+    // Check if date is reasonable (not too old)
+    const minYear = today.getFullYear() - 150;
+    if (date.getFullYear() < minYear) {
+      return 'Năm sinh không hợp lệ';
+    }
+    
+    return '';
   };
   const handleCancel = () => {
-    setFormData({
-      fullName: user.name,
-      email: user.email,
-      phone: user.phone,
-      dateOfBirth: '15/03/1985',
-      gender: 'Nam',
-      idNumber: '123456789012',
-      address: '123 Đường ABC, Phường XYZ, Quận 1, TP.HCM',
-      insuranceType: 'BHYT',
-      insuranceNumber: 'DN1234567890123',
-      insuranceExpiry: '31/12/2025',
-      height: '170',
-      weight: '68',
-      bloodType: 'O+',
-      bmi: '23.5'
-    });
+    if (user) {
+      const formatDate = (dateString: string | null) => {
+        if (!dateString) return '';
+        try {
+          const date = new Date(dateString);
+          return date.toLocaleDateString('vi-VN');
+        } catch {
+          return '';
+        }
+      };
+
+      setFormData({
+        fullName: user.fullName || '',
+        email: user.email || '',
+        phone: user.phone || '',
+        dateOfBirth: formatDate(user.dob),
+        gender: mapGenderFromAPI(user.gender || ''),
+        address: user.address || '',
+        insuranceType: user.insurance || 'BHYT',
+        insuranceNumber: '',
+        insuranceExpiry: '',
+        height: user.height ? user.height.toString() : '',
+        weight: user.weight ? user.weight.toString() : '',
+        bloodType: user.bloodType || '',
+        bmi: user.bmi ? user.bmi.toString() : ''
+      });
+    }
+    setDateError(''); // Clear date error
     setIsEditing(false);
   };
   const handleAvatarUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -344,8 +610,7 @@ export function ProfileRecordsPage({
                 </label>}
             </div>
             <div>
-              <h1 className="text-xl font-bold mb-1">{formData.fullName}</h1>
-              <p className="text-white/80 text-sm">Bệnh nhân #{user.id}2345 • Tham gia từ tháng 6/2023</p>
+              <h1 className="text-xl font-bold mb-1">{formData.fullName || 'Chưa cập nhật tên'}</h1>
             </div>
           </div>
           <div className="flex gap-3">
@@ -355,9 +620,9 @@ export function ProfileRecordsPage({
                 <button onClick={handleCancel} className="bg-white/20 hover:bg-white/30 px-4 py-2 rounded-xl font-medium transition-colors text-sm">
                   <span>Hủy</span>
                 </button>
-                <button onClick={handleSave} disabled={isSaving} className="bg-white text-[#1E75FF] hover:bg-gray-100 px-4 py-2 rounded-xl font-medium transition-colors flex items-center gap-2 disabled:opacity-50 text-sm">
-                  {isSaving ? <div className="w-4 h-4 border-2 border-[#1E75FF] border-t-transparent rounded-full animate-spin" /> : <Save size={16} />}
-                  <span>{isSaving ? 'Đang lưu...' : 'Lưu thay đổi'}</span>
+                <button onClick={handleSave} disabled={isSaving || isUpdating} className="bg-white text-[#1E75FF] hover:bg-gray-100 px-4 py-2 rounded-xl font-medium transition-colors flex items-center gap-2 disabled:opacity-50 text-sm">
+                  {(isSaving || isUpdating) ? <div className="w-4 h-4 border-2 border-[#1E75FF] border-t-transparent rounded-full animate-spin" /> : <Save size={16} />}
+                  <span>{(isSaving || isUpdating) ? 'Đang lưu...' : 'Lưu thay đổi'}</span>
                 </button>
               </div>}
           </div>
@@ -366,19 +631,19 @@ export function ProfileRecordsPage({
         <div className="grid grid-cols-4 gap-4 mt-6">
           <div className="text-center">
             <div className="text-sm text-white/80 mb-1">Chiều cao:</div>
-            <div className="font-semibold text-lg">{formData.height} cm</div>
+            <div className="font-semibold text-lg">{formData.height ? `${formData.height} cm` : '--'}</div>
           </div>
           <div className="text-center">
             <div className="text-sm text-white/80 mb-1">Cân nặng:</div>
-            <div className="font-semibold text-lg">{formData.weight} kg</div>
+            <div className="font-semibold text-lg">{formData.weight ? `${formData.weight} kg` : '--'}</div>
           </div>
           <div className="text-center">
             <div className="text-sm text-white/80 mb-1">Nhóm máu:</div>
-            <div className="font-semibold text-lg">{formData.bloodType}</div>
+            <div className="font-semibold text-lg">{formData.bloodType || '--'}</div>
           </div>
           <div className="text-center">
             <div className="text-sm text-white/80 mb-1">BMI:</div>
-            <div className="font-semibold text-lg">{formData.bmi}</div>
+            <div className="font-semibold text-lg">{formData.bmi || '--'}</div>
           </div>
         </div>
       </motion.div>
@@ -397,7 +662,7 @@ export function ProfileRecordsPage({
             </label>
             {isEditing ? <input type="text" value={formData.fullName} onChange={e => handleInputChange('fullName', e.target.value)} className="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent transition-all" /> : <div className="flex items-center gap-3 px-4 py-3 bg-gray-50 rounded-2xl">
                 <UserIcon size={20} className="text-[#334155]" />
-                <span className="text-[#0F172A]">{formData.fullName}</span>
+                <span className="text-[#0F172A]">{formData.fullName || 'Chưa cập nhật'}</span>
               </div>}
           </div>
 
@@ -405,10 +670,28 @@ export function ProfileRecordsPage({
             <label className="block text-sm font-medium text-[#334155]">
               Ngày sinh
             </label>
-            {isEditing ? <input type="text" value={formData.dateOfBirth} onChange={e => handleInputChange('dateOfBirth', e.target.value)} placeholder="dd/mm/yyyy" className="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent transition-all" /> : <div className="flex items-center gap-3 px-4 py-3 bg-gray-50 rounded-2xl">
+            {isEditing ? (
+              <div className="relative">
+                {/* Date input with picker support */}
+                <input 
+                  type="date" 
+                  value={formatDateForInput(formData.dateOfBirth)} 
+                  onChange={e => handleDateChange(e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent transition-all" 
+                />
+                {dateError && (
+                  <p className="mt-1 text-sm text-red-600 flex items-center gap-1">
+                    <X size={14} />
+                    {dateError}
+                  </p>
+                )}
+              </div>
+            ) : (
+              <div className="flex items-center gap-3 px-4 py-3 bg-gray-50 rounded-2xl">
                 <Calendar size={20} className="text-[#334155]" />
-                <span className="text-[#0F172A]">{formData.dateOfBirth}</span>
-              </div>}
+                <span className="text-[#0F172A]">{formData.dateOfBirth || 'Chưa cập nhật'}</span>
+              </div>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -420,19 +703,10 @@ export function ProfileRecordsPage({
                 <option value="Nữ">Nữ</option>
               </select> : <div className="flex items-center gap-3 px-4 py-3 bg-gray-50 rounded-2xl">
                 <UserIcon size={20} className="text-[#334155]" />
-                <span className="text-[#0F172A]">{formData.gender}</span>
+                <span className="text-[#0F172A]">{formData.gender || 'Chưa cập nhật'}</span>
               </div>}
           </div>
 
-          <div className="space-y-2">
-            <label className="block text-sm font-medium text-[#334155]">
-              CCCD/CMND
-            </label>
-            {isEditing ? <input type="text" value={formData.idNumber} onChange={e => handleInputChange('idNumber', e.target.value)} placeholder="123456789012" className="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent transition-all" /> : <div className="flex items-center gap-3 px-4 py-3 bg-gray-50 rounded-2xl">
-                <IdCard size={20} className="text-[#334155]" />
-                <span className="text-[#0F172A]">{formData.idNumber}</span>
-              </div>}
-          </div>
 
           <div className="space-y-2">
             <label className="block text-sm font-medium text-[#334155]">
@@ -440,7 +714,7 @@ export function ProfileRecordsPage({
             </label>
             {isEditing ? <input type="tel" value={formData.phone} onChange={e => handleInputChange('phone', e.target.value)} className="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent transition-all" /> : <div className="flex items-center gap-3 px-4 py-3 bg-gray-50 rounded-2xl">
                 <Phone size={20} className="text-[#334155]" />
-                <span className="text-[#0F172A]">{formData.phone}</span>
+                <span className="text-[#0F172A]">{formData.phone || 'Chưa cập nhật'}</span>
               </div>}
           </div>
 
@@ -450,7 +724,7 @@ export function ProfileRecordsPage({
             </label>
             {isEditing ? <input type="email" value={formData.email} onChange={e => handleInputChange('email', e.target.value)} className="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent transition-all" /> : <div className="flex items-center gap-3 px-4 py-3 bg-gray-50 rounded-2xl">
                 <Mail size={20} className="text-[#334155]" />
-                <span className="text-[#0F172A]">{formData.email}</span>
+                <span className="text-[#0F172A]">{formData.email || 'Chưa cập nhật'}</span>
               </div>}
           </div>
 
@@ -460,7 +734,7 @@ export function ProfileRecordsPage({
             </label>
             {isEditing ? <input type="text" value={formData.address} onChange={e => handleInputChange('address', e.target.value)} className="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent transition-all" /> : <div className="flex items-center gap-3 px-4 py-3 bg-gray-50 rounded-2xl">
                 <MapPin size={20} className="text-[#334155]" />
-                <span className="text-[#0F172A]">{formData.address}</span>
+                <span className="text-[#0F172A]">{formData.address || 'Chưa cập nhật'}</span>
               </div>}
           </div>
         </div>
@@ -769,6 +1043,56 @@ export function ProfileRecordsPage({
     });
     setShowTestModal(false);
   };
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="p-6 max-w-4xl mx-auto">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="flex flex-col items-center gap-4">
+            <div className="w-8 h-8 border-4 border-[#1E75FF] border-t-transparent rounded-full animate-spin"></div>
+            <p className="text-gray-600">Đang tải thông tin người dùng...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="p-6 max-w-4xl mx-auto">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <div className="text-red-500 text-5xl mb-4">⚠️</div>
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">Không thể tải thông tin</h3>
+            <p className="text-gray-600 mb-4">Đã xảy ra lỗi khi tải thông tin người dùng. Vui lòng thử lại sau.</p>
+            <button 
+              onClick={() => window.location.reload()} 
+              className="px-4 py-2 bg-[#1E75FF] text-white rounded-xl hover:bg-[#1659C9] transition-colors"
+            >
+              Thử lại
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // No user data
+  if (!user) {
+    return (
+      <div className="p-6 max-w-4xl mx-auto">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <div className="text-gray-400 text-5xl mb-4">👤</div>
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">Không tìm thấy thông tin người dùng</h3>
+            <p className="text-gray-600">Vui lòng đăng nhập lại để xem thông tin cá nhân.</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return <div className="p-6 max-w-4xl mx-auto">
       {/* Success Notification */}
       <AnimatePresence>
@@ -784,6 +1108,40 @@ export function ProfileRecordsPage({
       }} className="fixed top-4 right-4 z-[10001] bg-green-500 text-white px-6 py-3 rounded-xl shadow-lg flex items-center gap-2">
             <Check size={20} />
             <span>Đã thêm kết quả xét nghiệm thành công</span>
+          </motion.div>}
+      </AnimatePresence>
+
+      {/* Update Success Notification */}
+      <AnimatePresence>
+        {showUpdateSuccessNotification && <motion.div initial={{
+        opacity: 0,
+        y: -50
+      }} animate={{
+        opacity: 1,
+        y: 0
+      }} exit={{
+        opacity: 0,
+        y: -50
+      }} className="fixed top-4 right-4 z-[10001] bg-green-500 text-white px-6 py-3 rounded-xl shadow-lg flex items-center gap-2">
+            <Check size={20} />
+            <span>Cập nhật thông tin thành công!</span>
+          </motion.div>}
+      </AnimatePresence>
+
+      {/* Update Error Notification */}
+      <AnimatePresence>
+        {showUpdateErrorNotification && <motion.div initial={{
+        opacity: 0,
+        y: -50
+      }} animate={{
+        opacity: 1,
+        y: 0
+      }} exit={{
+        opacity: 0,
+        y: -50
+      }} className="fixed top-4 right-4 z-[10001] bg-red-500 text-white px-6 py-3 rounded-xl shadow-lg flex items-center gap-2">
+            <X size={20} />
+            <span>Có lỗi xảy ra khi cập nhật thông tin. Vui lòng thử lại!</span>
           </motion.div>}
       </AnimatePresence>
 
