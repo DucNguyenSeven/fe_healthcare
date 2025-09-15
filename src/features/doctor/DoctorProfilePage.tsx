@@ -2,23 +2,21 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { User, Mail, Phone, Upload, Save, Camera, CheckCircle, Plus, Award, X, Calendar, MapPin, Briefcase, Stethoscope, DollarSign } from 'lucide-react';
+import { User, Mail, Phone, Upload, Save, Camera, CheckCircle, Plus, Award, X, Calendar, MapPin, Briefcase, Stethoscope, DollarSign, Edit } from 'lucide-react';
 import { useGetMe } from '@/hooks/auth/useGetMe';
 import { useUpdateUser } from '@/hooks/auth/useUpdateUser';
 import { useUpdateAvatar } from '@/hooks/auth/useUpdateAvatar';
 import { useUpdateDoctor } from '@/hooks/auth/useUpdateDoctor';
+import { useCertificationList, type AddCertificationRequest } from '@/hooks/certification';
+import type { UpdateCertificationRequest } from '@/lib/api/certification';
+import type { Certification } from '@/lib/api/certification';
 import type { GetMeResponse } from '@/types/auth';
 import type { UpdateUserRequest, UpdateDoctorRequest } from '@/lib/api/types';
 const currentYear = new Date().getFullYear();
 const years = Array.from({
   length: 50
 }, (_, i) => currentYear - i);
-interface Certificate {
-  id: string;
-  name: string;
-  issuer: string;
-  year: number;
-}
+// Certificate interface now imported from certification hooks
 
 // @component: DoctorProfilePage
 export const DoctorProfilePage = () => {
@@ -33,6 +31,24 @@ export const DoctorProfilePage = () => {
   
   // Update avatar hook
   const { updateAvatar, isLoading: isUploadingAvatar, error: avatarError, progress } = useUpdateAvatar();
+  
+  // Certification management hooks
+  const {
+    certifications,
+    isLoading: isCertificationsLoading,
+    isAdding: isAddingCertification,
+    isUpdating: isUpdatingCertification,
+    isDeleting: isDeletingCertification,
+    addCertification,
+    updateCertification,
+    deleteCertification,
+    addError: certificationAddError,
+    updateError: certificationUpdateError,
+    deleteError: certificationDeleteError,
+    resetAddError,
+    resetUpdateError,
+    resetDeleteError,
+  } = useCertificationList(user?.userId || '');
 
   const [formData, setFormData] = useState({
     fullName: '',
@@ -51,36 +67,30 @@ export const DoctorProfilePage = () => {
     examinationFee: 0,
     clinicAddress: ''
   });
-  const [certificates, setCertificates] = useState<Certificate[]>([{
-    id: '1',
-    name: 'Chứng chỉ chuyên khoa cấp II Thận học',
-    issuer: 'Bộ Y tế',
-    year: 2018
-  }, {
-    id: '2',
-    name: 'Chứng chỉ Lọc máu chu kỳ',
-    issuer: 'Đại học Y Hà Nội',
-    year: 2020
-  }, {
-    id: '3',
-    name: 'Chứng chỉ Siêu âm Doppler thận',
-    issuer: 'Hội Siêu âm Y học Việt Nam',
-    year: 2021
-  }]);
+  // Certificates now managed by API hooks
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [avatar, setAvatar] = useState<string | null>(null);
   const [showCertificateModal, setShowCertificateModal] = useState(false);
+  const [showEditCertificateModal, setShowEditCertificateModal] = useState(false);
+  const [editingCertificate, setEditingCertificate] = useState<Certification | null>(null);
   const [newCertificate, setNewCertificate] = useState({
     name: '',
-    issuer: '',
-    year: currentYear
+    issuingOrganization: '',
+    yearIssued: currentYear
+  });
+  const [editCertificate, setEditCertificate] = useState({
+    name: '',
+    issuingOrganization: '',
+    yearIssued: currentYear
   });
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
   const [showUpdateSuccessNotification, setShowUpdateSuccessNotification] = useState(false);
   const [showUpdateErrorNotification, setShowUpdateErrorNotification] = useState(false);
   const [showAvatarSuccessNotification, setShowAvatarSuccessNotification] = useState(false);
   const [showAvatarErrorNotification, setShowAvatarErrorNotification] = useState(false);
+  const [showCertificationSuccessNotification, setShowCertificationSuccessNotification] = useState(false);
+  const [showCertificationErrorNotification, setShowCertificationErrorNotification] = useState(false);
   const [dateError, setDateError] = useState<string>('');
 
   // Update form data when user data is loaded
@@ -454,26 +464,108 @@ export const DoctorProfilePage = () => {
     // Clear the input value so the same file can be selected again
     event.target.value = '';
   };
-  const handleAddCertificate = () => {
-    if (newCertificate.name.trim() && newCertificate.issuer.trim()) {
-      const certificate: Certificate = {
-        id: Date.now().toString(),
+  const handleAddCertificate = async () => {
+    if (!user?.userId) {
+      setShowCertificationErrorNotification(true);
+      setTimeout(() => setShowCertificationErrorNotification(false), 3000);
+      return;
+    }
+    
+    if (newCertificate.name.trim() && newCertificate.issuingOrganization.trim()) {
+      const certData: AddCertificationRequest = {
         name: newCertificate.name.trim(),
-        issuer: newCertificate.issuer.trim(),
-        year: newCertificate.year
+        issuingOrganization: newCertificate.issuingOrganization.trim(),
+        yearIssued: newCertificate.yearIssued
       };
-      setCertificates(prev => [...prev, certificate]);
-      setNewCertificate({
-        name: '',
-        issuer: '',
-        year: currentYear
-      });
-      setShowCertificateModal(false);
+      
+      try {
+        await addCertification(certData);
+        
+        // Reset form and close modal
+        setNewCertificate({
+          name: '',
+          issuingOrganization: '',
+          yearIssued: currentYear
+        });
+        setShowCertificateModal(false);
+        
+        // Show success notification
+        setShowCertificationSuccessNotification(true);
+        setTimeout(() => setShowCertificationSuccessNotification(false), 3000);
+        
+      } catch (error) {
+        setShowCertificationErrorNotification(true);
+        setTimeout(() => setShowCertificationErrorNotification(false), 3000);
+      }
     }
   };
-  const handleDeleteCertificate = (id: string) => {
-    setCertificates(prev => prev.filter(cert => cert.id !== id));
-    setShowDeleteConfirm(null);
+
+  const handleEditCertificate = (certificate: Certification) => {
+    setEditingCertificate(certificate);
+    setEditCertificate({
+      name: certificate.name,
+      issuingOrganization: certificate.issuingOrganization,
+      yearIssued: certificate.yearIssued
+    });
+    setShowEditCertificateModal(true);
+  };
+
+  const handleUpdateCertificate = async () => {
+    if (!user?.userId || !editingCertificate) {
+      setShowCertificationErrorNotification(true);
+      setTimeout(() => setShowCertificationErrorNotification(false), 3000);
+      return;
+    }
+    
+    if (editCertificate.name.trim() && editCertificate.issuingOrganization.trim()) {
+      const certData: UpdateCertificationRequest = {
+        name: editCertificate.name.trim(),
+        issuingOrganization: editCertificate.issuingOrganization.trim(),
+        yearIssued: editCertificate.yearIssued
+      };
+      
+      try {
+        await updateCertification({ certificationId: editingCertificate.id, certData });
+        
+        // Close modal and reset
+        setShowEditCertificateModal(false);
+        setEditingCertificate(null);
+        setEditCertificate({
+          name: '',
+          issuingOrganization: '',
+          yearIssued: currentYear
+        });
+        
+        // Show success notification
+        setShowCertificationSuccessNotification(true);
+        setTimeout(() => setShowCertificationSuccessNotification(false), 3000);
+        
+      } catch (error) {
+        setShowCertificationErrorNotification(true);
+        setTimeout(() => setShowCertificationErrorNotification(false), 3000);
+      }
+    }
+  };
+  const handleDeleteCertificate = async (id: string) => {
+    if (!user?.userId) {
+      setShowCertificationErrorNotification(true);
+      setTimeout(() => setShowCertificationErrorNotification(false), 3000);
+      return;
+    }
+    
+    try {
+      await deleteCertification(id);
+      setShowDeleteConfirm(null);
+      
+      // Show success notification
+      setShowCertificationSuccessNotification(true);
+      setTimeout(() => setShowCertificationSuccessNotification(false), 3000);
+      
+    } catch (error) {
+      setShowDeleteConfirm(null);
+      setShowCertificationErrorNotification(true);
+      setTimeout(() => setShowCertificationErrorNotification(false), 3000);
+    }
   };
 
   // Loading state
@@ -593,6 +685,40 @@ export const DoctorProfilePage = () => {
       }} className="fixed top-4 right-4 z-[10001] bg-red-500 text-white px-6 py-3 rounded-xl shadow-lg flex items-center gap-2">
             <X size={20} />
             <span>{avatarError || 'Có lỗi xảy ra khi upload ảnh đại diện. Vui lòng thử lại!'}</span>
+          </motion.div>}
+      </AnimatePresence>
+
+      {/* Certification Success Notification */}
+      <AnimatePresence>
+        {showCertificationSuccessNotification && <motion.div initial={{
+        opacity: 0,
+        y: -50
+      }} animate={{
+        opacity: 1,
+        y: 0
+      }} exit={{
+        opacity: 0,
+        y: -50
+      }} className="fixed top-4 right-4 z-[10001] bg-green-500 text-white px-6 py-3 rounded-xl shadow-lg flex items-center gap-2">
+            <CheckCircle size={20} />
+            <span>Cập nhật chứng chỉ thành công!</span>
+          </motion.div>}
+      </AnimatePresence>
+
+      {/* Certification Error Notification */}
+      <AnimatePresence>
+        {showCertificationErrorNotification && <motion.div initial={{
+        opacity: 0,
+        y: -50
+      }} animate={{
+        opacity: 1,
+        y: 0
+      }} exit={{
+        opacity: 0,
+        y: -50
+      }} className="fixed top-4 right-4 z-[10001] bg-red-500 text-white px-6 py-3 rounded-xl shadow-lg flex items-center gap-2">
+            <X size={20} />
+            <span>{certificationAddError || certificationUpdateError || certificationDeleteError || 'Có lỗi xảy ra khi xử lý chứng chỉ. Vui lòng thử lại!'}</span>
           </motion.div>}
       </AnimatePresence>
 
@@ -882,40 +1008,85 @@ export const DoctorProfilePage = () => {
               <h2 className="text-2xl font-semibold text-[#0F172A]">
                 Chứng chỉ chuyên môn
               </h2>
-              <button onClick={() => setShowCertificateModal(true)} className="bg-[#1E75FF] hover:bg-[#1659C9] text-white px-4 py-2 rounded-2xl font-medium flex items-center gap-2 transition-colors">
-                <Plus size={16} />
-                <span>Thêm chứng chỉ mới</span>
+              <button 
+                onClick={() => setShowCertificateModal(true)} 
+                disabled={isAddingCertification}
+                className="bg-[#1E75FF] hover:bg-[#1659C9] text-white px-4 py-2 rounded-2xl font-medium flex items-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isAddingCertification ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <span>Đang thêm...</span>
+                  </>
+                ) : (
+                  <>
+                    <Plus size={16} />
+                    <span>Thêm chứng chỉ mới</span>
+                  </>
+                )}
               </button>
             </div>
             
-            {certificates.length === 0 ? <div className="text-center py-12 bg-gray-50 rounded-2xl">
+            {(certifications || []).length === 0 ? <div className="text-center py-12 bg-gray-50 rounded-2xl">
                 <Award size={48} className="text-gray-400 mx-auto mb-4" />
                 <p className="text-[#334155] mb-4">Chưa có chứng chỉ nào</p>
-                <button onClick={() => setShowCertificateModal(true)} className="bg-[#1E75FF] hover:bg-[#1659C9] text-white px-6 py-3 rounded-2xl font-medium flex items-center gap-2 mx-auto transition-colors">
-                  <Plus size={20} />
-                  <span>Thêm chứng chỉ mới</span>
+                <button 
+                  onClick={() => setShowCertificateModal(true)} 
+                  disabled={isAddingCertification}
+                  className="bg-[#1E75FF] hover:bg-[#1659C9] text-white px-6 py-3 rounded-2xl font-medium flex items-center gap-2 mx-auto transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isAddingCertification ? (
+                    <>
+                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      <span>Đang thêm...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Plus size={20} />
+                      <span>Thêm chứng chỉ mới</span>
+                    </>
+                  )}
                 </button>
               </div> : <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {certificates.map(certificate => <motion.div key={certificate.id} initial={{
+                {(certifications || []).map((certificate: Certification) => <motion.div key={certificate.id} initial={{
               opacity: 0,
               y: 20
             }} animate={{
               opacity: 1,
               y: 0
             }} className="bg-white border border-gray-200 rounded-2xl p-6 hover:shadow-md transition-shadow relative group">
-                    <button onClick={() => setShowDeleteConfirm(certificate.id)} className="absolute top-4 right-4 w-8 h-8 bg-[#EF4444] hover:bg-[#DC2626] text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                      <X size={16} />
-                    </button>
+                    <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button 
+                        onClick={() => handleEditCertificate(certificate)} 
+                        disabled={isUpdatingCertification}
+                        className="w-8 h-8 bg-[#1E75FF] hover:bg-[#1659C9] text-white rounded-full flex items-center justify-center transition-colors disabled:opacity-50"
+                        title="Chỉnh sửa chứng chỉ"
+                      >
+                        <Edit size={16} />
+                      </button>
+                      <button 
+                        onClick={() => setShowDeleteConfirm(certificate.id)} 
+                        disabled={isDeletingCertification}
+                        className="w-8 h-8 bg-[#EF4444] hover:bg-[#DC2626] text-white rounded-full flex items-center justify-center transition-colors disabled:opacity-50"
+                        title="Xóa chứng chỉ"
+                      >
+                        {isDeletingCertification && showDeleteConfirm === certificate.id ? (
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        ) : (
+                          <X size={16} />
+                        )}
+                      </button>
+                    </div>
                     <div className="flex items-start gap-4">
                       <div className="w-12 h-12 bg-[#1E75FF]/10 rounded-xl flex items-center justify-center flex-shrink-0">
                         <Award size={24} className="text-[#1E75FF]" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold text-[#0F172A] mb-2 pr-8">{certificate.name}</h3>
-                        <p className="text-sm text-[#334155] mb-1">{certificate.issuer}</p>
+                        <h3 className="font-semibold text-[#0F172A] mb-2 pr-20">{certificate.name}</h3>
+                        <p className="text-sm text-[#334155] mb-1">{certificate.issuingOrganization}</p>
                         <div className="flex items-center gap-1 text-sm text-[#334155]">
                           <Calendar size={14} />
-                          <span>Năm {certificate.year}</span>
+                          <span>Năm {certificate.yearIssued}</span>
                         </div>
                       </div>
                     </div>
@@ -959,9 +1130,9 @@ export const DoctorProfilePage = () => {
                     <label className="block text-sm font-medium text-[#334155] mb-2">
                       Cơ quan cấp
                     </label>
-                    <input type="text" value={newCertificate.issuer} onChange={e => setNewCertificate(prev => ({
+                    <input type="text" value={newCertificate.issuingOrganization} onChange={e => setNewCertificate(prev => ({
                   ...prev,
-                  issuer: e.target.value
+                  issuingOrganization: e.target.value
                 }))} className="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent transition-all" placeholder="Nhập cơ quan cấp..." />
                   </div>
 
@@ -969,9 +1140,9 @@ export const DoctorProfilePage = () => {
                     <label className="block text-sm font-medium text-[#334155] mb-2">
                       Năm cấp
                     </label>
-                    <select value={newCertificate.year} onChange={e => setNewCertificate(prev => ({
+                    <select value={newCertificate.yearIssued} onChange={e => setNewCertificate(prev => ({
                   ...prev,
-                  year: parseInt(e.target.value)
+                  yearIssued: parseInt(e.target.value)
                 }))} className="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent transition-all">
                       {years.map(year => <option key={year} value={year}>{year}</option>)}
                     </select>
@@ -982,9 +1153,121 @@ export const DoctorProfilePage = () => {
                   <button onClick={() => setShowCertificateModal(false)} className="flex-1 bg-gray-100 hover:bg-gray-200 text-[#334155] py-3 rounded-2xl font-medium transition-colors">
                     Hủy
                   </button>
-                  <button onClick={handleAddCertificate} disabled={!newCertificate.name.trim() || !newCertificate.issuer.trim()} className="flex-1 bg-[#1E75FF] hover:bg-[#1659C9] text-white py-3 rounded-2xl font-medium flex items-center justify-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-                    <Save size={16} />
-                    <span>Lưu chứng chỉ</span>
+                  <button 
+                    onClick={handleAddCertificate} 
+                    disabled={!newCertificate.name.trim() || !newCertificate.issuingOrganization.trim() || isAddingCertification} 
+                    className="flex-1 bg-[#1E75FF] hover:bg-[#1659C9] text-white py-3 rounded-2xl font-medium flex items-center justify-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isAddingCertification ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        <span>Đang lưu...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Save size={16} />
+                        <span>Lưu chứng chỉ</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </motion.div>
+            </div>}
+        </AnimatePresence>
+
+        {/* Edit Certificate Modal */}
+        <AnimatePresence>
+          {showEditCertificateModal && <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+              <motion.div initial={{
+            opacity: 0,
+            scale: 0.95
+          }} animate={{
+            opacity: 1,
+            scale: 1
+          }} exit={{
+            opacity: 0,
+            scale: 0.95
+          }} className="bg-white rounded-2xl p-6 w-full max-w-md shadow-[0_10px_24px_rgba(16,24,40,0.08)]">
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-xl font-semibold text-[#0F172A]">Chỉnh sửa chứng chỉ</h3>
+                  <button onClick={() => setShowEditCertificateModal(false)} className="w-8 h-8 bg-gray-100 hover:bg-gray-200 rounded-full flex items-center justify-center transition-colors">
+                    <X size={16} className="text-[#334155]" />
+                  </button>
+                </div>
+
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-[#334155] mb-2">
+                      Tên chứng chỉ
+                    </label>
+                    <input 
+                      type="text" 
+                      value={editCertificate.name} 
+                      onChange={e => setEditCertificate(prev => ({
+                        ...prev,
+                        name: e.target.value
+                      }))} 
+                      className="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent transition-all" 
+                      placeholder="Nhập tên chứng chỉ..." 
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-[#334155] mb-2">
+                      Cơ quan cấp
+                    </label>
+                    <input 
+                      type="text" 
+                      value={editCertificate.issuingOrganization} 
+                      onChange={e => setEditCertificate(prev => ({
+                        ...prev,
+                        issuingOrganization: e.target.value
+                      }))} 
+                      className="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent transition-all" 
+                      placeholder="Nhập cơ quan cấp..." 
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-[#334155] mb-2">
+                      Năm cấp
+                    </label>
+                    <select 
+                      value={editCertificate.yearIssued} 
+                      onChange={e => setEditCertificate(prev => ({
+                        ...prev,
+                        yearIssued: parseInt(e.target.value)
+                      }))} 
+                      className="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent transition-all"
+                    >
+                      {years.map(year => <option key={year} value={year}>{year}</option>)}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="flex gap-3 mt-6">
+                  <button 
+                    onClick={() => setShowEditCertificateModal(false)} 
+                    className="flex-1 bg-gray-100 hover:bg-gray-200 text-[#334155] py-3 rounded-2xl font-medium transition-colors"
+                  >
+                    Hủy
+                  </button>
+                  <button 
+                    onClick={handleUpdateCertificate} 
+                    disabled={!editCertificate.name.trim() || !editCertificate.issuingOrganization.trim() || isUpdatingCertification} 
+                    className="flex-1 bg-[#1E75FF] hover:bg-[#1659C9] text-white py-3 rounded-2xl font-medium flex items-center justify-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isUpdatingCertification ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        <span>Đang lưu...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Save size={16} />
+                        <span>Lưu thay đổi</span>
+                      </>
+                    )}
                   </button>
                 </div>
               </motion.div>
@@ -1015,8 +1298,19 @@ export const DoctorProfilePage = () => {
                     <button onClick={() => setShowDeleteConfirm(null)} className="flex-1 bg-gray-100 hover:bg-gray-200 text-[#334155] py-3 rounded-2xl font-medium transition-colors">
                       Hủy
                     </button>
-                    <button onClick={() => handleDeleteCertificate(showDeleteConfirm)} className="flex-1 bg-[#EF4444] hover:bg-[#DC2626] text-white py-3 rounded-2xl font-medium transition-colors">
-                      Xóa
+                    <button 
+                      onClick={() => handleDeleteCertificate(showDeleteConfirm)} 
+                      disabled={isDeletingCertification}
+                      className="flex-1 bg-[#EF4444] hover:bg-[#DC2626] text-white py-3 rounded-2xl font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    >
+                      {isDeletingCertification ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          <span>Đang xóa...</span>
+                        </>
+                      ) : (
+                        'Xóa'
+                      )}
                     </button>
                   </div>
                 </div>
