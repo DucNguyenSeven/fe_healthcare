@@ -264,12 +264,16 @@ export function ProfileRecordsPage(_props: ProfileRecordsPageProps = {}) {
         userId: user.userId,
       };
 
-      // Only add fields that have actual values
+      // Add fields that have actual values
       if (formData.fullName && formData.fullName.trim()) {
         updateData.fullName = formData.fullName.trim();
       }
       if (formData.gender) {
-        updateData.gender = mapGenderForAPI(formData.gender);
+        // Sử dụng validateGender để đảm bảo format đúng
+        const validatedGender = validateGender(formData.gender);
+        if (validatedGender) {
+          updateData.gender = validatedGender;
+        }
       }
       if (formData.dateOfBirth) {
         updateData.dob = formatDateForAPI(formData.dateOfBirth);
@@ -280,11 +284,10 @@ export function ProfileRecordsPage(_props: ProfileRecordsPageProps = {}) {
       if (formData.address && formData.address.trim()) {
         updateData.address = formData.address.trim();
       }
+      
+      // Always include role for user updates
+      updateData.role = 'PATIENT';
 
-      // Debug log
-      console.log('Sending update data:', updateData);
-      console.log('Original dateOfBirth:', formData.dateOfBirth);
-      console.log('Formatted dob for API:', updateData.dob);
 
       // Check if there are any fields to update (besides userId)
       const fieldsToUpdate = Object.keys(updateData).filter(key => key !== 'userId');
@@ -332,25 +335,47 @@ export function ProfileRecordsPage(_props: ProfileRecordsPageProps = {}) {
     }
   };
 
+  // Validation function để đảm bảo gender đúng format
+  const validateGender = (value: string): 'MALE' | 'FEMALE' | 'OTHER' | undefined => {
+    if (!value) return undefined;
+    
+    const upperValue = value.toUpperCase();
+    const validValues = ['MALE', 'FEMALE', 'OTHER'];
+    
+    return validValues.includes(upperValue) 
+      ? upperValue as 'MALE' | 'FEMALE' | 'OTHER'
+      : undefined;
+  };
+
   // Helper function to convert gender display value to API value
   const mapGenderForAPI = (displayGender: string): string => {
+    // Với format mới, gender values đã là uppercase trong form
+    if (displayGender && ['MALE', 'FEMALE', 'OTHER'].includes(displayGender)) {
+      return displayGender;
+    }
+    
+    // Fallback cho trường hợp cũ
     switch (displayGender) {
       case 'Nam':
         return 'MALE';
       case 'Nữ':
         return 'FEMALE';
+      case 'Khác':
+        return 'OTHER';
       default:
         return displayGender; // Return as-is if unknown
     }
   };
 
-  // Helper function to convert gender API value to display value
+  // Helper function to convert gender API value to display value for UI
   const mapGenderFromAPI = (apiGender: string): string => {
     switch (apiGender) {
       case 'MALE':
-        return 'Nam';
+        return 'MALE'; // Trả về giá trị form để tương thích với dropdown
       case 'FEMALE':
-        return 'Nữ';
+        return 'FEMALE';
+      case 'OTHER':
+        return 'OTHER';
       default:
         return apiGender || ''; // Return as-is if unknown
     }
@@ -699,11 +724,18 @@ export function ProfileRecordsPage(_props: ProfileRecordsPageProps = {}) {
               Giới tính
             </label>
             {isEditing ? <select value={formData.gender} onChange={e => handleInputChange('gender', e.target.value)} className="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent transition-all">
-                <option value="Nam">Nam</option>
-                <option value="Nữ">Nữ</option>
+                <option value="">Chọn giới tính</option>
+                <option value="MALE">Nam</option>
+                <option value="FEMALE">Nữ</option>
+                <option value="OTHER">Khác</option>
               </select> : <div className="flex items-center gap-3 px-4 py-3 bg-gray-50 rounded-2xl">
                 <UserIcon size={20} className="text-[#334155]" />
-                <span className="text-[#0F172A]">{formData.gender || 'Chưa cập nhật'}</span>
+                <span className="text-[#0F172A]">
+                  {formData.gender === 'MALE' ? 'Nam' : 
+                   formData.gender === 'FEMALE' ? 'Nữ' : 
+                   formData.gender === 'OTHER' ? 'Khác' : 
+                   'Chưa cập nhật'}
+                </span>
               </div>}
           </div>
 

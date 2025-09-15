@@ -39,7 +39,7 @@ export type ResetPasswordRequest = { email: string; newPassword: string };
 export type UpdateUserRequest = {
   userId: string;
   fullName?: string;
-  gender?: string;
+  gender?: 'MALE' | 'FEMALE' | 'OTHER';  // Strict typing để match backend enum
   dob?: string;
   phone?: string;
   address?: string;

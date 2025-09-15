@@ -25,9 +25,19 @@ export const useUpdateUser = (): UseUpdateUserReturn => {
         throw new Error(response.message || 'Cập nhật thông tin thất bại');
       }
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Có lỗi xảy ra khi cập nhật thông tin';
+      let errorMessage = 'Có lỗi xảy ra khi cập nhật thông tin';
+      
+      if (err && typeof err === 'object' && 'response' in err) {
+        const errorResponse = err as { response?: { data?: { message?: string; statusCode?: number } } };
+        
+        if (errorResponse.response?.data?.message) {
+          errorMessage = errorResponse.response.data.message;
+        }
+      } else if (err instanceof Error) {
+        errorMessage = err.message;
+      }
+      
       setError(errorMessage);
-      // Log error details for debugging if needed
       return null;
     } finally {
       setIsLoading(false);
