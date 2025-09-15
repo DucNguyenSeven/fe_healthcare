@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { User as UserIcon, Phone, Mail, MapPin, Calendar, Heart, AlertTriangle, Upload, FileText, Download, Trash2, Edit3, Save, X, Plus, Clock, Shield, Camera, Check, Activity } from 'lucide-react';
 import { useGetMe } from '@/hooks/auth/useGetMe';
 import { useUpdateUser } from '@/hooks/auth/useUpdateUser';
+import { useUpdateAvatar } from '@/hooks/auth/useUpdateAvatar';
 import type { GetMeResponse } from '@/types/auth';
 import type { UpdateUserRequest } from '@/lib/api/types';
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
@@ -52,6 +53,9 @@ export function ProfileRecordsPage(_props: ProfileRecordsPageProps = {}) {
   
   // Update user hook
   const { updateUser, isLoading: isUpdating, error: updateError } = useUpdateUser();
+  
+  // Update avatar hook
+  const { updateAvatar, isLoading: isUploadingAvatar, error: avatarError, progress } = useUpdateAvatar();
   const [activeTab, setActiveTab] = useState<'personal' | 'testHistory' | 'medical' | 'files'>('personal');
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -63,6 +67,8 @@ export function ProfileRecordsPage(_props: ProfileRecordsPageProps = {}) {
   const [showSuccessNotification, setShowSuccessNotification] = useState(false);
   const [showUpdateSuccessNotification, setShowUpdateSuccessNotification] = useState(false);
   const [showUpdateErrorNotification, setShowUpdateErrorNotification] = useState(false);
+  const [showAvatarSuccessNotification, setShowAvatarSuccessNotification] = useState(false);
+  const [showAvatarErrorNotification, setShowAvatarErrorNotification] = useState(false);
   const [dateError, setDateError] = useState<string>('');
 
   // New test result form data
@@ -509,15 +515,49 @@ export function ProfileRecordsPage(_props: ProfileRecordsPageProps = {}) {
     setDateError(''); // Clear date error
     setIsEditing(false);
   };
-  const handleAvatarUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (file) {
+    if (!file || !user?.userId) {
+      return;
+    }
+
+    try {
+      // Show loading state by updating avatar with a loading preview
       const reader = new FileReader();
       reader.onload = e => {
         setAvatar(e.target?.result as string);
       };
       reader.readAsDataURL(file);
+
+      // Call API to upload avatar
+      const avatarUrl = await updateAvatar(user.userId, file);
+      
+      if (avatarUrl) {
+        // Success - update avatar state with the actual URL from Cloudinary
+        setAvatar(avatarUrl);
+        
+        // Refetch user data to get updated avatar
+        await refetch();
+        
+        // Show success notification
+        setShowAvatarSuccessNotification(true);
+        setTimeout(() => setShowAvatarSuccessNotification(false), 3000);
+      } else {
+        // Error - revert to original avatar
+        setAvatar(user.avatarUrl || null);
+        setShowAvatarErrorNotification(true);
+        setTimeout(() => setShowAvatarErrorNotification(false), 3000);
+      }
+    } catch (error) {
+      console.error('Error uploading avatar:', error);
+      // Revert to original avatar
+      setAvatar(user.avatarUrl || null);
+      setShowAvatarErrorNotification(true);
+      setTimeout(() => setShowAvatarErrorNotification(false), 3000);
     }
+    
+    // Clear the input value so the same file can be selected again
+    event.target.value = '';
   };
   const handleSelectFile = (fileId: string) => {
     setSelectedFiles(prev => prev.includes(fileId) ? prev.filter(id => id !== fileId) : [...prev, fileId]);
@@ -628,10 +668,26 @@ export function ProfileRecordsPage(_props: ProfileRecordsPageProps = {}) {
             <div className="relative">
               <div className="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center overflow-hidden">
                 {avatar ? <img src={avatar} alt="Avatar" className="w-full h-full object-cover" /> : <UserIcon size={28} className="text-white" />}
+                
+                {/* Loading overlay when uploading */}
+                {isUploadingAvatar && (
+                  <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center">
+                    <div className="text-white text-center">
+                      <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto mb-1"></div>
+                      <div className="text-xs">{progress}%</div>
+                    </div>
+                  </div>
+                )}
               </div>
-              {isEditing && <label className="absolute -bottom-1 -right-1 w-6 h-6 bg-white rounded-full flex items-center justify-center cursor-pointer shadow-lg hover:shadow-xl transition-shadow">
+              {isEditing && <label className={`absolute -bottom-1 -right-1 w-6 h-6 bg-white rounded-full flex items-center justify-center shadow-lg hover:shadow-xl transition-shadow ${isUploadingAvatar ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}>
                   <Camera size={12} className="text-[#1E75FF]" />
-                  <input type="file" accept="image/*" onChange={handleAvatarUpload} className="hidden" />
+                  <input 
+                    type="file" 
+                    accept="image/*" 
+                    onChange={handleAvatarUpload} 
+                    className="hidden" 
+                    disabled={isUploadingAvatar}
+                  />
                 </label>}
             </div>
             <div>
@@ -1174,6 +1230,40 @@ export function ProfileRecordsPage(_props: ProfileRecordsPageProps = {}) {
       }} className="fixed top-4 right-4 z-[10001] bg-red-500 text-white px-6 py-3 rounded-xl shadow-lg flex items-center gap-2">
             <X size={20} />
             <span>Có lỗi xảy ra khi cập nhật thông tin. Vui lòng thử lại!</span>
+          </motion.div>}
+      </AnimatePresence>
+
+      {/* Avatar Success Notification */}
+      <AnimatePresence>
+        {showAvatarSuccessNotification && <motion.div initial={{
+        opacity: 0,
+        y: -50
+      }} animate={{
+        opacity: 1,
+        y: 0
+      }} exit={{
+        opacity: 0,
+        y: -50
+      }} className="fixed top-4 right-4 z-[10001] bg-green-500 text-white px-6 py-3 rounded-xl shadow-lg flex items-center gap-2">
+            <Check size={20} />
+            <span>Cập nhật ảnh đại diện thành công!</span>
+          </motion.div>}
+      </AnimatePresence>
+
+      {/* Avatar Error Notification */}
+      <AnimatePresence>
+        {showAvatarErrorNotification && <motion.div initial={{
+        opacity: 0,
+        y: -50
+      }} animate={{
+        opacity: 1,
+        y: 0
+      }} exit={{
+        opacity: 0,
+        y: -50
+      }} className="fixed top-4 right-4 z-[10001] bg-red-500 text-white px-6 py-3 rounded-xl shadow-lg flex items-center gap-2">
+            <X size={20} />
+            <span>{avatarError || 'Có lỗi xảy ra khi upload ảnh đại diện. Vui lòng thử lại!'}</span>
           </motion.div>}
       </AnimatePresence>
 

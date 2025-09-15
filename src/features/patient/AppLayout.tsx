@@ -155,23 +155,26 @@ export function AppLayout({
               </div>
             </div>
 
-            <div className="flex items-center space-x-4">
-              {/* Notifications */}
-              <button className="relative p-2 rounded-lg hover:bg-gray-100 transition-colors" aria-label={`Thông báo${alertCount > 0 ? ` (${alertCount} mới)` : ''}`}>
-                <Bell className="w-5 h-5 text-gray-600" />
-                {alertCount > 0 && <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
-                    {alertCount > 9 ? '9+' : alertCount}
-                  </span>}
-              </button>
+            {/* Hide avatar and notification bell when on profile page */}
+            {currentPage !== 'profile' && (
+              <div className="flex items-center space-x-4">
+                {/* Notifications */}
+                <button className="relative p-2 rounded-lg hover:bg-gray-100 transition-colors" aria-label={`Thông báo${alertCount > 0 ? ` (${alertCount} mới)` : ''}`}>
+                  <Bell className="w-5 h-5 text-gray-600" />
+                  {alertCount > 0 && <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
+                      {alertCount > 9 ? '9+' : alertCount}
+                    </span>}
+                </button>
 
-              {/* User Avatar */}
-              <button className="flex items-center space-x-3 p-2 rounded-lg hover:bg-gray-100 transition-colors">
-                <img src={user.avatar || '/api/placeholder/32/32'} alt={`Ảnh đại diện của ${user.name}`} className="w-8 h-8 rounded-full object-cover" />
-                <span className="hidden md:block text-sm font-medium text-gray-700">
-                  {user.name}
-                </span>
-              </button>
-            </div>
+                {/* User Avatar */}
+                <button className="flex items-center space-x-3 p-2 rounded-lg hover:bg-gray-100 transition-colors">
+                  <img src={user.avatar || '/api/placeholder/32/32'} alt={`Ảnh đại diện của ${user.name}`} className="w-8 h-8 rounded-full object-cover" />
+                  <span className="hidden md:block text-sm font-medium text-gray-700">
+                    {user.name}
+                  </span>
+                </button>
+              </div>
+            )}
           </div>
         </header>
 
