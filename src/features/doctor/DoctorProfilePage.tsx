@@ -2,12 +2,13 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { User, Mail, Phone, Upload, Save, Camera, CheckCircle, Plus, Award, X, Calendar, MapPin } from 'lucide-react';
+import { User, Mail, Phone, Upload, Save, Camera, CheckCircle, Plus, Award, X, Calendar, MapPin, Briefcase, Stethoscope, DollarSign } from 'lucide-react';
 import { useGetMe } from '@/hooks/auth/useGetMe';
 import { useUpdateUser } from '@/hooks/auth/useUpdateUser';
 import { useUpdateAvatar } from '@/hooks/auth/useUpdateAvatar';
+import { useUpdateDoctor } from '@/hooks/auth/useUpdateDoctor';
 import type { GetMeResponse } from '@/types/auth';
-import type { UpdateUserRequest } from '@/lib/api/types';
+import type { UpdateUserRequest, UpdateDoctorRequest } from '@/lib/api/types';
 const currentYear = new Date().getFullYear();
 const years = Array.from({
   length: 50
@@ -27,6 +28,9 @@ export const DoctorProfilePage = () => {
   // Update user hook
   const { updateUser, isLoading: isUpdating, error: updateError } = useUpdateUser();
   
+  // Update doctor hook
+  const { updateDoctor, isLoading: isUpdatingDoctor, error: updateDoctorError } = useUpdateDoctor();
+  
   // Update avatar hook
   const { updateAvatar, isLoading: isUploadingAvatar, error: avatarError, progress } = useUpdateAvatar();
 
@@ -38,6 +42,14 @@ export const DoctorProfilePage = () => {
     gender: '',
     address: '',
     introduction: ''
+  });
+  
+  // Doctor professional information state
+  const [doctorData, setDoctorData] = useState({
+    specialty: '',
+    experienceYears: 0,
+    examinationFee: 0,
+    clinicAddress: ''
   });
   const [certificates, setCertificates] = useState<Certificate[]>([{
     id: '1',
@@ -131,7 +143,7 @@ export const DoctorProfilePage = () => {
     setIsSaving(true);
 
     try {
-      // Prepare data for API - only include fields that have values
+      // Prepare user data for API - only include fields that have values
       const updateData: UpdateUserRequest = {
         userId: user.userId,
       };
@@ -141,7 +153,6 @@ export const DoctorProfilePage = () => {
         updateData.fullName = formData.fullName.trim();
       }
       if (formData.gender) {
-        // Sử dụng validateGender để đảm bảo format đúng
         const validatedGender = validateGender(formData.gender);
         if (validatedGender) {
           updateData.gender = validatedGender;
@@ -160,9 +171,33 @@ export const DoctorProfilePage = () => {
       // Always include role for user updates
       updateData.role = 'DOCTOR';
 
-      // Check if there are any fields to update (besides userId)
-      const fieldsToUpdate = Object.keys(updateData).filter(key => key !== 'userId' && key !== 'role');
-      if (fieldsToUpdate.length === 0) {
+      // Prepare doctor data for API
+      const doctorUpdateData: UpdateDoctorRequest = {
+        userId: user.userId,
+      };
+
+      // Add doctor fields that have actual values
+      if (doctorData.specialty && doctorData.specialty.trim()) {
+        doctorUpdateData.specialty = doctorData.specialty.trim();
+      }
+      if (doctorData.experienceYears > 0) {
+        doctorUpdateData.experienceYears = doctorData.experienceYears;
+      }
+      if (doctorData.examinationFee > 0) {
+        doctorUpdateData.examinationFee = doctorData.examinationFee;
+      }
+      if (doctorData.clinicAddress && doctorData.clinicAddress.trim()) {
+        doctorUpdateData.clinicAddress = doctorData.clinicAddress.trim();
+      }
+      if (formData.introduction && formData.introduction.trim()) {
+        doctorUpdateData.bio = formData.introduction.trim();
+      }
+
+      // Check if there are any fields to update
+      const userFieldsToUpdate = Object.keys(updateData).filter(key => key !== 'userId' && key !== 'role');
+      const doctorFieldsToUpdate = Object.keys(doctorUpdateData).filter(key => key !== 'userId');
+      
+      if (userFieldsToUpdate.length === 0 && doctorFieldsToUpdate.length === 0) {
         // No fields to update, just exit edit mode
         setIsEditing(false);
         setShowUpdateSuccessNotification(true);
@@ -170,10 +205,21 @@ export const DoctorProfilePage = () => {
         return;
       }
 
-      // Call update API
-      const result = await updateUser(updateData);
+      // Call both APIs
+      const promises = [];
+      
+      if (userFieldsToUpdate.length > 0) {
+        promises.push(updateUser(updateData));
+      }
+      
+      if (doctorFieldsToUpdate.length > 0) {
+        promises.push(updateDoctor(doctorUpdateData));
+      }
 
-      if (result) {
+      const results = await Promise.all(promises);
+      const allSuccessful = results.every(result => result !== null);
+
+      if (allSuccessful) {
         // Success - refetch user data and show success notification
         await refetch();
         setIsEditing(false);
@@ -185,7 +231,7 @@ export const DoctorProfilePage = () => {
         setTimeout(() => setShowUpdateErrorNotification(false), 3000);
       }
     } catch (error) {
-      console.error('Error updating user:', error);
+      console.error('Error updating profile:', error);
       setShowUpdateErrorNotification(true);
       setTimeout(() => setShowUpdateErrorNotification(false), 3000);
     } finally {
@@ -350,6 +396,14 @@ export const DoctorProfilePage = () => {
         gender: mapGenderFromAPI(user.gender || ''),
         address: user.address || '',
         introduction: ''
+      });
+      
+      // Reset doctor data to original values
+      setDoctorData({
+        specialty: '',
+        experienceYears: 0,
+        examinationFee: 0,
+        clinicAddress: ''
       });
     }
     setDateError(''); // Clear date error
@@ -590,9 +644,9 @@ export const DoctorProfilePage = () => {
                   <button onClick={handleCancel} className="bg-white/20 hover:bg-white/30 px-4 py-2 rounded-xl font-medium transition-colors text-sm">
                     <span>Hủy</span>
                   </button>
-                  <button onClick={handleSave} disabled={isSaving || isUpdating} className="bg-white text-[#1E75FF] hover:bg-gray-100 px-4 py-2 rounded-xl font-medium transition-colors flex items-center gap-2 disabled:opacity-50 text-sm">
-                    {(isSaving || isUpdating) ? <div className="w-4 h-4 border-2 border-[#1E75FF] border-t-transparent rounded-full animate-spin" /> : <Save size={16} />}
-                    <span>{(isSaving || isUpdating) ? 'Đang lưu...' : 'Lưu thay đổi'}</span>
+                  <button onClick={handleSave} disabled={isSaving || isUpdating || isUpdatingDoctor} className="bg-white text-[#1E75FF] hover:bg-gray-100 px-4 py-2 rounded-xl font-medium transition-colors flex items-center gap-2 disabled:opacity-50 text-sm">
+                    {(isSaving || isUpdating || isUpdatingDoctor) ? <div className="w-4 h-4 border-2 border-[#1E75FF] border-t-transparent rounded-full animate-spin" /> : <Save size={16} />}
+                    <span>{(isSaving || isUpdating || isUpdatingDoctor) ? 'Đang lưu...' : 'Lưu thay đổi'}</span>
                   </button>
                 </div>}
             </div>
@@ -604,7 +658,7 @@ export const DoctorProfilePage = () => {
           {/* Basic Information */}
           <div className="space-y-6">
             <h2 className="text-2xl font-semibold text-[#0F172A] border-b border-gray-100 pb-3">
-              Thông tin cơ bản
+              Thông tin cá nhân
             </h2>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -700,15 +754,126 @@ export const DoctorProfilePage = () => {
           </div>
 
 
-          {/* Introduction */}
+          {/* Professional Information */}
           <div className="space-y-6">
             <h2 className="text-2xl font-semibold text-[#0F172A] border-b border-gray-100 pb-3">
-              Giới thiệu
+              Thông tin chuyên môn
             </h2>
             
-            {isEditing ? <textarea value={formData.introduction} onChange={e => handleInputChange('introduction', e.target.value)} rows={6} className="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent transition-all resize-none" placeholder="Nhập giới thiệu về bản thân..." /> : <div className="px-4 py-3 bg-gray-50 rounded-2xl">
-                <p className="text-[#0F172A] leading-relaxed">{formData.introduction || 'Chưa có giới thiệu'}</p>
-              </div>}
+            {/* Introduction/Bio - Full width */}
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-[#334155]">
+                Giới thiệu
+              </label>
+              {isEditing ? (
+                <textarea 
+                  value={formData.introduction} 
+                  onChange={e => handleInputChange('introduction', e.target.value)} 
+                  rows={4} 
+                  className="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent transition-all resize-none" 
+                  placeholder="Nhập giới thiệu về bản thân..."
+                />
+              ) : (
+                <div className="px-4 py-3 bg-gray-50 rounded-2xl">
+                  <p className="text-[#0F172A] leading-relaxed">{formData.introduction || 'Chưa có giới thiệu'}</p>
+                </div>
+              )}
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Specialty */}
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-[#334155]">
+                  Chuyên khoa
+                </label>
+                {isEditing ? (
+                  <input 
+                    type="text" 
+                    value={doctorData.specialty} 
+                    onChange={e => setDoctorData(prev => ({ ...prev, specialty: e.target.value }))}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent transition-all" 
+                    placeholder="Ví dụ: Tim mạch, Nhi khoa..."
+                  />
+                ) : (
+                  <div className="flex items-center gap-3 px-4 py-3 bg-gray-50 rounded-2xl">
+                    <Stethoscope size={20} className="text-[#334155]" />
+                    <span className="text-[#0F172A]">{doctorData.specialty || 'Chưa cập nhật'}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Experience Years */}
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-[#334155]">
+                  Số năm kinh nghiệm
+                </label>
+                {isEditing ? (
+                  <input 
+                    type="number" 
+                    min="0"
+                    max="50"
+                    value={doctorData.experienceYears || ''} 
+                    onChange={e => setDoctorData(prev => ({ ...prev, experienceYears: parseInt(e.target.value) || 0 }))}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent transition-all" 
+                    placeholder="Số năm"
+                  />
+                ) : (
+                  <div className="flex items-center gap-3 px-4 py-3 bg-gray-50 rounded-2xl">
+                    <Briefcase size={20} className="text-[#334155]" />
+                    <span className="text-[#0F172A]">{doctorData.experienceYears ? `${doctorData.experienceYears} năm` : 'Chưa cập nhật'}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Examination Fee */}
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-[#334155]">
+                  Phí khám bệnh (VNĐ)
+                </label>
+                {isEditing ? (
+                  <input 
+                    type="number" 
+                    min="0"
+                    step="1000"
+                    value={doctorData.examinationFee || ''} 
+                    onChange={e => setDoctorData(prev => ({ ...prev, examinationFee: parseInt(e.target.value) || 0 }))}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent transition-all" 
+                    placeholder="500000"
+                  />
+                ) : (
+                  <div className="flex items-center gap-3 px-4 py-3 bg-gray-50 rounded-2xl">
+                    <DollarSign size={20} className="text-[#334155]" />
+                    <span className="text-[#0F172A]">
+                      {doctorData.examinationFee ? 
+                        new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(doctorData.examinationFee)
+                        : 'Chưa cập nhật'
+                      }
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {/* Clinic Address */}
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-[#334155]">
+                  Địa chỉ phòng khám
+                </label>
+                {isEditing ? (
+                  <input 
+                    type="text" 
+                    value={doctorData.clinicAddress} 
+                    onChange={e => setDoctorData(prev => ({ ...prev, clinicAddress: e.target.value }))}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent transition-all" 
+                    placeholder="Địa chỉ phòng khám của bạn"
+                  />
+                ) : (
+                  <div className="flex items-center gap-3 px-4 py-3 bg-gray-50 rounded-2xl">
+                    <MapPin size={20} className="text-[#334155]" />
+                    <span className="text-[#0F172A]">{doctorData.clinicAddress || 'Chưa cập nhật'}</span>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
 
           {/* Professional Certificates */}

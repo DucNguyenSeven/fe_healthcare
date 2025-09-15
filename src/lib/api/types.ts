@@ -46,5 +46,14 @@ export type UpdateUserRequest = {
   role?: string;
 };
 
+export type UpdateDoctorRequest = {
+  userId: string;
+  specialty?: string;
+  experienceYears?: number;
+  examinationFee?: number;
+  clinicAddress?: string;
+  bio?: string;
+};
+
 export type ChatRequest = { question: string };
 export type ChatResponse = { answer: string };
