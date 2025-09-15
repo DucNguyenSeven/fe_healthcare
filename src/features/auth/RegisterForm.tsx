@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
+import { Mail, Lock } from 'lucide-react';
 import { HealthcareLogo } from '../../shared/ui/HealthcareLogo';
 interface RegisterFormProps {
   onNavigate: (page: 'login' | 'register' | 'forgot-password' | 'otp', email?: string) => void;
@@ -15,8 +15,6 @@ export const RegisterForm = ({
     password: '',
     confirmPassword: ''
   });
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const handleInputChange = (field: string, value: string) => {
@@ -110,10 +108,7 @@ export const RegisterForm = ({
           </label>
           <div className="relative">
             <Lock className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-            <input id="password" type={showPassword ? 'text' : 'password'} value={formData.password} onChange={e => handleInputChange('password', e.target.value)} className={`w-full h-12 pl-12 pr-12 border rounded-xl focus:ring-2 focus:ring-[#2563EB] focus:border-transparent transition-all duration-200 text-gray-900 placeholder-gray-400 bg-gray-50/50 hover:bg-white focus:bg-white ${errors.password ? 'border-red-400 bg-red-50/50' : 'border-gray-200'}`} placeholder="Nhập mật khẩu" />
-            <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors">
-              {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-            </button>
+            <input id="password" type="password" value={formData.password} onChange={e => handleInputChange('password', e.target.value)} className={`w-full h-12 pl-12 pr-4 border rounded-xl focus:ring-2 focus:ring-[#2563EB] focus:border-transparent transition-all duration-200 text-gray-900 placeholder-gray-400 bg-gray-50/50 hover:bg-white focus:bg-white ${errors.password ? 'border-red-400 bg-red-50/50' : 'border-gray-200'}`} placeholder="Nhập mật khẩu" />
           </div>
           {errors.password && <motion.p initial={{
           opacity: 0,
@@ -133,10 +128,7 @@ export const RegisterForm = ({
           </label>
           <div className="relative">
             <Lock className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-            <input id="confirmPassword" type={showConfirmPassword ? 'text' : 'password'} value={formData.confirmPassword} onChange={e => handleInputChange('confirmPassword', e.target.value)} className={`w-full h-12 pl-12 pr-12 border rounded-xl focus:ring-2 focus:ring-[#2563EB] focus:border-transparent transition-all duration-200 text-gray-900 placeholder-gray-400 bg-gray-50/50 hover:bg-white focus:bg-white ${errors.confirmPassword ? 'border-red-400 bg-red-50/50' : 'border-gray-200'}`} placeholder="Nhập lại mật khẩu" />
-            <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors">
-              {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-            </button>
+            <input id="confirmPassword" type="password" value={formData.confirmPassword} onChange={e => handleInputChange('confirmPassword', e.target.value)} className={`w-full h-12 pl-12 pr-4 border rounded-xl focus:ring-2 focus:ring-[#2563EB] focus:border-transparent transition-all duration-200 text-gray-900 placeholder-gray-400 bg-gray-50/50 hover:bg-white focus:bg-white ${errors.confirmPassword ? 'border-red-400 bg-red-50/50' : 'border-gray-200'}`} placeholder="Nhập lại mật khẩu" />
           </div>
           {errors.confirmPassword && <motion.p initial={{
           opacity: 0,

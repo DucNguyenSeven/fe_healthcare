@@ -14,24 +14,16 @@ export default function AuthPage() {
 
   const handleLoginSuccess = (email: string) => {
     console.log('Login with email:', email)
-    
+
     // Lấy role đã được lưu trong useAuth hook
     const userRole = getUserRole()
-    
+
     if (userRole) {
       const redirectPath = getDefaultRedirectPath(userRole)
       router.push(redirectPath)
     } else {
-      // Fallback logic dựa trên email (cho demo)
-      const emailLower = email.toLowerCase().trim()
-      if (emailLower === 'patient') {
-        router.push(ROUTES.PATIENT.ROOT)
-      } else if (emailLower === 'doctor') {
-        router.push(ROUTES.DOCTOR.ROOT)
-      } else {
-        // Default to patient app for any other email
-        router.push(ROUTES.PATIENT.ROOT)
-      }
+      // Mặc định chuyển vào ứng dụng bệnh nhân khi chưa có role
+      router.push(ROUTES.PATIENT.ROOT)
     }
   }
 

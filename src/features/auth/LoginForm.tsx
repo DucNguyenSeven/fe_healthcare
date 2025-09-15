@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
+import { Mail, Lock } from 'lucide-react';
 import { HealthcareLogo } from '../../shared/ui/HealthcareLogo';
 interface LoginFormProps {
   onNavigate: (page: 'login' | 'register' | 'forgot-password' | 'otp', email?: string) => void;
@@ -14,7 +14,6 @@ export const LoginForm = ({
 }: LoginFormProps) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const handleSubmit = async (e: React.FormEvent) => {
@@ -58,11 +57,11 @@ export const LoginForm = ({
         {/* Email Field */}
         <div>
           <label htmlFor="email" className="block text-sm font-semibold text-gray-700 mb-2">
-            Tài khoản (nhập 'patient' hoặc 'doctor')
+            Email
           </label>
           <div className="relative">
             <Mail className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-            <input id="email" type="text" value={email} onChange={e => setEmail(e.target.value)} className="w-full h-12 pl-12 pr-4 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#2563EB] focus:border-transparent transition-all duration-200 text-gray-900 placeholder-gray-400 bg-gray-50/50 hover:bg-white focus:bg-white" placeholder="Nhập 'patient' hoặc 'doctor'" />
+            <input id="email" type="email" value={email} onChange={e => setEmail(e.target.value)} className="w-full h-12 pl-12 pr-4 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#2563EB] focus:border-transparent transition-all duration-200 text-gray-900 placeholder-gray-400 bg-gray-50/50 hover:bg-white focus:bg-white" placeholder="Nhập email của bạn" />
           </div>
         </div>
 
@@ -73,10 +72,7 @@ export const LoginForm = ({
           </label>
           <div className="relative">
             <Lock className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-            <input id="password" type={showPassword ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} className="w-full h-12 pl-12 pr-12 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#2563EB] focus:border-transparent transition-all duration-200 text-gray-900 placeholder-gray-400 bg-gray-50/50 hover:bg-white focus:bg-white" placeholder="Nhập mật khẩu" />
-            <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors">
-              {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-            </button>
+            <input id="password" type="password" value={password} onChange={e => setPassword(e.target.value)} className="w-full h-12 pl-12 pr-4 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#2563EB] focus:border-transparent transition-all duration-200 text-gray-900 placeholder-gray-400 bg-gray-50/50 hover:bg-white focus:bg-white" placeholder="Nhập mật khẩu" />
           </div>
         </div>
 
