@@ -1,3 +1,5 @@
+'use client'
+
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MessageSquare, User, Eye, MessageCircle, Calendar, Tag, ExternalLink, Send, EyeOff, Award, BookOpen, X } from 'lucide-react';

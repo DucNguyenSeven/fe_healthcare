@@ -1,3 +1,5 @@
+'use client'
+
 import React, { useState } from 'react';
 import { AppLayout } from './AppLayout';
 import { DashboardPage } from './DashboardPage';

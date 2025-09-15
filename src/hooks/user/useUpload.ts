@@ -64,11 +64,12 @@ export const useUpload = (): UseUploadReturn => {
     setProgress(0);
     try {
       const response = await UploadApi.avatar(file);
-      if (response.data) {
+      // avatar API returns UploadFile directly, not wrapped in MessageResponse
+      if (response) {
         setProgress(100);
-        return response.data;
+        return response;
       }
-      throw new Error(response.message || 'Upload avatar thất bại');
+      throw new Error('Upload avatar thất bại');
     } catch (e) {
       const parsed = parseApiError(e);
       setError(parsed.message);

@@ -1,3 +1,5 @@
+'use client'
+
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Menu, X, Bell, User, LayoutDashboard, Users, Calendar, Video, Clock, BookOpen, MessageSquare, ChevronDown, Activity, ChevronRight } from 'lucide-react';
@@ -64,7 +66,7 @@ export const DoctorAppLayout = () => {
   return <div className="flex h-screen bg-gray-50">
       {/* Sidebar */}
       <AnimatePresence>
-        {(sidebarOpen || window.innerWidth >= 900) && <motion.aside initial={{
+        {(sidebarOpen || (typeof window !== 'undefined' && window.innerWidth >= 900)) && <motion.aside initial={{
         x: -280
       }} animate={{
         x: 0
@@ -95,7 +97,7 @@ export const DoctorAppLayout = () => {
             const isActive = activeTab === item.id;
             return <button key={item.id} onClick={() => {
               setActiveTab(item.id);
-              if (window.innerWidth < 1024) {
+              if (typeof window !== 'undefined' && window.innerWidth < 1024) {
                 setSidebarOpen(false);
               }
             }} className={`

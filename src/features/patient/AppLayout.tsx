@@ -85,7 +85,7 @@ export function AppLayout({
             const isActive = currentPage === item.id;
             return <button key={item.id} onClick={() => {
               onNavigate(item.id);
-              if (window.innerWidth < 1024) {
+              if (typeof window !== 'undefined' && window.innerWidth < 1024) {
                 onToggleSidebar();
               }
             }} className={`

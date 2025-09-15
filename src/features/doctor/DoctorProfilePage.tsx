@@ -1,3 +1,5 @@
+'use client'
+
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { User, Mail, Phone, Upload, Save, Camera, CheckCircle, Plus, Award, X, Calendar, IdCard } from 'lucide-react';

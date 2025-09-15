@@ -1,3 +1,5 @@
+'use client'
+
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Calendar, Clock, Video, User, Phone, MessageSquare, FileText, Check, X, RotateCcw, ChevronLeft, ChevronRight, Plus, Send, Download, Mic, MicOff, VideoIcon, VideoOff, Search, Filter, CalendarDays, Repeat, Stethoscope, History, Brain, Activity, AlertTriangle, TrendingUp, TrendingDown, Minus, Eye, Save, UserCheck, Pill, ClipboardList, Heart, Thermometer, Weight, Zap } from 'lucide-react';

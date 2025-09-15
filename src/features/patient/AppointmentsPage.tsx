@@ -422,10 +422,12 @@ export function AppointmentsPage({
     }
   }, []);
   const scrollToBottom = () => {
-    window.scrollTo({
-      top: document.body.scrollHeight,
-      behavior: 'smooth'
-    });
+    if (typeof window !== 'undefined') {
+      window.scrollTo({
+        top: document.body.scrollHeight,
+        behavior: 'smooth'
+      });
+    }
   };
   return <div className="p-4 lg:p-6 max-w-4xl mx-auto">
       {/* Header with filters */}
