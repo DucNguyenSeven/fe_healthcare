@@ -43,11 +43,9 @@ interface TestResult {
 }
 interface NewTestResult {
   date: string;
-  egfr: string;
   creatinine: string;
+  egfr: string;
   bun: string;
-  systolic: string;
-  diastolic: string;
   serumCalcium: string;
   ana: string;
   c3c4: string;
@@ -83,11 +81,9 @@ export function ProfileRecordsPage(_props: ProfileRecordsPageProps = {}) {
   // New test result form data
   const [newTestData, setNewTestData] = useState<NewTestResult>({
     date: '',
-    egfr: '',
     creatinine: '',
+    egfr: '',
     bun: '',
-    systolic: '',
-    diastolic: '',
     serumCalcium: '',
     ana: '',
     c3c4: '',
@@ -1206,11 +1202,9 @@ export function ProfileRecordsPage(_props: ProfileRecordsPageProps = {}) {
       // Reset form and close modal
       setNewTestData({
         date: '',
-        egfr: '',
         creatinine: '',
+        egfr: '',
         bun: '',
-        systolic: '',
-        diastolic: '',
         serumCalcium: '',
         ana: '',
         c3c4: '',
@@ -1230,11 +1224,9 @@ export function ProfileRecordsPage(_props: ProfileRecordsPageProps = {}) {
   const handleCancelAddTest = () => {
     setNewTestData({
       date: '',
-      egfr: '',
       creatinine: '',
+      egfr: '',
       bun: '',
-      systolic: '',
-      diastolic: '',
       serumCalcium: '',
       ana: '',
       c3c4: '',
@@ -1410,85 +1402,85 @@ export function ProfileRecordsPage(_props: ProfileRecordsPageProps = {}) {
             e.preventDefault();
             handleAddTestResult();
           }} className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="md:col-span-2">
+                <div className="space-y-6">
+                  <div>
                     <label className="block text-sm font-medium text-[#334155] mb-2">
                       Ngày xét nghiệm <span className="text-red-500">*</span>
                     </label>
                     <input type="date" value={newTestData.date} onChange={e => handleNewTestInputChange('date', e.target.value)} className="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent transition-all" required />
                   </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-[#334155] mb-2">
-                      eGFR (ml/min) <span className="text-red-500">*</span>
-                    </label>
-                    <input type="number" step="0.1" value={newTestData.egfr} onChange={e => handleNewTestInputChange('egfr', e.target.value)} className="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent transition-all" placeholder="95.0" required />
-                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-sm font-medium text-[#334155] mb-2">
+                        Creatinin huyết thanh (mg/dL) <span className="text-red-500">*</span>
+                      </label>
+                      <input type="number" step="0.1" value={newTestData.creatinine} onChange={e => handleNewTestInputChange('creatinine', e.target.value)} className="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent transition-all" placeholder="1.0" required />
+                    </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-[#334155] mb-2">
-                      Creatinin huyết thanh (mg/dL) <span className="text-red-500">*</span>
-                    </label>
-                    <input type="number" step="0.1" value={newTestData.creatinine} onChange={e => handleNewTestInputChange('creatinine', e.target.value)} className="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent transition-all" placeholder="1.0" required />
-                  </div>
+                    <div>
+                      <label className="block text-sm font-medium text-[#334155] mb-2">
+                        eGFR (ml/min) <span className="text-red-500">*</span>
+                      </label>
+                      <input type="number" step="0.1" value={newTestData.egfr} onChange={e => handleNewTestInputChange('egfr', e.target.value)} className="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent transition-all" placeholder="95.0" required />
+                    </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-[#334155] mb-2">
-                      Ure máu (BUN) (mg/dL) <span className="text-red-500">*</span>
-                    </label>
-                    <input type="number" step="0.1" value={newTestData.bun} onChange={e => handleNewTestInputChange('bun', e.target.value)} className="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent transition-all" placeholder="15.0" required />
-                  </div>
+                    <div>
+                      <label className="block text-sm font-medium text-[#334155] mb-2">
+                        Ure máu (BUN) (mg/dL) <span className="text-red-500">*</span>
+                      </label>
+                      <input type="number" step="0.1" value={newTestData.bun} onChange={e => handleNewTestInputChange('bun', e.target.value)} className="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent transition-all" placeholder="15.0" required />
+                    </div>
 
-                  
+                    <div>
+                      <label className="block text-sm font-medium text-[#334155] mb-2">
+                        Canxi huyết thanh (mg/dL)
+                      </label>
+                      <input type="number" step="0.1" value={newTestData.serumCalcium} onChange={e => handleNewTestInputChange('serumCalcium', e.target.value)} className="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent transition-all" placeholder="10.0" />
+                    </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-[#334155] mb-2">
-                      Canxi huyết thanh (mg/dL)
-                    </label>
-                    <input type="number" step="0.1" value={newTestData.serumCalcium} onChange={e => handleNewTestInputChange('serumCalcium', e.target.value)} className="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent transition-all" placeholder="10.0" />
-                  </div>
+                    <div>
+                      <label className="block text-sm font-medium text-[#334155] mb-2">
+                        ANA
+                      </label>
+                      <select value={newTestData.ana} onChange={e => handleNewTestInputChange('ana', e.target.value)} className="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent transition-all">
+                        <option value="">Chọn kết quả</option>
+                        <option value="1">Dương tính</option>
+                        <option value="0">Âm tính</option>
+                      </select>
+                    </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-[#334155] mb-2">
-                      ANA
-                    </label>
-                    <select value={newTestData.ana} onChange={e => handleNewTestInputChange('ana', e.target.value)} className="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent transition-all">
-                      <option value="">Chọn kết quả</option>
-                      <option value="1">Dương tính</option>
-                      <option value="0">Âm tính</option>
-                    </select>
-                  </div>
+                    <div>
+                      <label className="block text-sm font-medium text-[#334155] mb-2">
+                        Bổ thể C3/C4 (mg/dL)
+                      </label>
+                      <input type="number" step="0.1" value={newTestData.c3c4} onChange={e => handleNewTestInputChange('c3c4', e.target.value)} className="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent transition-all" placeholder="130.0" />
+                    </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-[#334155] mb-2">
-                      C3/C4 (mg/dL)
-                    </label>
-                    <input type="number" step="0.1" value={newTestData.c3c4} onChange={e => handleNewTestInputChange('c3c4', e.target.value)} className="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent transition-all" placeholder="130.0" />
-                  </div>
+                    <div>
+                      <label className="block text-sm font-medium text-[#334155] mb-2">
+                        Đái máu
+                      </label>
+                      <select value={newTestData.hematuria} onChange={e => handleNewTestInputChange('hematuria', e.target.value)} className="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent transition-all">
+                        <option value="">Chọn kết quả</option>
+                        <option value="1">Dương tính</option>
+                        <option value="0">Âm tính</option>
+                      </select>
+                    </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-[#334155] mb-2">
-                      Hồng cầu trong nước tiểu (đái máu)
-                    </label>
-                    <select value={newTestData.hematuria} onChange={e => handleNewTestInputChange('hematuria', e.target.value)} className="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent transition-all">
-                      <option value="">Chọn kết quả</option>
-                      <option value="1">Dương tính</option>
-                      <option value="0">Âm tính</option>
-                    </select>
-                  </div>
+                    <div>
+                      <label className="block text-sm font-medium text-[#334155] mb-2">
+                        Nồng độ oxalat (mg/day)
+                      </label>
+                      <input type="number" step="0.1" value={newTestData.oxalateLevels} onChange={e => handleNewTestInputChange('oxalateLevels', e.target.value)} className="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent transition-all" placeholder="2.0" />
+                    </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-[#334155] mb-2">
-                      Nồng độ oxalat (mg/day)
-                    </label>
-                    <input type="number" step="0.1" value={newTestData.oxalateLevels} onChange={e => handleNewTestInputChange('oxalateLevels', e.target.value)} className="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent transition-all" placeholder="2.0" />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-[#334155] mb-2">
-                      pH nước tiểu
-                    </label>
-                    <input type="number" step="0.1" value={newTestData.urinePH} onChange={e => handleNewTestInputChange('urinePH', e.target.value)} className="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent transition-all" placeholder="7.0" />
+                    <div>
+                      <label className="block text-sm font-medium text-[#334155] mb-2">
+                        pH nước tiểu
+                      </label>
+                      <input type="number" step="0.1" value={newTestData.urinePH} onChange={e => handleNewTestInputChange('urinePH', e.target.value)} className="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent transition-all" placeholder="7.0" />
+                    </div>
                   </div>
                 </div>
 

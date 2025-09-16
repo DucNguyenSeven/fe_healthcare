@@ -1,8 +1,9 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Bot, User, Upload, FileText, Clock, Trash2, MessageCircle, AlertTriangle, Activity, Droplets, Heart, Calculator, TrendingUp, Shield, AlertCircle, ChevronRight, ChevronLeft, CheckCircle2, BarChart3, Calendar } from 'lucide-react';
+import { Send, Bot, User, Upload, FileText, Clock, Trash2, MessageCircle, AlertTriangle, Activity, Droplets, Heart, Calculator, TrendingUp, Shield, AlertCircle, ChevronRight, ChevronLeft, BarChart3, Calendar, ChevronDown } from 'lucide-react';
 import { User as UserType } from './HealthcarePlusApp';
+import { getAccessToken } from '@/utils/auth/token';
 interface AIAssistantPageProps {
   user: UserType;
   onNavigate?: (page: 'appointments') => void;
@@ -66,6 +67,75 @@ export function AIAssistantPage({
   const [currentView, setCurrentView] = useState<AIView>('chat');
   const [currentTab, setCurrentTab] = useState(1);
 
+  // Mock data for 3 fixed dates (updated with real data from table)
+  const mockTestDates = [
+    {
+      id: '20/9/2025',
+      date: '20/9/2025',
+      apiDate: '2025-09-20',
+      preview: 'Creatinin: 8 mg/dL • eGFR: 12 ml/min',
+      // Mock API response structure for testing
+      mockData: {
+        measuredAt: '2025-09-20',
+        metrics: [
+          { name: 'serum_creatinine', value: 8, unit: 'mg/dL' },
+          { name: 'gfr', value: 12, unit: 'ml/min' },
+          { name: 'bun', value: 80, unit: 'mg/dL' },
+          { name: 'serum_calcium', value: 8, unit: 'mg/dL' },
+          { name: 'ana', value: 1, unit: '0|1' },
+          { name: 'c3_c4', value: 90, unit: 'mg/dL' },
+          { name: 'hematuria', value: 1, unit: '0|1' },
+          { name: 'oxalate_levels', value: 5, unit: 'mg/day' },
+          { name: 'urine_ph', value: 5.5, unit: 'pH' }
+        ]
+      }
+    },
+    {
+      id: '18/9/2025',
+      date: '18/9/2025',
+      apiDate: '2025-09-18',
+      preview: 'Creatinin: 1 mg/dL • eGFR: 10 ml/min',
+      mockData: {
+        measuredAt: '2025-09-18',
+        metrics: [
+          { name: 'serum_creatinine', value: 1, unit: 'mg/dL' },
+          { name: 'gfr', value: 10, unit: 'ml/min' },
+          { name: 'bun', value: 15, unit: 'mg/dL' },
+          { name: 'serum_calcium', value: 1, unit: 'mg/dL' },
+          { name: 'ana', value: 1, unit: '0|1' },
+          { name: 'c3_c4', value: 142, unit: 'mg/dL' },
+          { name: 'hematuria', value: 1, unit: '0|1' },
+          { name: 'oxalate_levels', value: 42, unit: 'mg/day' },
+          { name: 'urine_ph', value: 7, unit: 'pH' }
+        ]
+      }
+    },
+    {
+      id: '17/9/2025',
+      date: '17/9/2025',
+      apiDate: '2025-09-17',
+      preview: 'Creatinin: 1 mg/dL • eGFR: 95 ml/min',
+      mockData: {
+        measuredAt: '2025-09-17',
+        metrics: [
+          { name: 'serum_creatinine', value: 1, unit: 'mg/dL' },
+          { name: 'gfr', value: 95, unit: 'ml/min' },
+          { name: 'bun', value: 15, unit: 'mg/dL' },
+          { name: 'serum_calcium', value: 10, unit: 'mg/dL' },
+          { name: 'ana', value: 0, unit: '0|1' },
+          { name: 'c3_c4', value: 129.8, unit: 'mg/dL' },
+          { name: 'hematuria', value: 0, unit: '0|1' },
+          { name: 'oxalate_levels', value: 2, unit: 'mg/day' },
+          { name: 'urine_ph', value: 7, unit: 'pH' }
+        ]
+      }
+    }
+  ];
+
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [selectedPanel, setSelectedPanel] = useState<string>('');
+  const [isLoadingData, setIsLoadingData] = useState(false);
+
   // CKD Prediction state with exact 21 features
   const [ckdFormData, setCkdFormData] = useState<CKDFormData>({
     // Numerical features
@@ -99,7 +169,10 @@ export function AIAssistantPage({
     percentage: number;
     stage: string;
     recommendations: string[];
+    source?: 'ai' | 'local'; // Track which calculation was used
   } | null>(null);
+
+  const [isCalculatingPrediction, setIsCalculatingPrediction] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([{
     id: '1',
     sender: 'assistant',
@@ -147,9 +220,200 @@ export function AIAssistantPage({
     summary: 'Siêu âm thận cho thấy cấu trúc thận bình thường, không có sỏi hoặc tắc nghẽn',
     abnormalities: []
   }];
+
+  // API service function to get health metrics by date
+  const getHealthMetricsByDate = async (patientId: string, measuredAt: string) => {
+    try {
+      const token = getAccessToken();
+      const response = await fetch(
+        `http://localhost:8080/api/v1/health-metrics/by-patient-and-date?patientId=${patientId}&measuredAt=${measuredAt}`,
+        {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          }
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      return result.data || []; // Return array of panels
+    } catch (error) {
+      throw error;
+    }
+  };
+
+  // Function to map API panel data to CKD form (new format from API)
+  const mapApiPanelToCKDForm = (panel: any) => {
+    console.log('🧮 Mapping panel data for date:', panel.measuredAt);
+
+    // panel.metrics is now an array: [{ name, value, unit }, ...]
+    const metricsArray = panel.metrics || [];
+
+    // Convert array to object for easier access
+    const metricsMap: Record<string, any> = {};
+    metricsArray.forEach((metric: any) => {
+      metricsMap[metric.name] = metric;
+    });
+
+    // Create the mapped object
+    const mappedResult = {
+      serum_creatinine: metricsMap.serum_creatinine?.value || ckdFormData.serum_creatinine,
+      gfr: metricsMap.gfr?.value || ckdFormData.gfr,
+      bun: metricsMap.bun?.value || ckdFormData.bun,
+      serum_calcium: metricsMap.serum_calcium?.value || ckdFormData.serum_calcium,
+      c3_c4: metricsMap.c3_c4?.value || ckdFormData.c3_c4,
+      oxalate_levels: metricsMap.oxalate_levels?.value || ckdFormData.oxalate_levels,
+      urine_ph: metricsMap.urine_ph?.value || ckdFormData.urine_ph,
+      ana: metricsMap.ana?.value === 1 || metricsMap.ana?.value === true,
+      hematuria: metricsMap.hematuria?.value === 1 || metricsMap.hematuria?.value === true,
+      // Keep other values unchanged
+      blood_pressure_systolic: ckdFormData.blood_pressure_systolic,
+      blood_pressure_diastolic: ckdFormData.blood_pressure_diastolic,
+      water_intake: ckdFormData.water_intake,
+      months: ckdFormData.months,
+      cluster: ckdFormData.cluster,
+      smoking: ckdFormData.smoking,
+      painkiller_usage: ckdFormData.painkiller_usage,
+      family_history: ckdFormData.family_history,
+      physical_activity: ckdFormData.physical_activity,
+      diet: ckdFormData.diet,
+      alcohol: ckdFormData.alcohol,
+      weight_changes: ckdFormData.weight_changes,
+      stress_level: ckdFormData.stress_level
+    };
+
+    console.log('✅ Mapped values:', {
+      creatinine: mappedResult.serum_creatinine,
+      gfr: mappedResult.gfr,
+      bun: mappedResult.bun,
+      ana: mappedResult.ana,
+      hematuria: mappedResult.hematuria
+    });
+
+    return mappedResult;
+  };
+
+  // Function to handle test selection from dropdown
+  const handleTestSelection = async (panelId: string) => {
+    console.log('🔄 Selecting test data for:', panelId);
+
+    if (panelId === 'manual') {
+      // Reset to default values for manual input
+      const manualData = {
+        serum_creatinine: 1.2,
+        gfr: 60,
+        bun: 20,
+        serum_calcium: 9.5,
+        c3_c4: 120,
+        oxalate_levels: 2.5,
+        urine_ph: 6.0,
+        ana: false,
+        hematuria: false,
+        blood_pressure_systolic: ckdFormData.blood_pressure_systolic,
+        blood_pressure_diastolic: ckdFormData.blood_pressure_diastolic,
+        water_intake: ckdFormData.water_intake,
+        months: ckdFormData.months,
+        cluster: ckdFormData.cluster,
+        smoking: ckdFormData.smoking,
+        painkiller_usage: ckdFormData.painkiller_usage,
+        family_history: ckdFormData.family_history,
+        physical_activity: ckdFormData.physical_activity,
+        diet: ckdFormData.diet,
+        alcohol: ckdFormData.alcohol,
+        weight_changes: ckdFormData.weight_changes,
+        stress_level: ckdFormData.stress_level
+      };
+      setCkdFormData(manualData);
+      setSelectedPanel('manual');
+      console.log('✅ Manual input selected');
+    } else {
+      // Find selected date from mockTestDates
+      const selectedDate = mockTestDates.find(date => date.id === panelId);
+
+      if (selectedDate) {
+        setIsLoadingData(true);
+        try {
+          // Use mock data for now (API integration can be enabled later)
+          console.log('📡 Using mock data for date:', selectedDate.date);
+          const mockApiData = [selectedDate.mockData];
+          console.log('📊 Mock data loaded:', mockApiData);
+
+          if (mockApiData && mockApiData.length > 0) {
+            const panel = mockApiData[0];
+            const mappedData = mapApiPanelToCKDForm(panel);
+
+            setCkdFormData(mappedData);
+            setSelectedPanel(panelId);
+            console.log('✅ Form data updated from mock data');
+          } else {
+            alert(`Không thể tải dữ liệu cho ngày ${selectedDate.date}.`);
+          }
+
+          // TODO: Enable API integration when ready
+          /*
+          const apiData = await getHealthMetricsByDate(user.id, selectedDate.apiDate);
+          console.log('📊 API response received:', apiData ? 'Success' : 'No data');
+
+          if (apiData && apiData.length > 0) {
+            const panel = apiData[0];
+            const mappedData = mapApiPanelToCKDForm(panel);
+            setCkdFormData(mappedData);
+            setSelectedPanel(panelId);
+            console.log('✅ Form data updated from API');
+          } else {
+            console.warn(`No data found for date: ${selectedDate.apiDate}`);
+            alert(`Không tìm thấy dữ liệu cho ngày ${selectedDate.date}.`);
+          }
+          */
+        } catch (error) {
+          console.error('❌ Error loading mock data:', error);
+          alert(`Lỗi khi tải dữ liệu ngày ${selectedDate.date}.`);
+        } finally {
+          setIsLoadingData(false);
+        }
+      } else {
+        console.error('❌ Date not found for panelId:', panelId);
+      }
+    }
+    setIsDropdownOpen(false);
+  };
+
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // Debug: Track when form data changes (can be removed in production)
+  useEffect(() => {
+    if (selectedPanel && selectedPanel !== 'manual') {
+      console.log('✅ Form data updated for panel:', selectedPanel, {
+        serum_creatinine: ckdFormData.serum_creatinine,
+        gfr: ckdFormData.gfr,
+        bun: ckdFormData.bun,
+        ana: ckdFormData.ana,
+        hematuria: ckdFormData.hematuria
+      });
+    }
+  }, [ckdFormData, selectedPanel]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (isDropdownOpen) {
+        const target = event.target as HTMLElement;
+        if (!target.closest('.dropdown-container')) {
+          setIsDropdownOpen(false);
+        }
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isDropdownOpen]);
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({
       behavior: 'smooth'
@@ -250,7 +514,211 @@ Bạn có thể đặt thêm câu hỏi cụ thể hoặc sử dụng các gợi
       onNavigate('appointments');
     }
   };
-  const calculateCKDRisk = () => {
+  // Validate complete 21-field data structure for backend
+  const validateCompleteFormData = (): { isValid: boolean; errors: string[] } => {
+    const errors: string[] = [];
+
+    // Required numerical fields
+    if (!ckdFormData.serum_creatinine || ckdFormData.serum_creatinine <= 0) {
+      errors.push('Creatinin huyết thanh không hợp lệ');
+    }
+    if (!ckdFormData.gfr || ckdFormData.gfr <= 0) {
+      errors.push('eGFR không hợp lệ');
+    }
+    if (!ckdFormData.bun || ckdFormData.bun <= 0) {
+      errors.push('BUN không hợp lệ');
+    }
+    if (!ckdFormData.serum_calcium || ckdFormData.serum_calcium <= 0) {
+      errors.push('Canxi huyết thanh không hợp lệ');
+    }
+    if (!ckdFormData.blood_pressure_systolic || ckdFormData.blood_pressure_systolic <= 0) {
+      errors.push('Huyết áp tâm thu không hợp lệ');
+    }
+    if (!ckdFormData.blood_pressure_diastolic || ckdFormData.blood_pressure_diastolic <= 0) {
+      errors.push('Huyết áp tâm trương không hợp lệ');
+    }
+    if (!ckdFormData.water_intake || ckdFormData.water_intake <= 0) {
+      errors.push('Lượng nước uống không hợp lệ');
+    }
+
+    // Required categorical fields
+    if (!ckdFormData.physical_activity) {
+      errors.push('Chưa chọn mức độ hoạt động thể chất');
+    }
+    if (!ckdFormData.diet) {
+      errors.push('Chưa chọn chế độ ăn uống');
+    }
+    if (!ckdFormData.alcohol) {
+      errors.push('Chưa chọn tình trạng uống rượu');
+    }
+    if (!ckdFormData.weight_changes) {
+      errors.push('Chưa chọn thay đổi cân nặng');
+    }
+
+    return {
+      isValid: errors.length === 0,
+      errors
+    };
+  };
+
+  // Format data for backend API (21 fields matching Swagger schema)
+  const formatDataForBackend = () => {
+    return {
+      // Make sure all values are proper types based on schema
+      serum_creatinine: Number(ckdFormData.serum_creatinine) || 1.0,
+      gfr: Number(ckdFormData.gfr) || 95.0,
+      bun: Number(ckdFormData.bun) || 15.0,
+      serum_calcium: Number(ckdFormData.serum_calcium) || 10.0,
+      ana: ckdFormData.ana ? 1 : 0,
+      c3_c4: Number(ckdFormData.c3_c4) || 130.0,
+      hematuria: ckdFormData.hematuria ? 1 : 0,
+      oxalate_levels: Number(ckdFormData.oxalate_levels) || 2.0,
+      urine_ph: Number(ckdFormData.urine_ph) || 7.0,
+      blood_pressure: Number(ckdFormData.blood_pressure_systolic) || 120.0,
+      water_intake: Number(ckdFormData.water_intake) || 2.5,
+      months: Number(ckdFormData.months) || 6,
+      cluster: Number(ckdFormData.cluster) || 1,
+      physical_activity: ckdFormData.physical_activity || 'daily',
+      diet: ckdFormData.diet || 'balanced',
+      smoking: ckdFormData.smoking ? 'yes' : 'no',
+      alcohol: ckdFormData.alcohol || 'never',
+      painkiller_usage: ckdFormData.painkiller_usage ? 'yes' : 'no',
+      family_history: ckdFormData.family_history ? 'yes' : 'no',
+      weight_changes: ckdFormData.weight_changes || 'stable',
+      stress_level: ckdFormData.stress_level === 1 ? 'low' : ckdFormData.stress_level === 2 ? 'moderate' : 'high'
+    };
+  };
+
+  const calculateCKDRisk = async () => {
+    // First validate the complete form data
+    const validation = validateCompleteFormData();
+
+    if (!validation.isValid) {
+      alert(`Vui lòng hoàn thiện thông tin:\n${validation.errors.join('\n')}`);
+      return;
+    }
+
+    setIsCalculatingPrediction(true);
+
+    try {
+      // Format data for backend
+      const backendData = formatDataForBackend();
+
+      // Log the formatted data for debugging
+      console.log('🔬 Sending data to AI service:', backendData);
+      console.log('🌐 API Endpoint: http://localhost:8000/api/v1/analysis/ckd-prediction');
+
+      // Try correct endpoint from Swagger docs
+      const possibleEndpoints = [
+        'http://localhost:8000/api/v1/analysis/ckd-prediction'
+      ];
+
+      let response: Response | null = null;
+      let lastError = '';
+
+      for (const endpoint of possibleEndpoints) {
+        try {
+          response = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'accept': 'application/json'
+            },
+            body: JSON.stringify(backendData)
+          });
+
+          if (response.ok) {
+            break;
+          } else {
+            lastError = `HTTP ${response.status}`;
+          }
+        } catch (err: unknown) {
+          lastError = err instanceof Error ? err.message : String(err);
+          continue;
+        }
+      }
+
+      if (!response || !response.ok) {
+        throw new Error(`All endpoints failed. Last error: ${lastError}`);
+      }
+
+      const aiResult = await response.json();
+
+      // Parse AI service response and format for UI
+      const aiPredictionResult = parseAIServiceResponse(aiResult);
+
+      setPredictionResult({
+        ...aiPredictionResult,
+        source: 'ai'
+      });
+      setCurrentTab(5); // Move to results tab
+
+    } catch (error: unknown) {
+      // Fallback to local calculation if API fails
+      const message = error instanceof Error ? error.message : String(error);
+      alert(`Không thể kết nối đến dịch vụ AI (${message}). Sử dụng tính toán cục bộ.`);
+
+      // Keep existing local calculation as fallback
+      calculateLocalCKDRisk();
+    } finally {
+      setIsCalculatingPrediction(false);
+    }
+  };
+
+  // Parse AI service response to our UI format
+  const parseAIServiceResponse = (aiResult: any) => {
+    console.log('🔍 Parsing AI response:', aiResult);
+
+    const predictedStage = aiResult.predicted_stage || aiResult.stage || 3;
+    const confidence = aiResult.confidence || 0.5;
+    const riskLevel = aiResult.risk_level || 'moderate';
+    const stageDescription = aiResult.stage_description || 'Cần đánh giá thêm';
+    const recommendations = aiResult.recommendations || [];
+
+    // Convert predicted_stage and risk_level to our UI format
+    let risk: 'low' | 'moderate' | 'high';
+    let percentage: number;
+
+    // Map based on predicted_stage and risk_level
+    if (predictedStage <= 2 || riskLevel === 'low') {
+      risk = 'low';
+      percentage = Math.round(confidence * 30); // 0-30% for low risk
+    } else if (predictedStage >= 4 || riskLevel === 'critical' || riskLevel === 'high') {
+      risk = 'high';
+      percentage = Math.round(70 + confidence * 25); // 70-95% for high risk
+    } else {
+      risk = 'moderate';
+      percentage = Math.round(30 + confidence * 40); // 30-70% for moderate risk
+    }
+
+    // Use the stage_description directly from AI service (already in Vietnamese)
+    const formattedStage = stageDescription;
+
+    // Use recommendations directly from AI service (already in Vietnamese)
+    const formattedRecommendations = Array.isArray(recommendations)
+      ? recommendations.slice(0, 8)
+      : [];
+
+    console.log('✅ Parsed result:', {
+      risk,
+      percentage,
+      stage: formattedStage,
+      recommendations: formattedRecommendations,
+      originalStage: predictedStage,
+      originalRiskLevel: riskLevel,
+      originalConfidence: confidence
+    });
+
+    return {
+      risk,
+      percentage,
+      stage: formattedStage,
+      recommendations: formattedRecommendations
+    };
+  };
+
+  // Fallback local calculation (renamed from original calculateCKDRisk)
+  const calculateLocalCKDRisk = () => {
     // Advanced CKD risk calculation based on the 21 features
     let riskScore = 0;
 
@@ -316,7 +784,8 @@ Bạn có thể đặt thêm câu hỏi cụ thể hoặc sử dụng các gợi
       risk,
       percentage,
       stage,
-      recommendations: recommendations.slice(0, 8)
+      recommendations: recommendations.slice(0, 8),
+      source: 'local'
     });
 
     // Move to Step 5 (Results)
@@ -426,7 +895,7 @@ Bạn có thể đặt thêm câu hỏi cụ thể hoặc sử dụng các gợi
         <div className="p-4 border-t border-gray-200">
           <div className="flex items-center space-x-3">
             <div className="flex-1 relative">
-              <input type="text" value={inputMessage} onChange={e => setInputMessage(e.target.value)} onKeyPress={e => e.key === 'Enter' && handleSendMessage()} placeholder="Đặt câu hỏi về sức khỏe thận..." className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 pr-12" />
+              <input type="text" value={inputMessage} onChange={e => setInputMessage(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSendMessage()} placeholder="Đặt câu hỏi về sức khỏe thận..." className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 pr-12" />
               <button onClick={handleSendMessage} disabled={!inputMessage.trim()} className="absolute right-2 top-1/2 transform -translate-y-1/2 p-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
                 <Send className="w-4 h-4" />
               </button>
@@ -631,16 +1100,90 @@ Bạn có thể đặt thêm câu hỏi cụ thể hoặc sử dụng các gợi
         <div className="min-h-[500px]">
           {/* Tab 1: Lab Results */}
           {currentTab === 1 && <div className="space-y-6">
-              <div className="flex items-center space-x-2 mb-4">
-                <span className="text-2xl">🔬</span>
-                <h3 className="text-xl font-semibold text-gray-900">Kết quả xét nghiệm gần nhất</h3>
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center space-x-2">
+                  <span className="text-2xl">🔬</span>
+                  <h3 className="text-xl font-semibold text-gray-900">Kết quả xét nghiệm gần nhất</h3>
+                </div>
+
+                {/* History Dropdown */}
+                <div className="relative dropdown-container">
+                  <button
+                    onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                    className="flex items-center space-x-2 px-4 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg border border-blue-200 transition-colors"
+                    disabled={isLoadingData}
+                  >
+                    <Calendar className="w-4 h-4" />
+                    <span className="text-sm font-medium">
+                      {isLoadingData ? 'Đang tải...' :
+                       selectedPanel === 'manual' ? 'Nhập thủ công' :
+                       selectedPanel ? `${mockTestDates.find(date => date.id === selectedPanel)?.date || selectedPanel}` :
+                       'Chọn từ lịch sử'}
+                    </span>
+                    <ChevronDown className={`w-4 h-4 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
+                  </button>
+
+                  {/* Dropdown Menu */}
+                  {isDropdownOpen && (
+                    <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-lg border border-gray-200 z-50 max-h-64 overflow-y-auto">
+                      <div className="p-2">
+                        {/* Manual Input Option */}
+                        <button
+                          onClick={() => handleTestSelection('manual')}
+                          className={`w-full text-left px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors ${
+                            selectedPanel === 'manual' ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
+                          }`}
+                        >
+                          <div className="flex items-center space-x-2">
+                            <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                            <div>
+                              <div className="font-medium">Nhập thủ công</div>
+                              <div className="text-xs text-gray-500">Nhập dữ liệu mới</div>
+                            </div>
+                          </div>
+                        </button>
+
+                        {/* Historical Data Options */}
+                        {mockTestDates && mockTestDates.length > 0 ? (
+                          <>
+                            <div className="border-t border-gray-100 my-2"></div>
+                            {mockTestDates.map((testDate) => (
+                              <button
+                                key={testDate.id}
+                                onClick={() => handleTestSelection(testDate.id)}
+                                className={`w-full text-left px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors ${
+                                  selectedPanel === testDate.id ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
+                                }`}
+                                disabled={isLoadingData}
+                              >
+                                <div className="flex items-center space-x-2">
+                                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                                  <div>
+                                    <div className="font-medium">{testDate.date}</div>
+                                    <div className="text-xs text-gray-500">
+                                      {testDate.preview}
+                                    </div>
+                                  </div>
+                                </div>
+                              </button>
+                            ))}
+                          </>
+                        ) : (
+                          <div className="px-3 py-2 text-sm text-gray-500 text-center">
+                            Chưa có dữ liệu lịch sử
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
               
               <div className="grid md:grid-cols-2 gap-6">
                 <div className="space-y-4">
                   <div className="p-4 bg-gray-50 rounded-xl">
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Creatinine huyết thanh (mg/dL) *
+                      Creatinin huyết thanh (mg/dL) *
                     </label>
                     <input type="number" step="0.1" value={ckdFormData.serum_creatinine} onChange={e => setCkdFormData({
                   ...ckdFormData,
@@ -651,7 +1194,7 @@ Bạn có thể đặt thêm câu hỏi cụ thể hoặc sử dụng các gợi
 
                   <div className="p-4 bg-gray-50 rounded-xl">
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      eGFR - Tốc độ lọc cầu thận (mL/min/1.73m²) *
+                      eGFR (mL/min/1.73m²) *
                     </label>
                     <input type="number" value={ckdFormData.gfr} onChange={e => setCkdFormData({
                   ...ckdFormData,
@@ -662,7 +1205,7 @@ Bạn có thể đặt thêm câu hỏi cụ thể hoặc sử dụng các gợi
 
                   <div className="p-4 bg-gray-50 rounded-xl">
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      BUN - Urê máu (mg/dL) *
+                      Ure máu (BUN) (mg/dL) *
                     </label>
                     <input type="number" value={ckdFormData.bun} onChange={e => setCkdFormData({
                   ...ckdFormData,
@@ -686,7 +1229,7 @@ Bạn có thể đặt thêm câu hỏi cụ thể hoặc sử dụng các gợi
                 <div className="space-y-4">
                   <div className="p-4 bg-gray-50 rounded-xl">
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Protein bổ sung C3/C4 (mg/dL)
+                      Bổ thể C3/C4 (mg/dL)
                     </label>
                     <input type="number" value={ckdFormData.c3_c4} onChange={e => setCkdFormData({
                   ...ckdFormData,
@@ -697,7 +1240,7 @@ Bạn có thể đặt thêm câu hỏi cụ thể hoặc sử dụng các gợi
 
                   <div className="p-4 bg-gray-50 rounded-xl">
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Mức Oxalate trong máu
+                      Nồng độ oxalat (mg/day)
                     </label>
                     <input type="number" step="0.1" value={ckdFormData.oxalate_levels} onChange={e => setCkdFormData({
                   ...ckdFormData,
@@ -707,20 +1250,19 @@ Bạn có thể đặt thêm câu hỏi cụ thể hoặc sử dụng các gợi
 
                   <div className="p-4 bg-gray-50 rounded-xl">
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Độ pH nước tiểu
+                      pH nước tiểu
                     </label>
-                    <input type="range" min="4" max="8" step="0.1" value={ckdFormData.urine_ph} onChange={e => setCkdFormData({
+                    <input type="number" min="4" max="8" step="0.1" value={ckdFormData.urine_ph} onChange={e => setCkdFormData({
                   ...ckdFormData,
                   urine_ph: parseFloat(e.target.value)
-                })} className="w-full" />
-                    <div className="flex justify-between text-xs text-gray-500 mt-1">
-                      <span>4.0 (Chua)</span>
-                      <span className="font-medium">{ckdFormData.urine_ph}</span>
-                      <span>8.0 (Kiềm)</span>
-                    </div>
+                })} placeholder="VD: 6.0" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    <small className="text-gray-500">Bình thường: 4.0-8.0 (4.0 chua - 8.0 kiềm)</small>
                   </div>
 
                   <div className="p-4 bg-gray-50 rounded-xl">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      ANA
+                    </label>
                     <label className="flex items-center space-x-3">
                       <input type="checkbox" checked={ckdFormData.ana} onChange={e => setCkdFormData({
                     ...ckdFormData,
@@ -731,6 +1273,9 @@ Bạn có thể đặt thêm câu hỏi cụ thể hoặc sử dụng các gợi
                   </div>
 
                   <div className="p-4 bg-gray-50 rounded-xl">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Đái máu
+                    </label>
                     <label className="flex items-center space-x-3">
                       <input type="checkbox" checked={ckdFormData.hematuria} onChange={e => setCkdFormData({
                     ...ckdFormData,
@@ -743,13 +1288,13 @@ Bạn có thể đặt thêm câu hỏi cụ thể hoặc sử dụng các gợi
               </div>
             </div>}
 
-          {/* Tab 2: Health Info */}
+          {/* Tab 2: Health Status */}
           {currentTab === 2 && <div className="space-y-6">
               <div className="flex items-center space-x-2 mb-4">
                 <span className="text-2xl">🩺</span>
                 <h3 className="text-xl font-semibold text-gray-900">Tình trạng sức khỏe hiện tại</h3>
               </div>
-              
+
               <div className="grid md:grid-cols-2 gap-6">
                 <div className="space-y-4">
                   <div className="p-4 bg-gray-50 rounded-xl">
@@ -760,12 +1305,12 @@ Bạn có thể đặt thêm câu hỏi cụ thể hoặc sử dụng các gợi
                       <input type="number" value={ckdFormData.blood_pressure_systolic} onChange={e => setCkdFormData({
                     ...ckdFormData,
                     blood_pressure_systolic: parseInt(e.target.value)
-                  })} placeholder="Tâm thu" className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required />
+                  })} placeholder="120" className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required />
                       <span className="text-gray-500">/</span>
                       <input type="number" value={ckdFormData.blood_pressure_diastolic} onChange={e => setCkdFormData({
                     ...ckdFormData,
                     blood_pressure_diastolic: parseInt(e.target.value)
-                  })} placeholder="Tâm trương" className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required />
+                  })} placeholder="80" className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required />
                     </div>
                     <small className="text-gray-500">Bình thường: &lt;130/80 mmHg</small>
                   </div>
@@ -774,15 +1319,20 @@ Bạn có thể đặt thêm câu hỏi cụ thể hoặc sử dụng các gợi
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Lượng nước uống hàng ngày (L) *
                     </label>
-                    <input type="range" min="0.5" max="5" step="0.1" value={ckdFormData.water_intake} onChange={e => setCkdFormData({
-                  ...ckdFormData,
-                  water_intake: parseFloat(e.target.value)
-                })} className="w-full" />
-                    <div className="flex justify-between items-center mt-2">
-                      <span className="text-xs text-gray-500">0.5L</span>
-                      <span className="font-medium text-blue-600">{ckdFormData.water_intake}L</span>
-                      <span className="text-xs text-gray-500">5L</span>
-                    </div>
+                    <input
+                      type="number"
+                      min="0.5"
+                      max="5"
+                      step="0.1"
+                      value={ckdFormData.water_intake}
+                      onChange={e => setCkdFormData({
+                        ...ckdFormData,
+                        water_intake: parseFloat(e.target.value)
+                      })}
+                      placeholder="2.0"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      required
+                    />
                     <small className="text-gray-500">Khuyến nghị: 2-3L/ngày</small>
                   </div>
                 </div>
@@ -795,7 +1345,7 @@ Bạn có thể đặt thêm câu hỏi cụ thể hoặc sử dụng các gợi
                     <input type="number" value={ckdFormData.months} onChange={e => setCkdFormData({
                   ...ckdFormData,
                   months: parseInt(e.target.value)
-                })} placeholder="VD: 6" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                })} placeholder="6" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
                   </div>
 
                   <div className="p-4 bg-gray-50 rounded-xl">
@@ -935,13 +1485,13 @@ Bạn có thể đặt thêm câu hỏi cụ thể hoặc sử dụng các gợi
               </div>
             </div>}
 
-          {/* Tab 4: History & Psychology */}
+          {/* Tab 4: Medical History & Psychology */}
           {currentTab === 4 && <div className="space-y-6">
               <div className="flex items-center space-x-2 mb-4">
                 <span className="text-2xl">👨‍👩‍👧‍👦</span>
                 <h3 className="text-xl font-semibold text-gray-900">Tiền sử bệnh & tình trạng tâm lý</h3>
               </div>
-              
+
               <div className="grid md:grid-cols-2 gap-6">
                 <div className="space-y-4">
                   <div className="p-4 bg-gray-50 rounded-xl">
@@ -990,25 +1540,29 @@ Bạn có thể đặt thêm câu hỏi cụ thể hoặc sử dụng các gợi
                     <label className="block text-sm font-medium text-gray-700 mb-3">
                       Mức độ stress hiện tại *
                     </label>
-                    <div className="space-y-4">
-                      <input type="range" min="1" max="3" step="1" value={ckdFormData.stress_level} onChange={e => setCkdFormData({
-                    ...ckdFormData,
-                    stress_level: parseInt(e.target.value)
-                  })} className="w-full" />
-                      <div className="flex justify-between">
-                        <div className={`flex-1 p-2 rounded ${ckdFormData.stress_level === 1 ? 'bg-green-100 text-green-800' : 'text-gray-500'}`}>
-                          <div className="text-2xl">😊</div>
-                          <div className="text-xs font-medium">Thấp</div>
-                        </div>
-                        <div className={`flex-1 p-2 rounded ${ckdFormData.stress_level === 2 ? 'bg-yellow-100 text-yellow-800' : 'text-gray-500'}`}>
-                          <div className="text-2xl">😐</div>
-                          <div className="text-xs font-medium">Vừa</div>
-                        </div>
-                        <div className={`flex-1 p-2 rounded ${ckdFormData.stress_level === 3 ? 'bg-red-100 text-red-800' : 'text-gray-500'}`}>
-                          <div className="text-2xl">😰</div>
-                          <div className="text-xs font-medium">Cao</div>
-                        </div>
-                      </div>
+                    <div className="space-y-2">
+                      {[{
+                    value: 1,
+                    label: '😊 Thấp',
+                    desc: 'Cảm thấy bình thường'
+                  }, {
+                    value: 2,
+                    label: '😐 Vừa',
+                    desc: 'Thỉnh thoảng cảm thấy căng thẳng'
+                  }, {
+                    value: 3,
+                    label: '😰 Cao',
+                    desc: 'Thường xuyên căng thẳng'
+                  }].map(option => <label key={option.value} className="flex items-center space-x-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
+                          <input type="radio" name="stress_level" value={option.value} checked={ckdFormData.stress_level === option.value} onChange={e => setCkdFormData({
+                      ...ckdFormData,
+                      stress_level: parseInt(e.target.value)
+                    })} className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500" required />
+                          <div>
+                            <div className="font-medium text-gray-900">{option.label}</div>
+                            <div className="text-xs text-gray-500">{option.desc}</div>
+                          </div>
+                        </label>)}
                     </div>
                   </div>
                 </div>
@@ -1017,9 +1571,16 @@ Bạn có thể đặt thêm câu hỏi cụ thể hoặc sử dụng các gợi
 
           {/* Tab 5: Results */}
           {currentTab === 5 && predictionResult && <div className="space-y-6">
-              <div className="flex items-center space-x-2 mb-6">
-                <span className="text-2xl">📊</span>
-                <h3 className="text-xl font-semibold text-gray-900">Kết quả dự đoán CKD</h3>
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center space-x-2">
+                  <span className="text-2xl">📊</span>
+                  <h3 className="text-xl font-semibold text-gray-900">Kết quả dự đoán CKD</h3>
+                </div>
+
+                {/* Source indicator */}
+                <div className={`px-3 py-1 rounded-full text-xs font-medium ${predictionResult.source === 'ai' ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-600'}`}>
+                  {predictionResult.source === 'ai' ? '🤖 AI Service' : '🔧 Local Calculation'}
+                </div>
               </div>
 
               <div className="grid lg:grid-cols-2 gap-6">
@@ -1097,9 +1658,22 @@ Bạn có thể đặt thêm câu hỏi cụ thể hoặc sử dụng các gợi
             {currentTab < 4 ? <button onClick={nextTab} disabled={!validateCurrentTab()} className="flex items-center space-x-2 px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
                 <span>Tiếp tục</span>
                 <ChevronRight className="w-4 h-4" />
-              </button> : <button onClick={calculateCKDRisk} disabled={!validateCurrentTab()} className="flex items-center space-x-2 px-8 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl hover:from-purple-700 hover:to-pink-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-medium">
-                <Calculator className="w-4 h-4" />
-                <span>🔮 DỰ ĐOÁN KẾT QUẢ</span>
+              </button> : <button
+                onClick={calculateCKDRisk}
+                disabled={isCalculatingPrediction}
+                className="flex items-center space-x-2 px-8 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl hover:from-purple-700 hover:to-pink-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-medium"
+              >
+                {isCalculatingPrediction ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <span>🤖 ĐANG XỬ LÝ...</span>
+                  </>
+                ) : (
+                  <>
+                    <Calculator className="w-4 h-4" />
+                    <span>🔮 DỰ ĐOÁN KẾT QUẢ</span>
+                  </>
+                )}
               </button>}
           </div>}
       </div>
@@ -1111,7 +1685,7 @@ Bạn có thể đặt thêm câu hỏi cụ thể hoặc sử dụng các gợi
           <div>
             <p className="text-sm font-medium text-blue-900">Lưu ý quan trọng</p>
             <p className="text-xs text-blue-800 mt-1">
-              Kết quả này chỉ mang tính chất tham khảo dựa trên 21 yếu tố khoa học. Vui lòng tham khảo ý kiến bác sĩ chuyên khoa để được chẩn đoán và điều trị chính xác.
+              Kết quả này chỉ mang tính chất tham khảo dựa trên 21 yếu tố khoa học được xác thực. Hệ thống đã kiểm tra tính toàn vẹn của dữ liệu trước khi xử lý. Vui lòng tham khảo ý kiến bác sĩ chuyên khoa để được chẩn đoán và điều trị chính xác.
             </p>
           </div>
         </div>
