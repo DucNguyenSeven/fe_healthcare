@@ -23,7 +23,7 @@ export interface User {
 }
 export interface Appointment {
   id: string;
-  type: 'direct' | 'online';
+  type: 'direct' | 'online' | 'lab_test' | 'follow_up';
   service: string;
   doctor: string;
   date: string;

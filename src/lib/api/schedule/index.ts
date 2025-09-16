@@ -37,12 +37,13 @@ export class DoctorScheduleApi {
   }
 
   // Lấy danh sách bác sĩ có lịch trong ngày
-  static async getDoctorsOfDate(params: GetDoctorsOfDateRequest): Promise<MessageResponse<DoctorScheduleResponse[]>> {
+  static async getDoctorsOfDate(params: GetDoctorsOfDateRequest): Promise<MessageResponse<string[]>> {
     const response = await api.get('/api/v1/doctor-schedules/getDoctorOfDate', {
       params: {
         date: params.date
       }
     });
+    
     return response.data;
   }
 }

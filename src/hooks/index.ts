@@ -7,6 +7,9 @@ export * from './performance';
 // Schedule hooks
 export * from './schedule';
 
+// Appointment hooks
+export * from './appointments';
+
 // Other hooks
 export { useChat } from './useChat';
 export { useConversations } from './useConversations';

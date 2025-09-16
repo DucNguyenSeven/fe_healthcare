@@ -81,13 +81,21 @@ export type BulkCreateDoctorScheduleRequest = {
   }[];
 };
 
+export type TimeSlot = {
+  slotId: number;
+  startTime: string;
+  endTime: string;
+};
+
 export type DoctorScheduleResponse = {
-  id: string;
+  id?: string; // Optional vì API có thể trả về scheduleId thay vì id
+  scheduleId?: string; // Field thực tế từ API
   doctorId: string;
   weekDay: WeekDay;
   workDate: string;
   available: boolean; // Changed from isAvailable to match backend
   timeSlotIds: TimeSlotId[];
+  timeSlots?: TimeSlot[]; // Added for API response compatibility
   createdAt: string;
   updatedAt: string;
 };
@@ -99,4 +107,40 @@ export type GetDoctorScheduleRequest = {
 
 export type GetDoctorsOfDateRequest = {
   date: string; // YYYY-MM-DD format
+};
+
+// Appointment Booking API Types
+export type ConsultationType = 'ONLINE_CONSULTATION' | 'DIRECT_CONSULTATION' | 'FOLLOW_UP';
+
+export type BookingAppointmentRequest = {
+  patientId: string;
+  scheduleId: string;
+  doctorId: string;
+  symptoms?: string;
+  note?: string;
+  slotId: number;
+  consultationType: ConsultationType;
+  addressDetail?: string;
+};
+
+export type TimeSlotInfo = {
+  slotId: number;
+  startTime: string;
+  endTime: string;
+};
+
+export type BookingAppointmentResponse = {
+  appointmentId: string;
+  patientId: string;
+  doctorId: string;
+  appointmentDate: string;
+  timeSlot: TimeSlotInfo;
+  status: string;
+  consultationType: string;
+};
+
+export type BookingAppointmentApiResponse = {
+  message: string;
+  data: BookingAppointmentResponse;
+  status: string;
 };
