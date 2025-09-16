@@ -1,24 +1,16 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from 'react';
-import { Calendar, Clock, User, Video, MapPin, Phone, CheckCircle, XCircle, AlertCircle, ChevronRight, ChevronLeft, Plus, Filter, Search, Edit3, Trash2, CreditCard, FileText, Star, ChevronDown, ChevronUp, Stethoscope, Loader2 } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Calendar, Clock, User, Video, MapPin, CheckCircle, XCircle, AlertCircle, ChevronDown, ChevronUp, Stethoscope, Loader2, Star } from 'lucide-react';
 import { toast } from 'sonner';
 import { Appointment } from './HealthcarePlusApp';
 import { useDoctorOfDate, useDoctorSchedule } from '@/hooks/doctor-schedules';
 import { useBookingAppointment } from '@/hooks/appointments';
 import { useGetMe } from '@/hooks/auth/useGetMe';
-interface AppointmentsPageProps {
-  appointments: Appointment[];
-}
-interface Service {
-  id: string;
-  name: string;
-  description: string;
-  duration: string;
-  price: string;
-  type: 'direct' | 'online' | 'both';
-  category: 'consultation' | 'checkup' | 'specialist';
-}
+import { usePatientAppointments, transformAppointmentToTimelineFormat } from '@/hooks/appointments/usePatientAppointments';
+
+
+
 interface Doctor {
   id: string;
   name: string;
@@ -31,14 +23,14 @@ interface Doctor {
   examinationFee?: number;
   clinicAddress?: string;
 }
+
 interface TimelineAppointment extends Appointment {
   isPast: boolean;
   isToday: boolean;
   expanded?: boolean;
 }
-export function AppointmentsPage({
-  appointments
-}: AppointmentsPageProps) {
+
+export function AppointmentsPage() {
   const [dateRange, setDateRange] = useState({
     start: '',
     end: ''
@@ -46,34 +38,43 @@ export function AppointmentsPage({
   const [appointmentTypeFilter, setAppointmentTypeFilter] = useState<'all' | 'direct' | 'online' | 'lab_test' | 'follow_up'>('all');
   const [showBookingForm, setShowBookingForm] = useState(false);
   const [expandedAppointments, setExpandedAppointments] = useState<Set<string>>(new Set());
-  const [selectedService, setSelectedService] = useState<Service | null>(null);
   const [selectedDoctor, setSelectedDoctor] = useState<Doctor | null>(null);
   const [selectedDate, setSelectedDate] = useState<string>('');
   const [selectedTime, setSelectedTime] = useState<string>('');
   const [appointmentType, setAppointmentType] = useState<'direct' | 'online' | 'lab_test' | 'follow_up'>('direct');
-  const [showCKDNotification, setShowCKDNotification] = useState(false);
-  const [ckdPredictionData, setCkdPredictionData] = useState<any>(null);
-  
+
   // Hook để lấy danh sách bác sĩ theo ngày
   const { doctors: availableDoctors, loading: doctorsLoading, error: doctorsError, fetchDoctorsByDate, clearError } = useDoctorOfDate();
-  
+
   // Hook để lấy lịch làm việc của bác sĩ
   const { timeSlots: availableTimeSlots, scheduleId, timeSlotMapping, loading: timeSlotsLoading, error: timeSlotsError, fetchDoctorSchedule, clearError: clearTimeSlotsError } = useDoctorSchedule();
-  
+
   // Hook để đặt lịch khám
-  const { bookingAppointment, loading: bookingLoading, error: bookingError, success: bookingSuccess, clearError: clearBookingError, reset: resetBooking } = useBookingAppointment();
-  
+  const { bookingAppointment, loading: bookingLoading, error: bookingError, clearError: clearBookingError, reset: resetBooking } = useBookingAppointment();
+
   // Hook để lấy thông tin user hiện tại
-  const { data: currentUser, isLoading: userLoading } = useGetMe();
-  
+  const { data: currentUser } = useGetMe();
+
+  // Hook để lấy danh sách cuộc hẹn của patient
+  const {
+    appointments: apiAppointments,
+    loading: appointmentsLoading,
+    error: appointmentsError,
+    fetchAppointments,
+    clearError: clearAppointmentsError
+  } = usePatientAppointments();
+
   // State để lưu thông tin cần thiết cho booking
   const [selectedSlotId, setSelectedSlotId] = useState<number | null>(null);
-  
+
   // State cho form thông tin chi tiết
   const [symptoms, setSymptoms] = useState<string>('');
   const [note, setNote] = useState<string>('');
   const [addressDetail, setAddressDetail] = useState<string>('');
-  
+
+  // Ref để track xem đã fetch appointments chưa
+  const hasInitialFetchRef = useRef(false);
+
   // Danh sách chi nhánh
   const branches = [
     { id: 'branch-1', name: 'Bệnh viện Đa khoa Quốc tế - Quận 1', address: '123 Nguyễn Huệ, Quận 1, TP.HCM' },
@@ -82,76 +83,15 @@ export function AppointmentsPage({
     { id: 'branch-4', name: 'Bệnh viện Đa khoa Quốc tế - Quận 10', address: '321 Sư Vạn Hạnh, Quận 10, TP.HCM' },
     { id: 'branch-5', name: 'Bệnh viện Đa khoa Quốc tế - Quận Bình Thạnh', address: '654 Xô Viết Nghệ Tĩnh, Quận Bình Thạnh, TP.HCM' }
   ];
-  const services: Service[] = [{
-    id: '1',
-    name: 'Tư vấn thận học',
-    description: 'Tư vấn chuyên khoa về các vấn đề liên quan đến thận',
-    duration: '30 phút',
-    price: '500.000đ',
-    type: 'both',
-    category: 'specialist'
-  }, {
-    id: 'ckd-specialist',
-    name: 'Khám chuyên khoa Thận - Tiết niệu',
-    description: 'Theo dõi và điều trị bệnh thận mạn (CKD)',
-    duration: '45 phút',
-    price: '400.000đ',
-    type: 'both',
-    category: 'specialist'
-  }, {
-    id: '2',
-    name: 'Khám tổng quát',
-    description: 'Khám sức khỏe tổng quát và tư vấn chế độ sinh hoạt',
-    duration: '45 phút',
-    price: '300.000đ',
-    type: 'direct',
-    category: 'checkup'
-  }, {
-    id: '3',
-    name: 'Tư vấn dinh dưỡng',
-    description: 'Tư vấn chế độ ăn uống phù hợp với bệnh thận',
-    duration: '30 phút',
-    price: '200.000đ',
-    type: 'both',
-    category: 'consultation'
-  }, {
-    id: '4',
-    name: 'Theo dõi định kỳ',
-    description: 'Khám theo dõi tình trạng bệnh định kỳ',
-    duration: '20 phút',
-    price: '250.000đ',
-    type: 'both',
-    category: 'checkup'
-  }];
-  const doctors: Doctor[] = [{
-    id: '1',
-    name: 'BS. Trần Minh Hoàng',
-    specialty: 'Thận học',
-    rating: 4.9,
-    experience: '15 năm',
-    avatar: '/api/placeholder/60/60',
-    availableSlots: ['08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '11:00', '11:30', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30', '17:00', '17:30']
-  }, {
-    id: '2',
-    name: 'BS. Lê Thị Mai',
-    specialty: 'Nội tổng quát',
-    rating: 4.8,
-    experience: '12 năm',
-    avatar: '/api/placeholder/60/60',
-    availableSlots: ['08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '11:00', '11:30', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30', '17:00', '17:30']
-  }, {
-    id: '3',
-    name: 'BS. Nguyễn Văn Đức',
-    specialty: 'Dinh dưỡng',
-    rating: 4.7,
-    experience: '8 năm',
-    avatar: '/api/placeholder/60/60',
-    availableSlots: ['08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '11:00', '11:30', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30', '17:00', '17:30']
-  }];
+
   const today = new Date();
   today.setHours(0, 0, 0, 0);
+
   const processTimelineAppointments = (): TimelineAppointment[] => {
-    return appointments.map(apt => {
+    // Chỉ sử dụng API data, không sử dụng mock data nữa
+    const sourceAppointments = apiAppointments.map(transformAppointmentToTimelineFormat);
+
+    return sourceAppointments.map(apt => {
       const aptDate = new Date(apt.date);
       aptDate.setHours(0, 0, 0, 0);
       return {
@@ -167,9 +107,11 @@ export function AppointmentsPage({
       return true;
     }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   };
+
   const timelineAppointments = processTimelineAppointments();
   const futureAppointments = timelineAppointments.filter(apt => !apt.isPast);
   const pastAppointments = timelineAppointments.filter(apt => apt.isPast);
+
   const toggleAppointmentExpansion = (appointmentId: string) => {
     const newExpanded = new Set(expandedAppointments);
     if (newExpanded.has(appointmentId)) {
@@ -179,6 +121,7 @@ export function AppointmentsPage({
     }
     setExpandedAppointments(newExpanded);
   };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'upcoming':
@@ -191,6 +134,7 @@ export function AppointmentsPage({
         return 'bg-gray-100 text-gray-800 border-gray-200';
     }
   };
+
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'upcoming':
@@ -203,18 +147,6 @@ export function AppointmentsPage({
         return AlertCircle;
     }
   };
-  // Reset dependent fields when parent field changes
-  const handleServiceChange = (service: Service) => {
-    setSelectedService(service);
-    // Reset dependent fields
-    setSelectedDoctor(null);
-    setSelectedDate('');
-    setSelectedTime('');
-    setSelectedSlotId(null);
-    setSymptoms('');
-    setNote('');
-    setAddressDetail('');
-  };
 
   const handleDateChange = async (date: string) => {
     setSelectedDate(date);
@@ -225,7 +157,7 @@ export function AppointmentsPage({
     setSymptoms('');
     setNote('');
     setAddressDetail('');
-    
+
     // Gọi API để lấy danh sách bác sĩ có lịch trong ngày này
     if (date) {
       await fetchDoctorsByDate(date);
@@ -246,7 +178,7 @@ export function AppointmentsPage({
       examinationFee: doctor.examinationFee,
       clinicAddress: doctor.clinicAddress
     };
-    
+
     setSelectedDoctor(doctorData);
     // Reset dependent fields
     setSelectedTime('');
@@ -254,7 +186,7 @@ export function AppointmentsPage({
     setSymptoms('');
     setNote('');
     setAddressDetail('');
-    
+
     // Gọi API để lấy lịch làm việc của bác sĩ trong ngày đã chọn
     if (selectedDate) {
       await fetchDoctorSchedule(doctor.id, selectedDate);
@@ -306,7 +238,7 @@ export function AppointmentsPage({
       // Map appointment type to consultation type - sửa để match với backend enum
       const consultationTypeMap: { [key: string]: 'ONLINE_CONSULTATION' | 'DIRECT_CONSULTATION' | 'FOLLOW_UP' } = {
         'online': 'ONLINE_CONSULTATION',
-        'direct': 'DIRECT_CONSULTATION', 
+        'direct': 'DIRECT_CONSULTATION',
         'lab_test': 'DIRECT_CONSULTATION',
         'follow_up': 'FOLLOW_UP'
       };
@@ -316,10 +248,15 @@ export function AppointmentsPage({
         scheduleId: scheduleId, // Sử dụng scheduleId thực tế từ API
         doctorId: selectedDoctor.id,
         symptoms: symptoms || 'Khám theo lịch hẹn', // Sử dụng dữ liệu từ form
-        note: note || `Đặt lịch ${appointmentType === 'online' ? 'tư vấn online' : 'khám trực tiếp'} với ${selectedDoctor.name}`, // Sử dụng dữ liệu từ form
+        note: note || `Đặt lịch ${
+          appointmentType === 'online' ? 'tư vấn online' :
+          appointmentType === 'lab_test' ? 'xét nghiệm' :
+          appointmentType === 'follow_up' ? 'tái khám' :
+          'khám trực tiếp'
+        } với ${selectedDoctor.name}`, // Sử dụng dữ liệu từ form
         slotId: selectedSlotId, // Sử dụng slotId thực tế từ timeSlotMapping
         consultationType: consultationTypeMap[appointmentType] || 'DIRECT_CONSULTATION',
-        addressDetail: addressDetail || selectedDoctor.clinicAddress || branches[0].address, // Sử dụng chi nhánh đã chọn hoặc mặc định
+        addressDetail: appointmentType === 'online' ? 'Tại nhà' : (addressDetail || selectedDoctor.clinicAddress || branches[0].address), // Tư vấn online = Tại nhà, còn lại dùng chi nhánh đã chọn
         // Thêm các field có thể thiếu
         appointmentDate: selectedDate,
         appointmentTime: selectedTime,
@@ -329,7 +266,7 @@ export function AppointmentsPage({
       };
 
       const result = await bookingAppointment(bookingData);
-      
+
       if (result) {
         // Reset form
         setShowBookingForm(false);
@@ -341,24 +278,42 @@ export function AppointmentsPage({
         setNote('');
         setAddressDetail('');
         resetBooking();
-        
+
         // Hiển thị thông báo thành công
         toast.success('Đặt lịch thành công!', {
           description: 'Bạn sẽ nhận được thông báo xác nhận qua email',
           duration: 4000,
         });
+
+        // Refresh appointments list after successful booking
+        if (currentUser?.userId) {
+          const today = new Date();
+          const endDate = new Date(today);
+          endDate.setFullYear(today.getFullYear() + 1); // Lấy appointments trong vòng 1 năm
+
+          fetchAppointments({
+            patientId: currentUser.userId,
+            startTime: '2020-01-01', // Lấy từ quá khứ để có toàn bộ lịch sử
+            endTime: endDate.toISOString().split('T')[0],
+            page: 0,
+            size: 50,
+            sortBy: 'appointmentDate',
+            sortDir: 'DESC'
+          });
+        }
       }
     } catch (error) {
       // Error handling đã được xử lý trong hook
     }
   };
+
   const renderTimelineEntry = (appointment: TimelineAppointment, isLast: boolean) => {
     const StatusIcon = getStatusIcon(appointment.status);
     const isExpanded = appointment.expanded;
     return <div key={appointment.id} className="relative">
         {/* Timeline line */}
         {!isLast && <div className="absolute left-6 top-16 w-0.5 h-full bg-gradient-to-b from-gray-300 to-transparent"></div>}
-        
+
         {/* Timeline dot */}
         <div className={`absolute left-4 top-6 w-4 h-4 rounded-full border-2 ${appointment.isToday ? 'bg-blue-500 border-blue-500 shadow-lg shadow-blue-200' : appointment.isPast ? 'bg-gray-300 border-gray-400' : 'bg-white border-blue-400'}`}></div>
 
@@ -369,7 +324,7 @@ export function AppointmentsPage({
             <div className="p-6">
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center space-x-3">
-                  {appointment.type === 'online' ? <Video className="w-6 h-6 text-blue-500" /> : 
+                  {appointment.type === 'online' ? <Video className="w-6 h-6 text-blue-500" /> :
                    appointment.type === 'lab_test' ? <Stethoscope className="w-6 h-6 text-purple-500" /> :
                    appointment.type === 'follow_up' ? <Calendar className="w-6 h-6 text-orange-500" /> :
                    appointment.type === 'direct' ? <MapPin className="w-6 h-6 text-green-500" /> :
@@ -414,7 +369,7 @@ export function AppointmentsPage({
                       Xem kết quả
                     </button>}
                 </div>
-                
+
                 <button onClick={() => toggleAppointmentExpansion(appointment.id)} className="flex items-center space-x-1 text-gray-500 hover:text-gray-700 transition-colors text-sm">
                   <span>{isExpanded ? 'Thu gọn' : 'Chi tiết'}</span>
                   {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
@@ -429,19 +384,15 @@ export function AppointmentsPage({
                     <h4 className="font-semibold text-gray-900 mb-3">Thông tin chi tiết</h4>
                     <div className="space-y-2 text-sm">
                       <div className="flex justify-between">
-                        <span className="text-gray-600">Loại dịch vụ:</span>
-                        <span className="font-medium">{appointment.service}</span>
-                      </div>
-                      <div className="flex justify-between">
                         <span className="text-gray-600">Bác sĩ:</span>
                         <span className="font-medium">{appointment.doctor}</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-gray-600">Hình thức:</span>
                         <span className="font-medium">
-                          {appointment.type === 'online' ? 'Tư vấn online' : 
+                          {appointment.type === 'online' ? 'Tư vấn online' :
                            appointment.type === 'lab_test' ? 'Xét nghiệm' :
-                           appointment.type === 'follow_up' ? 'Tái khám' : 
+                           appointment.type === 'follow_up' ? 'Tái khám' :
                            appointment.type === 'direct' ? 'Khám trực tiếp' : 'Khám trực tiếp'}
                         </span>
                       </div>
@@ -449,14 +400,36 @@ export function AppointmentsPage({
                         <span className="text-gray-600">Thời gian:</span>
                         <span className="font-medium">30 phút</span>
                       </div>
+                      {appointment.patientInfo && <div className="flex justify-between">
+                        <span className="text-gray-600">Bệnh nhân:</span>
+                        <span className="font-medium">{appointment.patientInfo.fullName || appointment.patientInfo.name || 'Không có thông tin'}</span>
+                      </div>}
+                      {appointment.patientInfo?.phone && <div className="flex justify-between">
+                        <span className="text-gray-600">Số điện thoại:</span>
+                        <span className="font-medium">{appointment.patientInfo.phone}</span>
+                      </div>}
+                      {appointment.addressDetail && <div className="flex justify-between">
+                        <span className="text-gray-600">Địa chỉ khám:</span>
+                        <span className="font-medium text-right max-w-48 break-words">{appointment.addressDetail}</span>
+                      </div>}
                     </div>
                   </div>
-                  
-                  {appointment.status === 'completed' && <div>
-                      <h4 className="font-semibold text-gray-900 mb-3">Kết quả khám</h4>
-                      <div className="space-y-2 text-sm">
-                        <p className="text-gray-600">Tình trạng sức khỏe ổn định. Tiếp tục theo dõi định kỳ.</p>
-                        <div className="flex space-x-2 mt-3">
+
+                  <div>
+                    <h4 className="font-semibold text-gray-900 mb-3">Thông tin khám bệnh</h4>
+                    <div className="space-y-3 text-sm">
+                      {appointment.symptoms && <div>
+                        <span className="text-gray-600 block mb-1">Triệu chứng:</span>
+                        <span className="font-medium text-gray-900 block">{appointment.symptoms}</span>
+                      </div>}
+                      {appointment.note && <div>
+                        <span className="text-gray-600 block mb-1">Ghi chú:</span>
+                        <span className="font-medium text-gray-900 block">{appointment.note}</span>
+                      </div>}
+                      {appointment.status === 'completed' && <div className="mt-4">
+                        <span className="text-gray-600 block mb-2">Kết quả khám:</span>
+                        <p className="text-gray-600 mb-3">Tình trạng sức khỏe ổn định. Tiếp tục theo dõi định kỳ.</p>
+                        <div className="flex space-x-2">
                           <button className="px-3 py-1 bg-blue-100 text-blue-700 rounded-lg text-xs hover:bg-blue-200 transition-colors">
                             Tải đơn thuốc
                           </button>
@@ -464,14 +437,16 @@ export function AppointmentsPage({
                             Xem báo cáo
                           </button>
                         </div>
-                      </div>
-                    </div>}
+                      </div>}
+                    </div>
+                  </div>
                 </div>
               </div>}
           </div>
         </div>
       </div>;
   };
+
   const renderBookingForm = () => <div className="bg-white rounded-2xl border border-gray-200 shadow-sm mb-8 booking-form">
       <div className="p-6 border-b border-gray-100">
         <div className="flex items-center justify-between">
@@ -483,20 +458,6 @@ export function AppointmentsPage({
       </div>
 
       <div className="p-6 space-y-6">
-        {/* Step 1: Service Selection - COMMENTED OUT */}
-        {/* <div>
-          <label className="block text-sm font-medium text-gray-700 mb-3">Chọn dịch vụ</label>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {services.map(service => <button key={service.id} onClick={() => handleServiceChange(service)} className={`p-4 text-left border-2 rounded-xl transition-all ${selectedService?.id === service.id ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300'}`}>
-                <div className="flex justify-between items-start mb-2">
-                  <h4 className="font-medium text-gray-900">{service.name}</h4>
-                  <span className="text-sm font-semibold text-blue-600">{service.price}</span>
-                </div>
-                <p className="text-sm text-gray-600">{service.description}</p>
-              </button>)}
-          </div>
-        </div> */}
-
         {/* Step 1: Date Selection - Now shows directly */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-3">Chọn ngày</label>
@@ -506,7 +467,7 @@ export function AppointmentsPage({
         {/* Step 2: Doctor Selection - Only show after date is selected */}
         {selectedDate && <div>
             <label className="block text-sm font-medium text-gray-700 mb-3">Chọn bác sĩ</label>
-            
+
             {/* Loading state */}
             {doctorsLoading && (
               <div className="flex items-center justify-center py-8">
@@ -514,7 +475,7 @@ export function AppointmentsPage({
                 <span className="text-gray-600">Đang tải danh sách bác sĩ...</span>
               </div>
             )}
-            
+
             {/* Error state */}
             {doctorsError && (
               <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-4">
@@ -522,7 +483,7 @@ export function AppointmentsPage({
                   <AlertCircle className="w-5 h-5 text-red-500 mr-2" />
                   <span className="text-red-700">{doctorsError}</span>
                 </div>
-                <button 
+                <button
                   onClick={clearError}
                   className="mt-2 text-sm text-red-600 hover:text-red-800 underline"
                 >
@@ -530,22 +491,22 @@ export function AppointmentsPage({
                 </button>
               </div>
             )}
-            
+
             {/* Doctors list */}
             {!doctorsLoading && !doctorsError && (
               <div className="space-y-3">
                 {availableDoctors.length > 0 ? (
                   availableDoctors.map(doctor => (
-                    <button 
-                      key={doctor.id} 
-                      onClick={() => handleDoctorChange(doctor)} 
+                    <button
+                      key={doctor.id}
+                      onClick={() => handleDoctorChange(doctor)}
                       className={`w-full p-4 text-left border-2 rounded-xl transition-all ${selectedDoctor?.id === doctor.id ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300'}`}
                     >
                       <div className="flex items-center space-x-4">
-                        <img 
-                          src={doctor.avatar || '/api/placeholder/60/60'} 
-                          alt={doctor.name} 
-                          className="w-12 h-12 rounded-full object-cover" 
+                        <img
+                          src={doctor.avatar || '/api/placeholder/60/60'}
+                          alt={doctor.name}
+                          className="w-12 h-12 rounded-full object-cover"
                         />
                         <div className="flex-1">
                           <h5 className="font-medium text-gray-900">{doctor.name}</h5>
@@ -579,7 +540,7 @@ export function AppointmentsPage({
         {/* Step 3: Time Selection - Only show after doctor is selected */}
         {selectedDate && selectedDoctor && <div>
             <label className="block text-sm font-medium text-gray-700 mb-3">Chọn giờ</label>
-            
+
             {/* Loading state */}
             {timeSlotsLoading && (
               <div className="flex items-center justify-center py-8">
@@ -587,7 +548,7 @@ export function AppointmentsPage({
                 <span className="text-gray-600">Đang tải lịch làm việc...</span>
               </div>
             )}
-            
+
             {/* Error state */}
             {timeSlotsError && (
               <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-4">
@@ -595,7 +556,7 @@ export function AppointmentsPage({
                   <AlertCircle className="w-5 h-5 text-red-500 mr-2" />
                   <span className="text-red-700">{timeSlotsError}</span>
                 </div>
-                <button 
+                <button
                   onClick={clearTimeSlotsError}
                   className="mt-2 text-sm text-red-600 hover:text-red-800 underline"
                 >
@@ -603,7 +564,7 @@ export function AppointmentsPage({
                 </button>
               </div>
             )}
-            
+
             {/* Time slots */}
             {!timeSlotsLoading && !timeSlotsError && (
               <div className="grid grid-cols-8 gap-2">
@@ -624,17 +585,17 @@ export function AppointmentsPage({
                   return allTimeSlots.map(time => {
                     const isAvailable = safeAvailableTimeSlots.includes(time);
                     const isSelected = selectedTime === time;
-                    
+
                     return (
-                      <button 
-                        key={time} 
-                        onClick={() => isAvailable && handleTimeChange(time)} 
+                      <button
+                        key={time}
+                        onClick={() => isAvailable && handleTimeChange(time)}
                         disabled={!isAvailable}
                         className={`p-2 rounded-lg text-sm font-medium transition-all ${
-                          isSelected 
-                            ? 'bg-blue-600 text-white shadow-md' 
-                            : isAvailable 
-                              ? 'border border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400' 
+                          isSelected
+                            ? 'bg-blue-600 text-white shadow-md'
+                            : isAvailable
+                              ? 'border border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400'
                               : 'border border-gray-200 text-gray-400 bg-gray-100 cursor-not-allowed'
                         }`}
                       >
@@ -753,7 +714,7 @@ export function AppointmentsPage({
               <AlertCircle className="w-5 h-5 text-red-500 mr-2" />
               <span className="text-red-700">{bookingError}</span>
             </div>
-            <button 
+            <button
               onClick={clearBookingError}
               className="mt-2 text-sm text-red-600 hover:text-red-800 underline"
             >
@@ -762,14 +723,13 @@ export function AppointmentsPage({
           </div>
         )}
 
-
         {/* Submit Button - Only show when all required fields are filled */}
         {selectedDate && selectedDoctor && selectedTime && appointmentType && <div className="flex justify-end space-x-3 pt-4 border-t border-gray-100">
             <button onClick={() => setShowBookingForm(false)} className="px-6 py-3 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors">
               Hủy
             </button>
-            <button 
-              onClick={handleBookAppointment} 
+            <button
+              onClick={handleBookAppointment}
               disabled={bookingLoading}
               className="px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
             >
@@ -779,21 +739,33 @@ export function AppointmentsPage({
           </div>}
       </div>
     </div>;
+
+  // Effect để fetch appointments khi component mount hoặc currentUser thay đổi
+  useEffect(() => {
+    if (currentUser?.userId && !hasInitialFetchRef.current) {
+      hasInitialFetchRef.current = true;
+
+      const today = new Date();
+      const endDate = new Date(today);
+      endDate.setFullYear(today.getFullYear() + 1); // Lấy appointments trong vòng 1 năm
+
+      fetchAppointments({
+        patientId: currentUser.userId,
+        startTime: '2020-01-01', // Lấy từ quá khứ để có toàn bộ lịch sử
+        endTime: endDate.toISOString().split('T')[0],
+        page: 0,
+        size: 50,
+        sortBy: 'appointmentDate',
+        sortDir: 'DESC'
+      });
+    }
+  }, [currentUser?.userId, fetchAppointments]);
+
   useEffect(() => {
     // Kiểm tra nếu có dữ liệu từ CKD prediction
     const predictionData = localStorage.getItem('ckd_prediction_result');
     if (predictionData) {
       try {
-        const parsedData = JSON.parse(predictionData);
-        setCkdPredictionData(parsedData);
-        setShowCKDNotification(true);
-
-        // Auto-select dịch vụ CKD - COMMENTED OUT
-        // const ckdService = services.find(s => s.id === 'ckd-specialist');
-        // if (ckdService) {
-        //   handleServiceChange(ckdService);
-        // }
-
         // Auto-open booking form
         setShowBookingForm(true);
 
@@ -815,14 +787,7 @@ export function AppointmentsPage({
       }
     }
   }, []);
-  const scrollToBottom = () => {
-    if (typeof window !== 'undefined') {
-      window.scrollTo({
-        top: document.body.scrollHeight,
-        behavior: 'smooth'
-      });
-    }
-  };
+
   return <div className="p-4 lg:p-6 max-w-4xl mx-auto">
       {/* Header with filters */}
       <div className="mb-8">
@@ -832,7 +797,6 @@ export function AppointmentsPage({
             <p className="text-gray-600 mt-2">Theo dõi lịch trình khám bệnh theo thời gian</p>
           </div>
           <button onClick={() => setShowBookingForm(true)} className="flex items-center space-x-2 px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors shadow-sm">
-            <Plus className="w-5 h-5" />
             <span>Đặt lịch mới</span>
           </button>
         </div>
@@ -871,16 +835,44 @@ export function AppointmentsPage({
       {/* Booking Form */}
       {showBookingForm && renderBookingForm()}
 
-      {/* Timeline */}
-      <div className="space-y-0">
-        {/* Future appointments */}
-        {futureAppointments.length > 0 && <div className="mb-12">
-            <div className="flex items-center space-x-3 mb-6">
-              <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-              <h2 className="text-xl font-semibold text-gray-900">Lịch hẹn sắp tới</h2>
+      {/* Loading state */}
+      {appointmentsLoading && (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="w-8 h-8 animate-spin text-blue-500 mr-3" />
+          <span className="text-gray-600">Đang tải lịch sử khám bệnh...</span>
+        </div>
+      )}
+
+      {/* Error state */}
+      {appointmentsError && (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-6 mb-8">
+          <div className="flex items-center">
+            <AlertCircle className="w-6 h-6 text-red-500 mr-3" />
+            <div>
+              <h3 className="font-medium text-red-800">Không thể tải lịch sử khám bệnh</h3>
+              <p className="text-red-600 mt-1">{appointmentsError}</p>
             </div>
-            {futureAppointments.map((appointment, index) => renderTimelineEntry(appointment, index === futureAppointments.length - 1))}
-          </div>}
+          </div>
+          <button
+            onClick={clearAppointmentsError}
+            className="mt-3 text-sm text-red-600 hover:text-red-800 underline"
+          >
+            Thử lại
+          </button>
+        </div>
+      )}
+
+      {/* Timeline */}
+      {!appointmentsLoading && !appointmentsError && (
+        <div className="space-y-0">
+          {/* Future appointments */}
+          {futureAppointments.length > 0 && <div className="mb-12">
+              <div className="flex items-center space-x-3 mb-6">
+                <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                <h2 className="text-xl font-semibold text-gray-900">Lịch hẹn sắp tới</h2>
+              </div>
+              {futureAppointments.map((appointment, index) => renderTimelineEntry(appointment, index === futureAppointments.length - 1))}
+            </div>}
 
         {/* Today marker */}
         <div className="relative mb-12">
@@ -903,8 +895,8 @@ export function AppointmentsPage({
             {pastAppointments.map((appointment, index) => renderTimelineEntry(appointment, index === pastAppointments.length - 1))}
           </div>}
 
-        {/* Empty state */}
-        {timelineAppointments.length === 0 && <div className="text-center py-16">
+        {/* Empty state - only show when no appointments from API and no mock data */}
+        {timelineAppointments.length === 0 && !appointmentsLoading && <div className="text-center py-16">
             <Calendar className="w-20 h-20 text-gray-300 mx-auto mb-6" />
             <h3 className="text-xl font-semibold text-gray-900 mb-3">Chưa có lịch hẹn nào</h3>
             <p className="text-gray-600 mb-6 max-w-md mx-auto">
@@ -914,6 +906,7 @@ export function AppointmentsPage({
               Đặt lịch ngay
             </button>
           </div>}
-      </div>
+        </div>
+      )}
     </div>;
 }

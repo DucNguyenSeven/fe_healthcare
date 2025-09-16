@@ -256,7 +256,6 @@ export const AppointmentAndConsultationModule = ({
   const handleSaveScheduleFromModal = (data: any) => {
     // Schedule data đã được xử lý trong modal và gọi API
     // Modal sẽ tự động đóng sau khi API thành công
-    console.log('Lịch làm việc đã được tạo thành công:', data);
 
     // Có thể thêm logic refresh data hoặc cập nhật state ở đây
     // Ví dụ: refetch existing schedules, update calendar view, etc.

@@ -8,11 +8,12 @@ export const debugLog = (category: string, message: string, data?: any) => {
   const timestamp = new Date().toISOString();
   const prefix = `[${timestamp}] [${category}]`;
 
-  if (data !== undefined) {
-    console.log(`${prefix} ${message}`, data);
-  } else {
-    console.log(`${prefix} ${message}`);
-  }
+  // Debug logging disabled for production
+  // if (data !== undefined) {
+  //   console.log(`${prefix} ${message}`, data);
+  // } else {
+  //   console.log(`${prefix} ${message}`);
+  // }
 };
 
 // Quick access functions for different categories
@@ -32,11 +33,11 @@ export const debugScheduleMapping = (message: string, data?: any) =>
 if (typeof window !== 'undefined') {
   (window as any).enableScheduleDebug = () => {
     localStorage.setItem('DEBUG_DOCTOR_SCHEDULE', 'true');
-    console.log('✅ Doctor Schedule Debug ENABLED. Refresh page to see logs.');
+    // console.log('✅ Doctor Schedule Debug ENABLED. Refresh page to see logs.');
   };
 
   (window as any).disableScheduleDebug = () => {
     localStorage.removeItem('DEBUG_DOCTOR_SCHEDULE');
-    console.log('❌ Doctor Schedule Debug DISABLED. Refresh page to hide logs.');
+    // console.log('❌ Doctor Schedule Debug DISABLED. Refresh page to hide logs.');
   };
 }

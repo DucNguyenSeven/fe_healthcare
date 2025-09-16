@@ -30,6 +30,17 @@ export interface Appointment {
   time: string;
   status: 'upcoming' | 'completed' | 'cancelled';
   canJoin?: boolean;
+  // Thêm thông tin chi tiết từ API
+  patientInfo?: {
+    id: string;
+    name?: string;
+    fullName?: string; // API trả về fullName cho patient
+    phone?: string;
+    email?: string;
+  };
+  symptoms?: string;
+  note?: string;
+  addressDetail?: string;
 }
 export interface HealthMetric {
   id: string;
@@ -137,7 +148,7 @@ export function HealthcarePlusApp() {
       case 'profile':
         return <ProfileRecordsPage />;
       case 'appointments':
-        return <AppointmentsPage appointments={appointments} />;
+        return <AppointmentsPage />;
       case 'telehealth':
         return <TelehealthPage user={user} appointments={appointments} />;
       case 'monitoring':
