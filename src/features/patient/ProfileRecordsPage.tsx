@@ -4,6 +4,8 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { User as UserIcon, Phone, Mail, MapPin, Calendar, Heart, AlertTriangle, Upload, FileText, Download, Trash2, Edit3, Save, X, Plus, Clock, Shield, Camera, Check, Activity } from 'lucide-react';
 import { useGetMe } from '@/hooks/auth/useGetMe';
+import { useCreateHealthMetricPanel } from '@/hooks/health-metrics/useCreatePanel';
+import { usePatientHealthPanels } from '@/hooks/health-metrics/usePatientPanels';
 import { useUpdateUser } from '@/hooks/auth/useUpdateUser';
 import { useUpdateAvatar } from '@/hooks/auth/useUpdateAvatar';
 import type { GetMeResponse } from '@/types/auth';
@@ -46,6 +48,12 @@ interface NewTestResult {
   bun: string;
   systolic: string;
   diastolic: string;
+  serumCalcium: string;
+  ana: string;
+  c3c4: string;
+  hematuria: string;
+  oxalateLevels: string;
+  urinePH: string;
 }
 export function ProfileRecordsPage(_props: ProfileRecordsPageProps = {}) {
   // Get user data from API
@@ -70,6 +78,7 @@ export function ProfileRecordsPage(_props: ProfileRecordsPageProps = {}) {
   const [showAvatarSuccessNotification, setShowAvatarSuccessNotification] = useState(false);
   const [showAvatarErrorNotification, setShowAvatarErrorNotification] = useState(false);
   const [dateError, setDateError] = useState<string>('');
+  const { createPanel, isLoading: isCreatingPanel, error: createPanelError } = useCreateHealthMetricPanel();
 
   // New test result form data
   const [newTestData, setNewTestData] = useState<NewTestResult>({
@@ -78,7 +87,13 @@ export function ProfileRecordsPage(_props: ProfileRecordsPageProps = {}) {
     creatinine: '',
     bun: '',
     systolic: '',
-    diastolic: ''
+    diastolic: '',
+    serumCalcium: '',
+    ana: '',
+    c3c4: '',
+    hematuria: '',
+    oxalateLevels: '',
+    urinePH: ''
   });
 
   // Form data state
@@ -134,36 +149,32 @@ export function ProfileRecordsPage(_props: ProfileRecordsPageProps = {}) {
     }
   }, [user]);
 
-  // Mock test results data
-  const [testResults, setTestResults] = useState<TestResult[]>([{
-    id: '1',
-    date: '15/1/2024',
-    egfr: '45 ml/min',
-    creatinine: '1.8 mg/dL',
-    bun: '28 mg/dL',
-    bloodPressure: '140/85 mmHg'
-  }, {
-    id: '2',
-    date: '1/1/2024',
-    egfr: '42 ml/min',
-    creatinine: '1.9 mg/dL',
-    bun: '32 mg/dL',
-    bloodPressure: '145/88 mmHg'
-  }, {
-    id: '3',
-    date: '15/12/2023',
-    egfr: '48 ml/min',
-    creatinine: '1.7 mg/dL',
-    bun: '25 mg/dL',
-    bloodPressure: '138/82 mmHg'
-  }, {
-    id: '4',
-    date: '1/12/2023',
-    egfr: '50 ml/min',
-    creatinine: '1.6 mg/dL',
-    bun: '23 mg/dL',
-    bloodPressure: '135/80 mmHg'
-  }]);
+  // Health metric panels list
+  const { panels, loading: panelsLoading, error: panelsError, refetchPanels } = usePatientHealthPanels(user?.userId);
+  const [testResults, setTestResults] = useState<TestResult[]>([]);
+
+  useEffect(() => {
+    // Map panels to table rows with new fields included later in modal
+    if (!panels) return;
+    const mapped: TestResult[] = panels.map((p) => {
+      const egfr = p.metrics?.gfr?.value;
+      const creatinine = p.metrics?.serum_creatinine?.value;
+      const bun = p.metrics?.bun?.value;
+      return {
+        id: p.id,
+        date: new Date(p.measuredAt).toLocaleDateString('vi-VN'),
+        egfr: egfr !== undefined ? `${egfr} ml/min` : '-',
+        creatinine: creatinine !== undefined ? `${creatinine} mg/dL` : '-',
+        bun: bun !== undefined ? `${bun} mg/dL` : '-',
+        bloodPressure: '-',
+      };
+    }).sort((a, b) => {
+      const dateA = new Date(a.date.split('/').reverse().join('-')).getTime();
+      const dateB = new Date(b.date.split('/').reverse().join('-')).getTime();
+      return dateB - dateA;
+    });
+    setTestResults(mapped);
+  }, [panels]);
 
   // Mock data
   const [medicalHistory, setMedicalHistory] = useState<MedicalHistory[]>([{
@@ -621,20 +632,56 @@ export function ProfileRecordsPage(_props: ProfileRecordsPageProps = {}) {
             <thead>
               <tr className="border-b border-gray-200">
                 <th className="text-left py-4 px-4 font-semibold text-[#0F172A]">Ngày</th>
+                <th className="text-left py-4 px-4 font-semibold text-[#0F172A]">Creatinin huyết thanh</th>
                 <th className="text-left py-4 px-4 font-semibold text-[#0F172A]">eGFR</th>
-                <th className="text-left py-4 px-4 font-semibold text-[#0F172A]">Creatinine</th>
-                <th className="text-left py-4 px-4 font-semibold text-[#0F172A]">BUN</th>
-                <th className="text-left py-4 px-4 font-semibold text-[#0F172A]">Huyết áp</th>
+                <th className="text-left py-4 px-4 font-semibold text-[#0F172A]">Ure máu (BUN)</th>
+                <th className="text-left py-4 px-4 font-semibold text-[#0F172A]">Canxi huyết thanh</th>
+                <th className="text-left py-4 px-4 font-semibold text-[#0F172A]">ANA</th>
+                <th className="text-left py-4 px-4 font-semibold text-[#0F172A]">Bổ thể C3/C4</th>
+                <th className="text-left py-4 px-4 font-semibold text-[#0F172A]">Đái máu</th>
+                <th className="text-left py-4 px-4 font-semibold text-[#0F172A]">Nồng độ oxalat</th>
+                <th className="text-left py-4 px-4 font-semibold text-[#0F172A]">pH nước tiểu</th>
               </tr>
             </thead>
             <tbody>
-              {testResults.map((result, index) => <tr key={result.id} className={`border-b border-gray-100 hover:bg-gray-50 transition-colors ${index === 0 ? 'bg-blue-50' : ''}`}>
-                  <td className="py-4 px-4 text-[#0F172A] font-medium">{result.date}</td>
-                  <td className="py-4 px-4 text-[#0F172A]">{result.egfr}</td>
-                  <td className="py-4 px-4 text-[#0F172A]">{result.creatinine}</td>
-                  <td className="py-4 px-4 text-[#0F172A]">{result.bun}</td>
-                  <td className="py-4 px-4 text-[#0F172A]">{result.bloodPressure}</td>
-                </tr>)}
+              {panelsLoading && (
+                <tr>
+                  <td className="py-6 px-4 text-gray-500" colSpan={10}>Đang tải dữ liệu...</td>
+                </tr>
+              )}
+              {!panelsLoading && testResults.length === 0 && (
+                <tr>
+                  <td className="py-6 px-4 text-gray-500" colSpan={10}>Chưa có dữ liệu xét nghiệm</td>
+                </tr>
+              )}
+              {!panelsLoading && testResults.map((result, index) => {
+                const p = panels.find(x => x.id === result.id);
+                const m = p?.metrics || {} as any;
+                const fmt = (name: string, unitFallback = '', stringFallback?: string) => {
+                  const metric = m[name];
+                  // If no metric from server, fallback to optimistic string value
+                  if (metric === undefined) return stringFallback ?? '-';
+                  if (metric.value === undefined || metric.value === null || metric.value === '') return stringFallback ?? '-';
+                  if (name === 'ana' || name === 'hematuria') {
+                    return Number(metric.value) === 1 ? 'Dương tính' : 'Âm tính';
+                  }
+                  return `${metric.value}${metric.unit ? ` ${metric.unit}` : unitFallback}`;
+                };
+                return (
+                  <tr key={result.id} className={`border-b border-gray-100 hover:bg-gray-50 transition-colors ${index === 0 ? 'bg-blue-50' : ''}`}>
+                    <td className="py-4 px-4 text-[#0F172A] font-medium">{result.date}</td>
+                    <td className="py-4 px-4 text-[#0F172A]">{fmt('serum_creatinine', ' mg/dL', result.creatinine)}</td>
+                    <td className="py-4 px-4 text-[#0F172A]">{fmt('gfr', ' ml/min', result.egfr)}</td>
+                    <td className="py-4 px-4 text-[#0F172A]">{fmt('bun', ' mg/dL', result.bun)}</td>
+                    <td className="py-4 px-4 text-[#0F172A]">{fmt('serum_calcium', ' mg/dL')}</td>
+                    <td className="py-4 px-4 text-[#0F172A]">{fmt('ana')}</td>
+                    <td className="py-4 px-4 text-[#0F172A]">{fmt('c3_c4', ' mg/dL')}</td>
+                    <td className="py-4 px-4 text-[#0F172A]">{fmt('hematuria')}</td>
+                    <td className="py-4 px-4 text-[#0F172A]">{fmt('oxalate_levels', ' mg/day')}</td>
+                    <td className="py-4 px-4 text-[#0F172A]">{fmt('urine_ph', '')}</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -1079,46 +1126,106 @@ export function ProfileRecordsPage(_props: ProfileRecordsPageProps = {}) {
     }));
   };
   const handleAddTestResult = async () => {
+    if (!user?.userId) return;
     setIsAddingTest(true);
 
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    // Build payload for backend
+    const measuredAtIso = (() => {
+      try {
+        // newTestData.date is yyyy-mm-dd from input type=date
+        return new Date(newTestData.date).toISOString();
+      } catch {
+        return new Date().toISOString();
+      }
+    })();
 
-    // Create new test result
-    const newResult: TestResult = {
-      id: Date.now().toString(),
-      date: newTestData.date,
-      egfr: `${newTestData.egfr} ml/min`,
-      creatinine: `${newTestData.creatinine} mg/dL`,
-      bun: `${newTestData.bun} mg/dL`,
-      bloodPressure: `${newTestData.systolic}/${newTestData.diastolic} mmHg`
+    // Normalize numeric inputs (support both comma and dot decimals)
+    const toNumber = (v: string) => {
+      const n = Number(String(v ?? '').replace(',', '.'));
+      return Number.isFinite(n) ? n : NaN;
     };
 
-    // Add to results and sort by date (newest first)
-    setTestResults(prev => {
-      const updated = [newResult, ...prev];
-      return updated.sort((a, b) => {
-        const dateA = new Date(a.date.split('/').reverse().join('-'));
-        const dateB = new Date(b.date.split('/').reverse().join('-'));
-        return dateB.getTime() - dateA.getTime();
+    const egfrNum = toNumber(newTestData.egfr);
+    const creaNum = toNumber(newTestData.creatinine);
+    const bunNum = toNumber(newTestData.bun);
+    const caNum = toNumber(newTestData.serumCalcium);
+    const c3c4Num = toNumber(newTestData.c3c4);
+    const oxalateNum = toNumber(newTestData.oxalateLevels);
+    const urinePhNum = toNumber(newTestData.urinePH);
+
+    // Basic validation to prevent server 500 when values are NaN
+    const invalid = [egfrNum, creaNum, bunNum, caNum, c3c4Num, oxalateNum, urinePhNum].some((n) => isNaN(n));
+    if (invalid) {
+      setIsAddingTest(false);
+      alert('Vui lòng nhập số hợp lệ (dùng dấu "." cho phần thập phân).');
+      return;
+    }
+
+    const payload = {
+      patientId: user.userId,
+      measuredAt: measuredAtIso,
+      metrics: [
+        { name: 'gfr', value: egfrNum, unit: 'ml/min' },
+        { name: 'serum_creatinine', value: creaNum, unit: 'mg/dL' },
+        { name: 'bun', value: bunNum, unit: 'mg/dL' },
+        { name: 'serum_calcium', value: caNum, unit: 'mg/dL' },
+        { name: 'ana', value: Number(newTestData.ana), unit: '0|1' },
+        { name: 'c3_c4', value: c3c4Num, unit: 'mg/dL' },
+        { name: 'hematuria', value: Number(newTestData.hematuria), unit: '0|1' },
+        { name: 'oxalate_levels', value: oxalateNum, unit: 'mg/day' },
+        { name: 'urine_ph', value: urinePhNum, unit: 'pH' },
+      ],
+    } as const;
+
+    // Debug: log payload to help diagnose backend validation errors
+    console.debug('[create-panel] payload', payload);
+    const ok = await createPanel(payload as any);
+
+    if (ok) {
+      // Update UI table optimistically
+      const newResult: TestResult = {
+        id: Date.now().toString(),
+        date: new Date(measuredAtIso).toLocaleDateString('vi-VN'),
+        egfr: `${newTestData.egfr} ml/min`,
+        creatinine: `${newTestData.creatinine} mg/dL`,
+        bun: `${newTestData.bun} mg/dL`,
+        bloodPressure: '-'
+      };
+
+      setTestResults(prev => {
+        const updated = [newResult, ...prev];
+        return updated.sort((a, b) => {
+          const dateA = new Date(a.date.split('/').reverse().join('-'));
+          const dateB = new Date(b.date.split('/').reverse().join('-'));
+          return dateB.getTime() - dateA.getTime();
+        });
       });
-    });
+      // Refetch server data to sync
+      refetchPanels();
 
-    // Reset form and close modal
-    setNewTestData({
-      date: '',
-      egfr: '',
-      creatinine: '',
-      bun: '',
-      systolic: '',
-      diastolic: ''
-    });
+      // Reset form and close modal
+      setNewTestData({
+        date: '',
+        egfr: '',
+        creatinine: '',
+        bun: '',
+        systolic: '',
+        diastolic: '',
+        serumCalcium: '',
+        ana: '',
+        c3c4: '',
+        hematuria: '',
+        oxalateLevels: '',
+        urinePH: ''
+      });
+      setShowTestModal(false);
+      setShowSuccessNotification(true);
+      setTimeout(() => setShowSuccessNotification(false), 3000);
+    } else {
+      alert(`Không thể lưu kết quả xét nghiệm: ${createPanelError || 'Lỗi máy chủ'}`);
+    }
+
     setIsAddingTest(false);
-    setShowTestModal(false);
-
-    // Show success notification
-    setShowSuccessNotification(true);
-    setTimeout(() => setShowSuccessNotification(false), 3000);
   };
   const handleCancelAddTest = () => {
     setNewTestData({
@@ -1127,14 +1234,20 @@ export function ProfileRecordsPage(_props: ProfileRecordsPageProps = {}) {
       creatinine: '',
       bun: '',
       systolic: '',
-      diastolic: ''
+      diastolic: '',
+      serumCalcium: '',
+      ana: '',
+      c3c4: '',
+      hematuria: '',
+      oxalateLevels: '',
+      urinePH: ''
     });
     setShowTestModal(false);
   };
   // Loading state
   if (isLoading) {
     return (
-      <div className="p-6 max-w-4xl mx-auto">
+      <div className="p-6 max-w-7xl mx-auto">
         <div className="flex items-center justify-center min-h-[400px]">
           <div className="flex flex-col items-center gap-4">
             <div className="w-8 h-8 border-4 border-[#1E75FF] border-t-transparent rounded-full animate-spin"></div>
@@ -1148,7 +1261,7 @@ export function ProfileRecordsPage(_props: ProfileRecordsPageProps = {}) {
   // Error state
   if (error) {
     return (
-      <div className="p-6 max-w-4xl mx-auto">
+      <div className="p-6 max-w-7xl mx-auto">
         <div className="flex items-center justify-center min-h-[400px]">
           <div className="text-center">
             <div className="text-red-500 text-5xl mb-4">⚠️</div>
@@ -1169,7 +1282,7 @@ export function ProfileRecordsPage(_props: ProfileRecordsPageProps = {}) {
   // No user data
   if (!user) {
     return (
-      <div className="p-6 max-w-4xl mx-auto">
+      <div className="p-6 max-w-7xl mx-auto">
         <div className="flex items-center justify-center min-h-[400px]">
           <div className="text-center">
             <div className="text-gray-400 text-5xl mb-4">👤</div>
@@ -1181,7 +1294,7 @@ export function ProfileRecordsPage(_props: ProfileRecordsPageProps = {}) {
     );
   }
 
-  return <div className="p-6 max-w-4xl mx-auto">
+  return <div className="p-6 max-w-7xl mx-auto">
       {/* Success Notification */}
       <AnimatePresence>
         {showSuccessNotification && <motion.div initial={{
@@ -1309,35 +1422,73 @@ export function ProfileRecordsPage(_props: ProfileRecordsPageProps = {}) {
                     <label className="block text-sm font-medium text-[#334155] mb-2">
                       eGFR (ml/min) <span className="text-red-500">*</span>
                     </label>
-                    <input type="number" step="0.1" value={newTestData.egfr} onChange={e => handleNewTestInputChange('egfr', e.target.value)} className="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent transition-all" placeholder="45.0" required />
+                    <input type="number" step="0.1" value={newTestData.egfr} onChange={e => handleNewTestInputChange('egfr', e.target.value)} className="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent transition-all" placeholder="95.0" required />
                   </div>
 
                   <div>
                     <label className="block text-sm font-medium text-[#334155] mb-2">
-                      Creatinine (mg/dL) <span className="text-red-500">*</span>
+                      Creatinin huyết thanh (mg/dL) <span className="text-red-500">*</span>
                     </label>
-                    <input type="number" step="0.1" value={newTestData.creatinine} onChange={e => handleNewTestInputChange('creatinine', e.target.value)} className="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent transition-all" placeholder="1.8" required />
+                    <input type="number" step="0.1" value={newTestData.creatinine} onChange={e => handleNewTestInputChange('creatinine', e.target.value)} className="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent transition-all" placeholder="1.0" required />
                   </div>
 
                   <div>
                     <label className="block text-sm font-medium text-[#334155] mb-2">
-                      BUN (mg/dL) <span className="text-red-500">*</span>
+                      Ure máu (BUN) (mg/dL) <span className="text-red-500">*</span>
                     </label>
-                    <input type="number" step="0.1" value={newTestData.bun} onChange={e => handleNewTestInputChange('bun', e.target.value)} className="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent transition-all" placeholder="28.0" required />
+                    <input type="number" step="0.1" value={newTestData.bun} onChange={e => handleNewTestInputChange('bun', e.target.value)} className="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent transition-all" placeholder="15.0" required />
+                  </div>
+
+                  
+
+                  <div>
+                    <label className="block text-sm font-medium text-[#334155] mb-2">
+                      Canxi huyết thanh (mg/dL)
+                    </label>
+                    <input type="number" step="0.1" value={newTestData.serumCalcium} onChange={e => handleNewTestInputChange('serumCalcium', e.target.value)} className="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent transition-all" placeholder="10.0" />
                   </div>
 
                   <div>
                     <label className="block text-sm font-medium text-[#334155] mb-2">
-                      Huyết áp tâm thu (mmHg) <span className="text-red-500">*</span>
+                      ANA
                     </label>
-                    <input type="number" value={newTestData.systolic} onChange={e => handleNewTestInputChange('systolic', e.target.value)} className="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent transition-all" placeholder="140" required />
+                    <select value={newTestData.ana} onChange={e => handleNewTestInputChange('ana', e.target.value)} className="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent transition-all">
+                      <option value="">Chọn kết quả</option>
+                      <option value="1">Dương tính</option>
+                      <option value="0">Âm tính</option>
+                    </select>
                   </div>
 
                   <div>
                     <label className="block text-sm font-medium text-[#334155] mb-2">
-                      Huyết áp tâm trương (mmHg) <span className="text-red-500">*</span>
+                      C3/C4 (mg/dL)
                     </label>
-                    <input type="number" value={newTestData.diastolic} onChange={e => handleNewTestInputChange('diastolic', e.target.value)} className="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent transition-all" placeholder="85" required />
+                    <input type="number" step="0.1" value={newTestData.c3c4} onChange={e => handleNewTestInputChange('c3c4', e.target.value)} className="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent transition-all" placeholder="130.0" />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-[#334155] mb-2">
+                      Hồng cầu trong nước tiểu (đái máu)
+                    </label>
+                    <select value={newTestData.hematuria} onChange={e => handleNewTestInputChange('hematuria', e.target.value)} className="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent transition-all">
+                      <option value="">Chọn kết quả</option>
+                      <option value="1">Dương tính</option>
+                      <option value="0">Âm tính</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-[#334155] mb-2">
+                      Nồng độ oxalat (mg/day)
+                    </label>
+                    <input type="number" step="0.1" value={newTestData.oxalateLevels} onChange={e => handleNewTestInputChange('oxalateLevels', e.target.value)} className="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent transition-all" placeholder="2.0" />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-[#334155] mb-2">
+                      pH nước tiểu
+                    </label>
+                    <input type="number" step="0.1" value={newTestData.urinePH} onChange={e => handleNewTestInputChange('urinePH', e.target.value)} className="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent transition-all" placeholder="7.0" />
                   </div>
                 </div>
 
@@ -1345,8 +1496,8 @@ export function ProfileRecordsPage(_props: ProfileRecordsPageProps = {}) {
                   <button type="button" onClick={handleCancelAddTest} className="flex-1 px-6 py-3 border border-gray-200 text-gray-700 rounded-2xl hover:bg-gray-50 transition-colors font-medium">
                     Hủy
                   </button>
-                  <button type="submit" disabled={isAddingTest} className="flex-1 px-6 py-3 bg-[#1E75FF] text-white rounded-2xl hover:bg-[#1659C9] transition-colors font-medium flex items-center justify-center gap-2 disabled:opacity-50">
-                    {isAddingTest ? <>
+                  <button type="submit" disabled={isAddingTest || isCreatingPanel} className="flex-1 px-6 py-3 bg-[#1E75FF] text-white rounded-2xl hover:bg-[#1659C9] transition-colors font-medium flex items-center justify-center gap-2 disabled:opacity-50">
+                    {isAddingTest || isCreatingPanel ? <>
                         <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                         <span>Đang lưu...</span>
                       </> : <>

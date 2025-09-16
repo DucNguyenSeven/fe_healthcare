@@ -19,3 +19,5 @@ export { useNavigation } from './useNavigation';
 export { useOTP } from './useOTP';
 export { useRegister } from './useRegister';
 export { useResetPassword } from './useResetPassword';
+export { useCreateHealthMetricPanel } from './health-metrics/useCreatePanel';
+export { usePatientHealthPanels } from './health-metrics/usePatientPanels';
