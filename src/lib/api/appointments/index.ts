@@ -1,5 +1,25 @@
 import api from '../client';
 
+export interface AppointmentWeekFilterResponse {
+  date: string;
+  dayOfWeek: string;
+  appointmentId: string;
+  status: 'CONFIRMED' | 'PENDING' | 'CANCELED' | 'COMPLETED' | 'REJECTED' | 'NO_SHOW' | 'RESCHEDULED' | string;
+  patientName: string;
+  timeSlot?: {
+    slotId: number;
+    startTime: string;
+    endTime: string;
+  } | null;
+  note?: string | null;
+}
+
+export interface DoctorAppointmentsWeekApiResponse {
+  message: string;
+  data: AppointmentWeekFilterResponse[];
+  success: boolean;
+}
+
 export interface BookingAppointmentRequest {
   patientId: string;
   scheduleId: string;
@@ -57,4 +77,24 @@ export const bookingAppointment = async (data: BookingAppointmentRequest): Promi
   } catch (error: any) {
     throw error;
   }
+};
+
+/**
+ * Lấy danh sách lịch hẹn (đã xác nhận) theo tuần của bác sĩ
+ */
+export const getDoctorAppointmentsInWeek = async (params: {
+  doctorId: string;
+  startTime: string; // YYYY-MM-DD
+  endTime: string;   // YYYY-MM-DD
+}): Promise<DoctorAppointmentsWeekApiResponse> => {
+  const query = new URLSearchParams({
+    doctorId: params.doctorId,
+    startTime: params.startTime,
+    endTime: params.endTime,
+  });
+
+  const res = await api.get<DoctorAppointmentsWeekApiResponse>(
+    `/api/v1/appointments/get-appointment-with-doctorId?${query.toString()}`
+  );
+  return res.data;
 };

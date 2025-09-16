@@ -4,58 +4,10 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Calendar, Clock, Video, User, Phone, MessageSquare, FileText, Check, X, RotateCcw, ChevronLeft, ChevronRight, Plus, Send, Download, Mic, MicOff, VideoIcon, VideoOff, Search, Filter, CalendarDays, Repeat, Stethoscope, History, Brain, Activity, AlertTriangle, TrendingUp, TrendingDown, Minus, Eye, Save, UserCheck, Pill, ClipboardList, Heart, Thermometer, Weight, Zap } from 'lucide-react';
 import DoctorScheduleRegistrationModal from './DoctorScheduleRegistrationModal';
-const appointmentData = [{
-  id: 1,
-  patient: 'Nguyễn Văn An',
-  time: '09:00',
-  date: '2024-01-16',
-  service: 'Tư vấn CKD giai đoạn 3',
-  status: 'confirmed',
-  type: 'online',
-  hasAIPrediction: true,
-  patientId: 'patient-001'
-}, {
-  id: 2,
-  patient: 'Trần Thị Bình',
-  time: '10:30',
-  date: '2024-01-16',
-  service: 'Theo dõi định kỳ',
-  status: 'confirmed',
-  type: 'offline',
-  hasAIPrediction: false,
-  patientId: 'patient-002'
-}, {
-  id: 3,
-  patient: 'Lê Minh Cường',
-  time: '14:00',
-  date: '2024-01-16',
-  service: 'Tư vấn điều trị',
-  status: 'confirmed',
-  type: 'online',
-  hasAIPrediction: true,
-  patientId: 'patient-003'
-}] as any[];
-const pastAppointments = [{
-  id: 5,
-  patient: 'Hoàng Văn Em',
-  time: '09:00',
-  date: '2024-01-15',
-  service: 'Tư vấn CKD',
-  status: 'completed',
-  type: 'online',
-  hasAIPrediction: true,
-  patientId: 'patient-005'
-}, {
-  id: 6,
-  patient: 'Vũ Thị Phương',
-  time: '11:00',
-  date: '2024-01-15',
-  service: 'Theo dõi',
-  status: 'completed',
-  type: 'offline',
-  hasAIPrediction: false,
-  patientId: 'patient-006'
-}] as any[];
+import type { AppointmentWeekFilterResponse } from '@/lib/api/appointments';
+import { useDoctorAppointments } from '@/hooks/appointments';
+import { useGetMe } from '@/hooks/auth/useGetMe';
+// Dữ liệu sẽ được lấy từ API, bỏ mock
 
 // Sample patient data for examination modal
 const patientData = {
@@ -159,6 +111,19 @@ export const AppointmentAndConsultationModule = ({
   const [isMuted, setIsMuted] = useState(false);
   const [isVideoOn, setIsVideoOn] = useState(true);
 
+  // Fetch appointments theo tuần cho bác sĩ hiện tại
+  const { data: me } = useGetMe();
+  const { appointments: doctorWeekAppointments, loading: doctorAptLoading, error: doctorAptError, fetchDoctorAppointments, clearError: clearDoctorAptError } = useDoctorAppointments();
+
+  // TẠM THỜI: gọi dữ liệu trong khoảng 01/09/2025 - 30/09/2025 theo yêu cầu
+  const computeFixedRange = () => ({ start: '2025-09-01', end: '2025-09-30' });
+
+  React.useEffect(() => {
+    if (!me?.userId) return;
+    const { start, end } = computeFixedRange();
+    fetchDoctorAppointments({ doctorId: me.userId, startTime: start, endTime: end });
+  }, [me?.userId, fetchDoctorAppointments]);
+
   // Filter and search states
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
@@ -261,15 +226,25 @@ export const AppointmentAndConsultationModule = ({
     // Ví dụ: refetch existing schedules, update calendar view, etc.
   };
   const openPatientExamination = (patientId: string, appointment: any) => {
-    const patient = patientData[patientId as keyof typeof patientData];
-    if (patient) {
-      setSelectedPatient({
-        ...patient,
-        appointment
-      });
-      setShowExaminationModal(true);
-      setExaminationTab('ai-result');
-    }
+    // Ưu tiên dữ liệu có sẵn trong mock nếu khớp id
+    const patientFromMock = patientData[patientId as keyof typeof patientData];
+
+    // Tạo fallback patient từ dữ liệu cuộc hẹn nhận từ API
+    const fallbackPatient = {
+      name: appointment.patient || appointment.patientName || 'Bệnh nhân',
+      age: appointment.patientInfo?.age || '',
+      gender: appointment.patientInfo?.gender || 'Không rõ',
+      id: appointment.patientInfo?.id || appointment.patientId || patientId || 'N/A',
+    };
+
+    const patient = patientFromMock || fallbackPatient;
+
+    setSelectedPatient({
+      ...patient,
+      appointment
+    });
+    setShowExaminationModal(true);
+    setExaminationTab('ai-result');
   };
   const viewPatientHistory = (patientId: string) => {
     const patient = patientData[patientId as keyof typeof patientData];
@@ -323,6 +298,23 @@ export const AppointmentAndConsultationModule = ({
     }]);
     setFollowUpDate('');
   };
+  // Chuyển dữ liệu API thành format cũ của UI
+  const normalizedAppointments = React.useMemo(() => {
+    // eslint-disable-next-line no-console
+    console.log('[AppointmentAndConsultation] doctorWeekAppointments:', doctorWeekAppointments);
+    return (doctorWeekAppointments ?? []).map((apt: AppointmentWeekFilterResponse, idx: number) => ({
+      id: apt.appointmentId || idx,
+      patient: apt.patientName,
+      time: apt.timeSlot?.startTime || '',
+      date: typeof apt.date === 'string' ? apt.date : new Date(apt.date as any).toISOString().split('T')[0],
+      service: apt.note || 'Khám trực tiếp',
+      status: (apt.status || 'CONFIRMED').toString().toLowerCase(),
+      type: 'offline',
+      hasAIPrediction: false,
+      patientId: ''
+    }));
+  }, [doctorWeekAppointments]);
+
   const filterAppointments = (appointments: any[]) => {
     return appointments.filter(appointment => {
       const matchesSearch = appointment.patient.toLowerCase().includes(searchTerm.toLowerCase());
@@ -368,19 +360,19 @@ export const AppointmentAndConsultationModule = ({
             <div className="flex">
               {[{
               id: 'ai-result',
-              label: '🤖 Kết quả AI',
+              label: 'Kết quả AI',
               icon: Brain
             }, {
               id: 'history',
-              label: '📋 Lịch sử khám',
+              label: 'Lịch sử khám',
               icon: History
             }, {
               id: 'examination',
-              label: '🩺 Khám bệnh',
+              label: 'Khám bệnh',
               icon: Stethoscope
             }, {
               id: 'prescription',
-              label: '💊 Kê đơn thuốc',
+              label: 'Kê đơn thuốc',
               icon: Pill
             }].map(tab => {
               const Icon = tab.icon;
@@ -408,100 +400,120 @@ export const AppointmentAndConsultationModule = ({
               duration: 0.2
             }}>
                 {/* AI Results Tab */}
-                {examinationTab === 'ai-result' && selectedPatient.aiPrediction && <div className="space-y-6">
-                    <div className="bg-gradient-to-r from-[#F59E0B]/10 to-[#F57C00]/10 border border-[#F59E0B]/20 rounded-2xl p-6">
-                      <div className="flex items-center gap-3 mb-4">
-                        <div className="w-10 h-10 bg-gradient-to-r from-[#F59E0B] to-[#F57C00] rounded-full flex items-center justify-center">
-                          <AlertTriangle className="w-5 h-5 text-white" />
+                {examinationTab === 'ai-result' && (
+                  <div className="space-y-6">
+                    {selectedPatient.aiPrediction ? (
+                      <>
+                        <div className="bg-gradient-to-r from-[#F59E0B]/10 to-[#F57C00]/10 border border-[#F59E0B]/20 rounded-2xl p-6">
+                          <div className="flex items-center gap-3 mb-4">
+                            <div className="w-10 h-10 bg-gradient-to-r from-[#F59E0B] to-[#F57C00] rounded-full flex items-center justify-center">
+                              <AlertTriangle className="w-5 h-5 text-white" />
+                            </div>
+                            <div>
+                              <h4 className="text-lg font-bold text-[#0F172A]">
+                                Nguy cơ {selectedPatient.aiPrediction.riskLevel === 'moderate' ? 'Trung bình' : 'Cao'} - {selectedPatient.aiPrediction.riskPercentage}%
+                              </h4>
+                              <p className="text-[#334155]">{selectedPatient.aiPrediction.description}</p>
+                            </div>
+                          </div>
                         </div>
-                        <div>
-                          <h4 className="text-lg font-bold text-[#0F172A]">
-                            Nguy cơ {selectedPatient.aiPrediction.riskLevel === 'moderate' ? 'Trung bình' : 'Cao'} - {selectedPatient.aiPrediction.riskPercentage}%
-                          </h4>
-                          <p className="text-[#334155]">{selectedPatient.aiPrediction.description}</p>
-                        </div>
-                      </div>
-                    </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div className="bg-white border border-gray-200 rounded-2xl p-6">
-                        <h4 className="text-lg font-semibold text-[#0F172A] mb-4 flex items-center gap-2">
-                          <Activity className="w-5 h-5 text-[#1E75FF]" />
-                          <span>Các chỉ số quan trọng</span>
-                        </h4>
-                        <div className="space-y-3">
-                          {selectedPatient.aiPrediction.keyIndicators.map((indicator: any, index: number) => <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
-                              <div>
-                                <p className="font-medium text-[#0F172A]">{indicator.name}</p>
-                                <p className="text-sm text-[#334155]">{indicator.value}</p>
-                              </div>
-                              <div className={`px-3 py-1 rounded-full text-xs font-medium ${indicator.status === 'high' ? 'bg-[#EF4444]/10 text-[#EF4444]' : indicator.status === 'low' ? 'bg-[#F59E0B]/10 text-[#F59E0B]' : 'bg-[#10B981]/10 text-[#10B981]'}`}>
-                                {indicator.status === 'high' ? 'Cao' : indicator.status === 'low' ? 'Thấp' : 'Có'}
-                              </div>
-                            </div>)}
-                        </div>
-                      </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          <div className="bg-white border border-gray-200 rounded-2xl p-6">
+                            <h4 className="text-lg font-semibold text-[#0F172A] mb-4 flex items-center gap-2">
+                              <Activity className="w-5 h-5 text-[#1E75FF]" />
+                              <span>Các chỉ số quan trọng</span>
+                            </h4>
+                            <div className="space-y-3">
+                              {selectedPatient.aiPrediction.keyIndicators.map((indicator: any, index: number) => <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+                                  <div>
+                                    <p className="font-medium text-[#0F172A]">{indicator.name}</p>
+                                    <p className="text-sm text-[#334155]">{indicator.value}</p>
+                                  </div>
+                                  <div className={`px-3 py-1 rounded-full text-xs font-medium ${indicator.status === 'high' ? 'bg-[#EF4444]/10 text-[#EF4444]' : indicator.status === 'low' ? 'bg-[#F59E0B]/10 text-[#F59E0B]' : 'bg-[#10B981]/10 text-[#10B981]'}`}>
+                                    {indicator.status === 'high' ? 'Cao' : indicator.status === 'low' ? 'Thấp' : 'Có'}
+                                  </div>
+                                </div>)}
+                            </div>
+                          </div>
 
-                      <div className="bg-white border border-gray-200 rounded-2xl p-6">
-                        <h4 className="text-lg font-semibold text-[#0F172A] mb-4 flex items-center gap-2">
-                          <Brain className="w-5 h-5 text-[#1E75FF]" />
-                          <span>Khuyến nghị từ AI</span>
-                        </h4>
-                        <div className="space-y-3">
-                          {selectedPatient.aiPrediction.recommendations.map((rec: string, index: number) => <div key={index} className="flex items-start gap-3 p-3 bg-[#1E75FF]/5 rounded-xl">
-                              <div className="w-2 h-2 bg-[#1E75FF] rounded-full mt-2 flex-shrink-0"></div>
-                              <p className="text-sm text-[#334155]">{rec}</p>
-                            </div>)}
+                          <div className="bg-white border border-gray-200 rounded-2xl p-6">
+                            <h4 className="text-lg font-semibold text-[#0F172A] mb-4 flex items-center gap-2">
+                              <Brain className="w-5 h-5 text-[#1E75FF]" />
+                              <span>Khuyến nghị từ AI</span>
+                            </h4>
+                            <div className="space-y-3">
+                              {selectedPatient.aiPrediction.recommendations.map((rec: string, index: number) => <div key={index} className="flex items-start gap-3 p-3 bg-[#1E75FF]/5 rounded-xl">
+                                  <div className="w-2 h-2 bg-[#1E75FF] rounded-full mt-2 flex-shrink-0"></div>
+                                  <p className="text-sm text-[#334155]">{rec}</p>
+                                </div>)}
+                            </div>
+                          </div>
                         </div>
+                      </>
+                    ) : (
+                      <div className="text-center py-12">
+                        <Brain size={48} className="text-gray-400 mx-auto mb-4" />
+                        <p className="text-[#334155]">Không có dự đoán AI</p>
                       </div>
-                    </div>
-                  </div>}
+                    )}
+                  </div>
+                )}
 
                 {/* Medical History Tab */}
-                {examinationTab === 'history' && <div className="space-y-6">
+                {examinationTab === 'history' && (
+                  <div className="space-y-6">
                     <h4 className="text-lg font-semibold text-[#0F172A] flex items-center gap-2">
                       <History className="w-5 h-5 text-[#1E75FF]" />
                       <span>Lịch sử khám bệnh</span>
                     </h4>
                     <div className="space-y-4">
-                      {selectedPatient.medicalHistory?.map((record: any, index: number) => <div key={index} className="bg-white border border-gray-200 rounded-2xl p-6">
-                          <div className="flex items-start justify-between mb-4">
-                            <div>
-                              <h5 className="font-semibold text-[#0F172A]">
-                                {record.diagnosis ? `Khám định kỳ - ${record.doctor}` : `Khám tổng quát - ${record.doctor}`}
-                              </h5>
-                              <p className="text-sm text-[#334155]">{record.date}</p>
+                      {selectedPatient.medicalHistory && selectedPatient.medicalHistory.length > 0 ? (
+                        selectedPatient.medicalHistory.map((record: any, index: number) => <div key={index} className="bg-white border border-gray-200 rounded-2xl p-6">
+                            <div className="flex items-start justify-between mb-4">
+                              <div>
+                                <h5 className="font-semibold text-[#0F172A]">
+                                  {record.diagnosis ? `Khám định kỳ - ${record.doctor}` : `Khám tổng quát - ${record.doctor}`}
+                                </h5>
+                                <p className="text-sm text-[#334155]">{record.date}</p>
+                              </div>
                             </div>
-                          </div>
-                          <div className="space-y-3">
-                            {record.diagnosis && <div>
-                                <p className="text-sm font-medium text-[#334155]">Chẩn đoán:</p>
-                                <p className="text-[#0F172A]">{record.diagnosis}</p>
-                              </div>}
-                            {record.treatment && <div>
-                                <p className="text-sm font-medium text-[#334155]">Điều trị:</p>
-                                <p className="text-[#0F172A]">{record.treatment}</p>
-                              </div>}
-                            {record.symptoms && <div>
-                                <p className="text-sm font-medium text-[#334155]">Triệu chứng:</p>
-                                <p className="text-[#0F172A]">{record.symptoms}</p>
-                              </div>}
-                            {record.findings && <div>
-                                <p className="text-sm font-medium text-[#334155]">Kết quả:</p>
-                                <p className="text-[#0F172A]">{record.findings}</p>
-                              </div>}
-                            {record.labResults && <div className="flex gap-4 mt-3">
-                                <span className="px-3 py-1 bg-gray-100 rounded-lg text-sm">
-                                  eGFR: {record.labResults.eGFR}
-                                </span>
-                                <span className="px-3 py-1 bg-gray-100 rounded-lg text-sm">
-                                  Creatinine: {record.labResults.creatinine}
-                                </span>
-                              </div>}
-                          </div>
-                        </div>)}
+                            <div className="space-y-3">
+                              {record.diagnosis && <div>
+                                  <p className="text-sm font-medium text-[#334155]">Chẩn đoán:</p>
+                                  <p className="text-[#0F172A]">{record.diagnosis}</p>
+                                </div>}
+                              {record.treatment && <div>
+                                  <p className="text-sm font-medium text-[#334155]">Điều trị:</p>
+                                  <p className="text-[#0F172A]">{record.treatment}</p>
+                                </div>}
+                              {record.symptoms && <div>
+                                  <p className="text-sm font-medium text-[#334155]">Triệu chứng:</p>
+                                  <p className="text-[#0F172A]">{record.symptoms}</p>
+                                </div>}
+                              {record.findings && <div>
+                                  <p className="text-sm font-medium text-[#334155]">Kết quả:</p>
+                                  <p className="text-[#0F172A]">{record.findings}</p>
+                                </div>}
+                              {record.labResults && <div className="flex gap-4 mt-3">
+                                  <span className="px-3 py-1 bg-gray-100 rounded-lg text-sm">
+                                    eGFR: {record.labResults.eGFR}
+                                  </span>
+                                  <span className="px-3 py-1 bg-gray-100 rounded-lg text-sm">
+                                    Creatinine: {record.labResults.creatinine}
+                                  </span>
+                                </div>}
+                            </div>
+                          </div>)
+                      ) : (
+                        <div className="text-center py-12">
+                          <History size={48} className="text-gray-400 mx-auto mb-4" />
+                          <p className="text-[#334155]">Chưa có lịch sử khám</p>
+                        </div>
+                      )}
                     </div>
-                  </div>}
+                  </div>
+                )}
 
                 {/* Examination Tab */}
                 {examinationTab === 'examination' && <div className="space-y-6">
@@ -703,7 +715,7 @@ export const AppointmentAndConsultationModule = ({
       </div>;
   };
   const renderAppointments = () => {
-    const currentAppointments = appointmentTab === 'upcoming' ? appointmentData : appointmentTab === 'past' ? pastAppointments : appointmentData.filter(apt => apt.status === 'cancelled');
+    const currentAppointments = normalizedAppointments; // tạm thời chỉ hiển thị set "sắp tới" từ API CONFIRMED
     const filteredAppointments = filterAppointments(currentAppointments);
     return <div className="p-6 space-y-6">
         <div className="flex items-center justify-between" style={{
@@ -756,13 +768,21 @@ export const AppointmentAndConsultationModule = ({
           </div>
 
           <div className="p-6">
+            {doctorAptLoading && (
+              <div className="text-center py-8 text-[#334155]">Đang tải lịch hẹn...</div>
+            )}
+            {doctorAptError && (
+              <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-4">
+                <div className="flex items-center">
+                  <AlertTriangle className="w-5 h-5 text-red-500 mr-2" />
+                  <span className="text-red-700">{doctorAptError}</span>
+                </div>
+                <button onClick={clearDoctorAptError} className="mt-2 text-sm text-red-600 hover:text-red-800 underline">Thử lại</button>
+              </div>
+            )}
             {filteredAppointments.length === 0 ? <div className="text-center py-12">
                 <Calendar size={48} className="text-gray-400 mx-auto mb-4" />
                 <p className="text-[#334155] mb-4">Chưa có lịch hẹn nào trong mục này</p>
-                <button onClick={() => setShowScheduleModal(true)} className="bg-[#1E75FF] hover:bg-[#1659C9] text-white px-6 py-3 rounded-2xl font-medium flex items-center gap-2 transition-colors">
-                  <Plus size={20} />
-                  <span>Đăng ký lịch làm việc</span>
-                </button>
               </div> : <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {filteredAppointments.map((appointment, index) => <motion.div key={appointment.id} initial={{
               opacity: 0,
