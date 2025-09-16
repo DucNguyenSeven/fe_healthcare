@@ -57,3 +57,46 @@ export type UpdateDoctorRequest = {
 
 export type ChatRequest = { question: string };
 export type ChatResponse = { answer: string };
+
+// Doctor Schedule API Types
+export type TimeSlotId = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16;
+
+// WeekDay as number (backend ordinal mapping)
+// 0=MONDAY, 1=TUESDAY, 2=WEDNESDAY, 3=THURSDAY, 4=FRIDAY, 5=SATURDAY, 6=SUNDAY
+export type WeekDay = 0 | 1 | 2 | 3 | 4 | 5 | 6;
+
+export type CreateDoctorScheduleRequest = {
+  doctorId: string;
+  weekDay: WeekDay;
+  workDate: string; // YYYY-MM-DD format
+  available: boolean; // Changed from isAvailable to match backend
+  timeSlotIds: TimeSlotId[];
+};
+
+export type BulkCreateDoctorScheduleRequest = {
+  doctorId: string;
+  dateSchedules: {
+    weekDay: WeekDay;
+    workDate: string; // YYYY-MM-DD format
+  }[];
+};
+
+export type DoctorScheduleResponse = {
+  id: string;
+  doctorId: string;
+  weekDay: WeekDay;
+  workDate: string;
+  available: boolean; // Changed from isAvailable to match backend
+  timeSlotIds: TimeSlotId[];
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type GetDoctorScheduleRequest = {
+  doctorId: string;
+  date: string; // YYYY-MM-DD format
+};
+
+export type GetDoctorsOfDateRequest = {
+  date: string; // YYYY-MM-DD format
+};

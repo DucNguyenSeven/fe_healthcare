@@ -254,9 +254,12 @@ export const AppointmentAndConsultationModule = ({
     }
   };
   const handleSaveScheduleFromModal = (data: any) => {
-    // Save schedule data
-    alert('Đã đăng ký lịch làm việc thành công!');
-    // Here you would typically save to your backend
+    // Schedule data đã được xử lý trong modal và gọi API
+    // Modal sẽ tự động đóng sau khi API thành công
+    console.log('Lịch làm việc đã được tạo thành công:', data);
+
+    // Có thể thêm logic refresh data hoặc cập nhật state ở đây
+    // Ví dụ: refetch existing schedules, update calendar view, etc.
   };
   const openPatientExamination = (patientId: string, appointment: any) => {
     const patient = patientData[patientId as keyof typeof patientData];

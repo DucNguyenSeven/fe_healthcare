@@ -3,6 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Calendar, Clock, ChevronLeft, ChevronRight, Check, Save, RotateCcw, AlertTriangle, Sun, Sunrise, Sunset, BookOpen, History, Star, Zap, Users, Timer } from 'lucide-react';
+import { useDoctorSchedule, timeStringsToSlotIds, dateToWeekDay } from '@/hooks/schedule';
+import { useGetMe } from '@/hooks/auth';
 
 // Types and interfaces
 interface TimeSlot {
@@ -197,17 +199,18 @@ export default function DoctorScheduleRegistrationModal({
     date: '',
     timeSlots: [],
     type: 'available',
-    recurring: false,
-    // NEW: Weekly recurring option
+    recurring: false, // Tạm thời luôn false
     recurringEndDate: '',
-    // NEW: End date for recurring
     recurringType: 'indefinite',
-    // NEW: 'indefinite' | 'endDate'
     note: '',
     template: ''
   });
   const [conflicts, setConflicts] = useState<string[]>([]);
   const [showConflictWarning, setShowConflictWarning] = useState(false);
+
+  // API hooks
+  const { data: userInfo } = useGetMe();
+  const { createSchedule, bulkCreateSchedule, isLoading, error } = useDoctorSchedule();
 
   // Helper function for recurring date calculation
   const generateRecurringDates = (startDate: string, endDate?: string, recurring: boolean = false) => {
@@ -234,8 +237,8 @@ export default function DoctorScheduleRegistrationModal({
         date: '',
         timeSlots: [],
         type: 'available',
-        recurring: false,
-        recurringEndDate: undefined,
+        recurring: false, // Tạm thời luôn false
+        recurringEndDate: '',
         recurringType: 'indefinite',
         note: '',
         template: ''
@@ -359,15 +362,60 @@ export default function DoctorScheduleRegistrationModal({
       setCurrentStep(currentStep - 1);
     }
   };
-  const handleSave = () => {
-    const finalData = {
-      ...formData,
-      date: selectedDate,
-      timeSlots: timeSlots.filter(slot => slot.selected).map(slot => slot.id),
-      recurringDates: generateRecurringDates(selectedDate, formData.recurringType === 'endDate' ? formData.recurringEndDate : undefined, formData.recurring)
-    };
-    onSave(finalData);
-    onClose();
+  const handleSave = async () => {
+    if (!userInfo?.userId) {
+      alert('Không thể xác định thông tin người dùng. Vui lòng đăng nhập lại.');
+      return;
+    }
+
+    const selectedTimeSlots = timeSlots.filter(slot => slot.selected).map(slot => slot.id);
+    const timeSlotIds = timeStringsToSlotIds(selectedTimeSlots);
+
+    if (timeSlotIds.length === 0) {
+      alert('Vui lòng chọn ít nhất một khung giờ làm việc.');
+      return;
+    }
+
+    try {
+      const transformedWeekDay = dateToWeekDay(selectedDate);
+      const transformedTimeSlotIds = timeStringsToSlotIds(selectedTimeSlots);
+
+      // Validation
+      const validationErrors = [];
+      if (!userInfo.userId) validationErrors.push('Missing userId');
+      if (!selectedDate) validationErrors.push('Missing selectedDate');
+      if (!transformedWeekDay) validationErrors.push('Invalid weekDay');
+      if (!transformedTimeSlotIds.length) validationErrors.push('No valid timeSlotIds');
+
+      if (validationErrors.length > 0) {
+        alert('Lỗi validation: ' + validationErrors.join(', '));
+        return;
+      }
+
+      const scheduleData = {
+        doctorId: userInfo.userId,
+        weekDay: transformedWeekDay,
+        workDate: selectedDate,
+        available: true,
+        timeSlotIds: transformedTimeSlotIds
+      };
+
+      const result = await createSchedule(scheduleData);
+
+      if (result) {
+        const finalData = {
+          ...formData,
+          date: selectedDate,
+          timeSlots: selectedTimeSlots,
+          recurringDates: [selectedDate]
+        };
+
+        onSave(finalData);
+        onClose();
+      }
+    } catch (err) {
+      console.error('Có lỗi xảy ra khi đăng ký lịch làm việc:', err);
+    }
   };
   const canProceedToNext = () => {
     switch (currentStep) {
@@ -511,7 +559,7 @@ export default function DoctorScheduleRegistrationModal({
                               </div>
                               <div className="text-left">
                                 <p className="font-medium text-[#0F172A] group-hover:text-[#F59E0B]">Buổi chiều</p>
-                                <p className="text-sm text-[#334155]">14:00 - 18:00 (8 khung giờ)</p>
+                                <p className="text-sm text-[#334155]">14:00 - 17:30 (8 khung giờ)</p>
                               </div>
                             </button>
                             
@@ -521,7 +569,7 @@ export default function DoctorScheduleRegistrationModal({
                               </div>
                               <div className="text-left">
                                 <p className="font-medium text-[#0F172A] group-hover:text-[#F59E0B]">Cả ngày</p>
-                                <p className="text-sm text-[#334155]">8:00 - 18:00 (16 khung giờ)</p>
+                                <p className="text-sm text-[#334155]">8:00 - 17:30 (16 khung giờ)</p>
                               </div>
                             </button>
                           </div>
@@ -637,60 +685,20 @@ export default function DoctorScheduleRegistrationModal({
                             </div>
                           </motion.div>}
 
-                        {/* Weekly Recurring Option */}
-                        <div className="mt-6 p-4 bg-gray-50 rounded-lg">
+                        {/* Weekly Recurring Option - TEMPORARILY DISABLED */}
+                        <div className="mt-6 p-4 bg-gray-100 rounded-lg opacity-50" style={{ display: 'none' }}>
                           <label className="flex items-center space-x-3">
-                            <input type="checkbox" checked={formData.recurring} onChange={e => setFormData(prev => ({
-                          ...prev,
-                          recurring: e.target.checked
-                        }))} className="w-4 h-4 text-blue-600 border-gray-300 rounded 
+                            <input type="checkbox" checked={false} disabled className="w-4 h-4 text-blue-600 border-gray-300 rounded
                                          focus:ring-blue-500 focus:ring-2" />
                             <div className="flex-1">
-                              <span className="text-sm font-medium text-gray-900">
-                                Lặp lại hàng tuần
+                              <span className="text-sm font-medium text-gray-500">
+                                Lặp lại hàng tuần (Tạm thời vô hiệu hóa)
                               </span>
-                              <p className="text-xs text-gray-600 mt-1">
-                                Áp dụng lịch này cho tất cả các tuần tiếp theo
+                              <p className="text-xs text-gray-500 mt-1">
+                                Chức năng này sẽ được bổ sung sau
                               </p>
                             </div>
-                            <div className="text-right">
-                              <span className="text-xs text-blue-600 font-medium">
-                                🔄 Weekly
-                              </span>
-                            </div>
                           </label>
-                          
-                          {formData.recurring && <motion.div initial={{
-                        opacity: 0,
-                        height: 0
-                      }} animate={{
-                        opacity: 1,
-                        height: 'auto'
-                      }} className="mt-3 pl-7 space-y-2">
-                              <div className="text-xs text-gray-600">
-                                <strong>Áp dụng cho:</strong> Các tuần từ {selectedDate} trở đi
-                              </div>
-                              <div className="flex items-center space-x-4">
-                                <label className="text-xs">
-                                  <input type="radio" name="recurringEnd" value="indefinite" checked={formData.recurringType === 'indefinite'} onChange={e => setFormData(prev => ({
-                              ...prev,
-                              recurringType: 'indefinite'
-                            }))} className="mr-1" />
-                                  Không giới hạn
-                                </label>
-                                <label className="text-xs flex items-center">
-                                  <input type="radio" name="recurringEnd" value="endDate" checked={formData.recurringType === 'endDate'} onChange={e => setFormData(prev => ({
-                              ...prev,
-                              recurringType: 'endDate'
-                            }))} className="mr-1" />
-                                  Đến ngày: 
-                                  <input type="date" value={formData.recurringEndDate || ''} onChange={e => setFormData(prev => ({
-                              ...prev,
-                              recurringEndDate: e.target.value
-                            }))} min={selectedDate} disabled={formData.recurringType !== 'endDate'} className="ml-1 text-xs border rounded px-1 py-0.5 disabled:bg-gray-100" />
-                                </label>
-                              </div>
-                            </motion.div>}
                         </div>
                       </div>
                     </div>
@@ -740,14 +748,12 @@ export default function DoctorScheduleRegistrationModal({
                             </span>
                           </div>
                           
-                          {formData.recurring && <div className="flex items-center justify-between py-3 border-b border-gray-100">
-                              <span className="text-[#334155]">Lặp lại:</span>
-                              <span className="font-medium text-[#0F172A]">
-                                Hàng tuần
-                                {formData.recurringType === 'endDate' && formData.recurringEndDate && ` đến ${new Date(formData.recurringEndDate).toLocaleDateString('vi-VN')}`}
-                                {formData.recurringType === 'indefinite' && ' (không giới hạn)'}
-                              </span>
-                            </div>}
+                          <div className="flex items-center justify-between py-3 border-b border-gray-100">
+                            <span className="text-[#334155]">Loại đăng ký:</span>
+                            <span className="font-medium text-[#0F172A]">
+                              Đăng ký từng ngày
+                            </span>
+                          </div>
                         </div>
                       </div>
 
@@ -769,26 +775,23 @@ export default function DoctorScheduleRegistrationModal({
                             <p className="text-sm text-[#0F172A] bg-gray-50 rounded-xl p-3">{formData.note}</p>
                           </div>}
 
-                        {/* Recurring Schedule Preview */}
-                        {formData.recurring && <div className="mt-6">
-                            <h5 className="text-sm font-medium text-[#334155] mb-2">📅 Lịch lặp lại:</h5>
-                            <div className="bg-blue-50 rounded-xl p-3">
-                              <div className="text-xs text-blue-700 mb-2">
-                                <strong>Áp dụng cho {generateRecurringDates(selectedDate, formData.recurringType === 'endDate' ? formData.recurringEndDate : undefined, formData.recurring).length} tuần</strong>
-                              </div>
-                              <div className="flex flex-wrap gap-1">
-                                {generateRecurringDates(selectedDate, formData.recurringType === 'endDate' ? formData.recurringEndDate : undefined, formData.recurring).slice(0, 8).map((date, index) => <span key={date} className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">
-                                    {new Date(date).toLocaleDateString('vi-VN', {
-                              day: '2-digit',
-                              month: '2-digit'
-                            })}
-                                  </span>)}
-                                {generateRecurringDates(selectedDate, formData.recurringType === 'endDate' ? formData.recurringEndDate : undefined, formData.recurring).length > 8 && <span className="text-xs text-blue-600">
-                                    +{generateRecurringDates(selectedDate, formData.recurringType === 'endDate' ? formData.recurringEndDate : undefined, formData.recurring).length - 8} tuần khác
-                                  </span>}
-                              </div>
+                        {/* Single Day Schedule Info */}
+                        <div className="mt-6">
+                          <h5 className="text-sm font-medium text-[#334155] mb-2">📅 Lịch làm việc:</h5>
+                          <div className="bg-green-50 rounded-xl p-3">
+                            <div className="text-xs text-green-700 mb-2">
+                              <strong>Đăng ký cho ngày: {new Date(selectedDate).toLocaleDateString('vi-VN', {
+                                weekday: 'long',
+                                year: 'numeric',
+                                month: 'long',
+                                day: 'numeric'
+                              })}</strong>
                             </div>
-                          </div>}
+                            <div className="text-xs text-green-600">
+                              {timeSlots.filter(slot => slot.selected).length} khung giờ được chọn
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     </div>
 
@@ -812,6 +815,25 @@ export default function DoctorScheduleRegistrationModal({
                             <p className="text-sm text-[#334155]">
                               Bạn có chắc chắn muốn tiếp tục? Điều này có thể ảnh hưởng đến các lịch hẹn hiện có.
                             </p>
+                          </div>
+                        </div>
+                      </motion.div>}
+
+                    {/* API Error Display */}
+                    {error && <motion.div initial={{
+                  opacity: 0,
+                  y: 10
+                }} animate={{
+                  opacity: 1,
+                  y: 0
+                }} className="mt-6 bg-[#EF4444]/10 border border-[#EF4444]/20 rounded-2xl p-6">
+                        <div className="flex items-start gap-4">
+                          <div className="w-12 h-12 bg-[#EF4444] rounded-2xl flex items-center justify-center flex-shrink-0">
+                            <X size={24} className="text-white" />
+                          </div>
+                          <div>
+                            <h5 className="font-semibold text-[#EF4444] mb-2">Lỗi khi tạo lịch làm việc</h5>
+                            <p className="text-[#334155]">{error}</p>
                           </div>
                         </div>
                       </motion.div>}
@@ -839,9 +861,9 @@ export default function DoctorScheduleRegistrationModal({
               {currentStep < 2 ? <button onClick={handleNext} disabled={!canProceedToNext()} className="flex items-center gap-2 px-6 py-3 bg-[#1E75FF] hover:bg-[#1659C9] text-white rounded-2xl font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
                   <span>Tiếp theo</span>
                   <ChevronRight size={16} />
-                </button> : <button onClick={handleSave} className="flex items-center gap-2 px-8 py-3 bg-gradient-to-r from-[#10B981] to-[#059669] hover:from-[#059669] hover:to-[#047857] text-white rounded-2xl font-medium transition-all shadow-lg shadow-[#10B981]/25">
-                  <Save size={16} />
-                  <span>Lưu lịch làm việc</span>
+                </button> : <button onClick={handleSave} disabled={isLoading} className="flex items-center gap-2 px-8 py-3 bg-gradient-to-r from-[#10B981] to-[#059669] hover:from-[#059669] hover:to-[#047857] text-white rounded-2xl font-medium transition-all shadow-lg shadow-[#10B981]/25 disabled:opacity-50 disabled:cursor-not-allowed">
+                  {isLoading ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <Save size={16} />}
+                  <span>{isLoading ? 'Đang lưu...' : 'Lưu lịch làm việc'}</span>
                 </button>}
             </div>
           </div>
