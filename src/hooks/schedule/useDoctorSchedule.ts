@@ -72,13 +72,46 @@ export const timeStringsToSlotIds = (timeStrings: string[]): TimeSlotId[] => {
   return validSlots;
 };
 
+// Helper function để convert ngày thành weekDay string cho backend
+export const dateToBackendWeekDay = (dateString: string): string => {
+  const date = new Date(dateString);
+  const jsDay = date.getDay(); // 0=Sunday, 1=Monday, ..., 6=Saturday
+
+  const weekDayMap = {
+    0: 'SUNDAY',
+    1: 'MONDAY',
+    2: 'TUESDAY',
+    3: 'WEDNESDAY',
+    4: 'THURSDAY',
+    5: 'FRIDAY',
+    6: 'SATURDAY'
+  };
+
+  return weekDayMap[jsDay as keyof typeof weekDayMap];
+};
+
+// Helper function để tạo BulkCreateDoctorScheduleRequest từ danh sách ngày (theo backend format)
+export const createBulkScheduleRequest = (
+  doctorId: string,
+  dates: string[]
+): BulkCreateDoctorScheduleRequest => {
+  const dateSchedules = dates.map(dateString => ({
+    weekDay: dateToBackendWeekDay(dateString),
+    workDate: dateString
+  }));
+
+  return {
+    doctorId,
+    dateSchedules
+  };
+};
+
 export const useDoctorSchedule = (): UseDoctorScheduleReturn => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleApiCall = async <T>(
-    apiCall: () => Promise<any>,
-    successMessage?: string
+    apiCall: () => Promise<any>
   ): Promise<T | null> => {
     setIsLoading(true);
     setError(null);
@@ -87,9 +120,6 @@ export const useDoctorSchedule = (): UseDoctorScheduleReturn => {
       const response = await apiCall();
 
       if (response.success) {
-        if (successMessage) {
-          // Có thể thêm toast notification ở đây
-        }
         return response.data;
       } else {
         throw new Error(response.message || 'Có lỗi xảy ra');
@@ -114,17 +144,11 @@ export const useDoctorSchedule = (): UseDoctorScheduleReturn => {
   };
 
   const createSchedule = async (data: CreateDoctorScheduleRequest): Promise<DoctorScheduleResponse | null> => {
-    return handleApiCall(
-      () => DoctorScheduleApi.create(data),
-      'Đăng ký lịch làm việc thành công!'
-    );
+    return handleApiCall(() => DoctorScheduleApi.create(data));
   };
 
   const bulkCreateSchedule = async (data: BulkCreateDoctorScheduleRequest): Promise<DoctorScheduleResponse[] | null> => {
-    return handleApiCall(
-      () => DoctorScheduleApi.bulkCreate(data),
-      'Đăng ký lịch làm việc hàng loạt thành công!'
-    );
+    return handleApiCall(() => DoctorScheduleApi.bulkCreate(data));
   };
 
   const getDoctorScheduleByDate = async (params: GetDoctorScheduleRequest): Promise<DoctorScheduleResponse | null> => {

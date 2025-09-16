@@ -3,8 +3,9 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Calendar, Clock, ChevronLeft, ChevronRight, Check, Save, RotateCcw, AlertTriangle, Sun, Sunrise, Sunset, BookOpen, History, Star, Zap, Users, Timer } from 'lucide-react';
-import { useDoctorSchedule, timeStringsToSlotIds, dateToWeekDay } from '@/hooks/schedule';
+import { useDoctorSchedule, timeStringsToSlotIds, dateToWeekDay, createBulkScheduleRequest } from '@/hooks/schedule';
 import { useGetMe } from '@/hooks/auth';
+import { toast } from 'sonner';
 
 // Types and interfaces
 interface TimeSlot {
@@ -199,7 +200,7 @@ export default function DoctorScheduleRegistrationModal({
     date: '',
     timeSlots: [],
     type: 'available',
-    recurring: false, // Tạm thời luôn false
+    recurring: false,
     recurringEndDate: '',
     recurringType: 'indefinite',
     note: '',
@@ -215,16 +216,18 @@ export default function DoctorScheduleRegistrationModal({
   // Helper function for recurring date calculation
   const generateRecurringDates = (startDate: string, endDate?: string, recurring: boolean = false) => {
     if (!recurring) return [startDate];
-    const dates = [startDate];
-    let currentDate = new Date(startDate);
+
+    const dates = [];
+    const start = new Date(startDate);
     const end = endDate ? new Date(endDate) : new Date(Date.now() + 90 * 24 * 60 * 60 * 1000); // 3 months default
 
-    while (currentDate < end) {
-      currentDate.setDate(currentDate.getDate() + 7);
-      if (currentDate <= end) {
-        dates.push(currentDate.toISOString().split('T')[0]);
-      }
+    // Tạo tất cả ngày liên tiếp từ startDate đến endDate
+    const currentDate = new Date(start);
+    while (currentDate <= end) {
+      dates.push(currentDate.toISOString().split('T')[0]);
+      currentDate.setDate(currentDate.getDate() + 1); // Cộng 1 ngày
     }
+
     return dates;
   };
 
@@ -237,7 +240,7 @@ export default function DoctorScheduleRegistrationModal({
         date: '',
         timeSlots: [],
         type: 'available',
-        recurring: false, // Tạm thời luôn false
+        recurring: false,
         recurringEndDate: '',
         recurringType: 'indefinite',
         note: '',
@@ -364,7 +367,7 @@ export default function DoctorScheduleRegistrationModal({
   };
   const handleSave = async () => {
     if (!userInfo?.userId) {
-      alert('Không thể xác định thông tin người dùng. Vui lòng đăng nhập lại.');
+      toast.error('Không thể xác định thông tin người dùng. Vui lòng đăng nhập lại.');
       return;
     }
 
@@ -372,49 +375,77 @@ export default function DoctorScheduleRegistrationModal({
     const timeSlotIds = timeStringsToSlotIds(selectedTimeSlots);
 
     if (timeSlotIds.length === 0) {
-      alert('Vui lòng chọn ít nhất một khung giờ làm việc.');
+      toast.error('Vui lòng chọn ít nhất một khung giờ làm việc.');
+      return;
+    }
+
+    if (!selectedDate) {
+      toast.error('Vui lòng chọn ngày làm việc.');
       return;
     }
 
     try {
-      const transformedWeekDay = dateToWeekDay(selectedDate);
-      const transformedTimeSlotIds = timeStringsToSlotIds(selectedTimeSlots);
+      let result;
+      let recurringDates = [selectedDate];
 
-      // Validation
-      const validationErrors = [];
-      if (!userInfo.userId) validationErrors.push('Missing userId');
-      if (!selectedDate) validationErrors.push('Missing selectedDate');
-      if (!transformedWeekDay) validationErrors.push('Invalid weekDay');
-      if (!transformedTimeSlotIds.length) validationErrors.push('No valid timeSlotIds');
+      if (formData.recurring) {
+        // Tạo lịch nhiều ngày - sử dụng bulkCreate
+        const endDate = formData.recurringType === 'endDate' ? formData.recurringEndDate : undefined;
+        recurringDates = generateRecurringDates(selectedDate, endDate, true);
 
-      if (validationErrors.length > 0) {
-        alert('Lỗi validation: ' + validationErrors.join(', '));
-        return;
+        const bulkData = createBulkScheduleRequest(
+          userInfo.userId,
+          recurringDates
+        );
+
+        result = await bulkCreateSchedule(bulkData);
+
+        if (result) {
+          toast.success(`Đã tạo thành công lịch làm việc cho ${recurringDates.length} ngày!`);
+        }
+      } else {
+        // Tạo lịch đơn lẻ - sử dụng createSchedule
+        const transformedWeekDay = dateToWeekDay(selectedDate);
+        const scheduleData = {
+          doctorId: userInfo.userId,
+          weekDay: transformedWeekDay,
+          workDate: selectedDate,
+          available: true,
+          timeSlotIds
+        };
+
+        result = await createSchedule(scheduleData);
+
+        if (result) {
+          toast.success('Đã đăng ký lịch làm việc thành công!');
+        }
       }
-
-      const scheduleData = {
-        doctorId: userInfo.userId,
-        weekDay: transformedWeekDay,
-        workDate: selectedDate,
-        available: true,
-        timeSlotIds: transformedTimeSlotIds
-      };
-
-      const result = await createSchedule(scheduleData);
 
       if (result) {
         const finalData = {
           ...formData,
           date: selectedDate,
           timeSlots: selectedTimeSlots,
-          recurringDates: [selectedDate]
+          recurringDates
         };
 
         onSave(finalData);
         onClose();
       }
     } catch (err) {
-      console.error('Có lỗi xảy ra khi đăng ký lịch làm việc:', err);
+      // Xử lý lỗi và hiển thị toast error
+      let errorMessage = 'Có lỗi xảy ra khi đăng ký lịch làm việc';
+
+      if (err && typeof err === 'object' && 'response' in err) {
+        const errorResponse = err as { response?: { data?: { message?: string } } };
+        if (errorResponse.response?.data?.message) {
+          errorMessage = errorResponse.response.data.message;
+        }
+      } else if (err instanceof Error) {
+        errorMessage = err.message;
+      }
+
+      toast.error(errorMessage);
     }
   };
   const canProceedToNext = () => {
@@ -685,20 +716,68 @@ export default function DoctorScheduleRegistrationModal({
                             </div>
                           </motion.div>}
 
-                        {/* Weekly Recurring Option - TEMPORARILY DISABLED */}
-                        <div className="mt-6 p-4 bg-gray-100 rounded-lg opacity-50" style={{ display: 'none' }}>
-                          <label className="flex items-center space-x-3">
-                            <input type="checkbox" checked={false} disabled className="w-4 h-4 text-blue-600 border-gray-300 rounded
-                                         focus:ring-blue-500 focus:ring-2" />
+                        {/* Weekly Recurring Option */}
+                        <div className="mt-6 p-4 bg-gradient-to-r from-[#10B981]/10 to-[#1E75FF]/10 rounded-2xl border border-[#10B981]/20">
+                          <label className="flex items-center space-x-3 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={formData.recurring}
+                              onChange={(e) => setFormData(prev => ({
+                                ...prev,
+                                recurring: e.target.checked
+                              }))}
+                              className="w-4 h-4 text-[#1E75FF] border-gray-300 rounded focus:ring-[#1E75FF] focus:ring-2"
+                            />
                             <div className="flex-1">
-                              <span className="text-sm font-medium text-gray-500">
-                                Lặp lại hàng tuần (Tạm thời vô hiệu hóa)
+                              <span className="text-sm font-medium text-[#0F172A]">
+                                🔄 Tạo lịch nhiều ngày
                               </span>
-                              <p className="text-xs text-gray-500 mt-1">
-                                Chức năng này sẽ được bổ sung sau
+                              <p className="text-xs text-[#334155] mt-1">
+                                Tạo lịch liên tiếp từ ngày bắt đầu đến ngày kết thúc
                               </p>
                             </div>
                           </label>
+
+                          {/* Recurring End Date Option */}
+                          {formData.recurring && (
+                            <div className="mt-4 space-y-3">
+                              <div className="flex items-center space-x-3">
+                                <input
+                                  type="radio"
+                                  id="indefinite"
+                                  name="recurringType"
+                                  checked={formData.recurringType === 'indefinite'}
+                                  onChange={() => setFormData(prev => ({ ...prev, recurringType: 'indefinite' }))}
+                                  className="w-4 h-4 text-[#1E75FF]"
+                                />
+                                <label htmlFor="indefinite" className="text-sm text-[#334155]">Lặp lại vô thời hạn</label>
+                              </div>
+
+                              <div className="flex items-center space-x-3">
+                                <input
+                                  type="radio"
+                                  id="endDate"
+                                  name="recurringType"
+                                  checked={formData.recurringType === 'endDate'}
+                                  onChange={() => setFormData(prev => ({ ...prev, recurringType: 'endDate' }))}
+                                  className="w-4 h-4 text-[#1E75FF]"
+                                />
+                                <label htmlFor="endDate" className="text-sm text-[#334155]">Lặp lại đến ngày cụ thể</label>
+                              </div>
+
+                              {formData.recurringType === 'endDate' && (
+                                <div className="ml-7">
+                                  <input
+                                    type="date"
+                                    value={formData.recurringEndDate}
+                                    onChange={(e) => setFormData(prev => ({ ...prev, recurringEndDate: e.target.value }))}
+                                    min={selectedDate}
+                                    className="px-3 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] text-sm"
+                                  />
+                                </div>
+                              )}
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -751,9 +830,21 @@ export default function DoctorScheduleRegistrationModal({
                           <div className="flex items-center justify-between py-3 border-b border-gray-100">
                             <span className="text-[#334155]">Loại đăng ký:</span>
                             <span className="font-medium text-[#0F172A]">
-                              Đăng ký từng ngày
+                              {formData.recurring ? '🔄 Tạo lịch nhiều ngày' : '📅 Đăng ký từng ngày'}
                             </span>
                           </div>
+
+                          {formData.recurring && (
+                            <div className="flex items-center justify-between py-3 border-b border-gray-100">
+                              <span className="text-[#334155]">Lặp lại đến:</span>
+                              <span className="font-medium text-[#10B981]">
+                                {formData.recurringType === 'indefinite'
+                                  ? 'Vô thời hạn'
+                                  : new Date(formData.recurringEndDate).toLocaleDateString('vi-VN')
+                                }
+                              </span>
+                            </div>
+                          )}
                         </div>
                       </div>
 
@@ -775,22 +866,55 @@ export default function DoctorScheduleRegistrationModal({
                             <p className="text-sm text-[#0F172A] bg-gray-50 rounded-xl p-3">{formData.note}</p>
                           </div>}
 
-                        {/* Single Day Schedule Info */}
+                        {/* Schedule Preview */}
                         <div className="mt-6">
-                          <h5 className="text-sm font-medium text-[#334155] mb-2">📅 Lịch làm việc:</h5>
-                          <div className="bg-green-50 rounded-xl p-3">
-                            <div className="text-xs text-green-700 mb-2">
-                              <strong>Đăng ký cho ngày: {new Date(selectedDate).toLocaleDateString('vi-VN', {
-                                weekday: 'long',
-                                year: 'numeric',
-                                month: 'long',
-                                day: 'numeric'
-                              })}</strong>
+                          <h5 className="text-sm font-medium text-[#334155] mb-2">
+                            {formData.recurring ? '🔄 Lịch nhiều ngày:' : '📅 Lịch làm việc:'}
+                          </h5>
+
+                          {formData.recurring ? (
+                            <div className="bg-blue-50 rounded-xl p-3">
+                              <div className="text-xs text-blue-700 mb-2">
+                                <strong>Bắt đầu từ: {new Date(selectedDate).toLocaleDateString('vi-VN', {
+                                  weekday: 'long',
+                                  year: 'numeric',
+                                  month: 'long',
+                                  day: 'numeric'
+                                })}</strong>
+                              </div>
+                              <div className="text-xs text-blue-600 mb-2">
+                                Tạo lịch liên tiếp từ ngày bắt đầu đến ngày kết thúc
+                              </div>
+                              <div className="text-xs text-blue-600 mb-2">
+                                Kết thúc: {formData.recurringType === 'indefinite'
+                                  ? 'Vô thời hạn'
+                                  : new Date(formData.recurringEndDate).toLocaleDateString('vi-VN')
+                                }
+                              </div>
+                              <div className="text-xs text-blue-600">
+                                {timeSlots.filter(slot => slot.selected).length} khung giờ mỗi ngày
+                              </div>
+                              {formData.recurringType === 'endDate' && formData.recurringEndDate && (
+                                <div className="text-xs text-blue-500 mt-1">
+                                  Tổng: ~{generateRecurringDates(selectedDate, formData.recurringEndDate, true).length} ngày làm việc
+                                </div>
+                              )}
                             </div>
-                            <div className="text-xs text-green-600">
-                              {timeSlots.filter(slot => slot.selected).length} khung giờ được chọn
+                          ) : (
+                            <div className="bg-green-50 rounded-xl p-3">
+                              <div className="text-xs text-green-700 mb-2">
+                                <strong>Đăng ký cho ngày: {new Date(selectedDate).toLocaleDateString('vi-VN', {
+                                  weekday: 'long',
+                                  year: 'numeric',
+                                  month: 'long',
+                                  day: 'numeric'
+                                })}</strong>
+                              </div>
+                              <div className="text-xs text-green-600">
+                                {timeSlots.filter(slot => slot.selected).length} khung giờ được chọn
+                              </div>
                             </div>
-                          </div>
+                          )}
                         </div>
                       </div>
                     </div>

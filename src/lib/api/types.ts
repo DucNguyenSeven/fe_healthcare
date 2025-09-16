@@ -76,7 +76,7 @@ export type CreateDoctorScheduleRequest = {
 export type BulkCreateDoctorScheduleRequest = {
   doctorId: string;
   dateSchedules: {
-    weekDay: WeekDay;
+    weekDay: string; // "MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY"
     workDate: string; // YYYY-MM-DD format
   }[];
 };

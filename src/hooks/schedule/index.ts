@@ -1,1 +1,1 @@
-export { useDoctorSchedule, timeStringToSlotId, dateToWeekDay, timeStringsToSlotIds } from './useDoctorSchedule';
+export { useDoctorSchedule, timeStringToSlotId, dateToWeekDay, timeStringsToSlotIds, createBulkScheduleRequest, dateToBackendWeekDay } from './useDoctorSchedule';
