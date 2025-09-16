@@ -4,6 +4,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Send, Bot, User, Upload, FileText, Clock, Trash2, MessageCircle, AlertTriangle, Activity, Droplets, Heart, Calculator, TrendingUp, Shield, AlertCircle, ChevronRight, ChevronLeft, BarChart3, Calendar, ChevronDown } from 'lucide-react';
 import { User as UserType } from './HealthcarePlusApp';
 import { getAccessToken } from '@/utils/auth/token';
+import { useChatService } from '@/hooks/useChatService';
 interface AIAssistantPageProps {
   user: UserType;
   onNavigate?: (page: 'appointments') => void;
@@ -182,6 +183,7 @@ export function AIAssistantPage({
   }]);
   const [inputMessage, setInputMessage] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const { ask: askChat, loading: chatLoading } = useChatService();
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -432,18 +434,28 @@ export function AIAssistantPage({
     setInputMessage('');
     setIsTyping(true);
 
-    // Simulate AI response
-    setTimeout(() => {
+    try {
+      const data = await askChat(userMessage.content);
       const aiResponse: ChatMessage = {
         id: (Date.now() + 1).toString(),
         sender: 'assistant',
-        content: generateAIResponse(inputMessage),
+        content: (data as any)?.text || 'Xin lỗi, tôi chưa có câu trả lời phù hợp.',
         timestamp: new Date().toISOString(),
         type: 'text'
       };
       setMessages(prev => [...prev, aiResponse]);
+    } catch (e) {
+      const fallback: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        sender: 'assistant',
+        content: 'Không thể kết nối tới AI. Vui lòng thử lại sau.',
+        timestamp: new Date().toISOString(),
+        type: 'text'
+      };
+      setMessages(prev => [...prev, fallback]);
+    } finally {
       setIsTyping(false);
-    }, 2000);
+    }
   };
   const generateAIResponse = (question: string): string => {
     const lowerQuestion = question.toLowerCase();
@@ -497,6 +509,31 @@ Bạn nên tuân thủ nghiêm ngặt chế độ điều trị và tái khám �
 3. Tuân thủ chế độ điều trị được chỉ định
 
 Bạn có thể đặt thêm câu hỏi cụ thể hoặc sử dụng các gợi ý bên dưới để tôi có thể hỗ trợ tốt hơn.`;
+  };
+  // Rich rendering for assistant message: highlight blocks like Lưu ý/Khuyến nghị and bullet lists
+  const renderAssistantMessage = (text: string) => {
+    // Simple heuristics: split into paragraphs, convert lines starting with numbers or bullets to lists,
+    // highlight paragraphs starting with certain keywords
+    const paragraphs = text.split(/\n\n+/);
+    return <div className="space-y-3">
+      {paragraphs.map((para, idx) => {
+        const trimmed = para.trim();
+        const isNote = /^\s*(Lưu ý|Luu y|LƯU Ý|Khuyến nghị|Khuyen nghi|Kết luận|Ket luan)/i.test(trimmed);
+        const lines = trimmed.split(/\n/);
+        const isList = lines.length > 1 && lines.every(l => /^([•\-\*]|\d+\.|\d+\))/i.test(l.trim()));
+        if (isList) {
+          return <ul key={idx} className="list-disc pl-5 space-y-1">{lines.map((l, i) => <li key={i}>{l.replace(/^([•\-\*]|\d+\.|\d+\))\s*/,'')}</li>)}</ul>;
+        }
+        return (
+          <div key={idx} className={isNote ? 'p-3 rounded-xl bg-yellow-50 border border-yellow-200 text-yellow-900' : ''}>
+            {isNote && <div className="text-xs font-semibold tracking-wide uppercase mb-1 text-yellow-700">{trimmed.split(':')[0]}</div>}
+            <div className="[&_strong]:font-semibold [&_strong]:text-gray-900">
+              {trimmed}
+            </div>
+          </div>
+        );
+      })}
+    </div>;
   };
   const handleBookAppointment = () => {
     // Lưu thông tin dự đoán vào localStorage để tham khảo
@@ -845,18 +882,28 @@ Bạn có thể đặt thêm câu hỏi cụ thể hoặc sử dụng các gợi
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${message.sender === 'user' ? 'bg-blue-600' : 'bg-gradient-to-r from-purple-500 to-pink-500'}`}>
                   {message.sender === 'user' ? <User className="w-4 h-4 text-white" /> : <Bot className="w-4 h-4 text-white" />}
                 </div>
-                
-                <div className={`px-4 py-3 rounded-2xl ${message.sender === 'user' ? 'bg-blue-600 text-white' : 'bg-white border border-gray-200 text-gray-900'}`}>
-                  <div className="whitespace-pre-wrap text-sm leading-relaxed">
-                    {message.content}
+
+                {message.sender === 'assistant' ? (
+                  <div className="px-0 py-0 rounded-2xl bg-white text-gray-900 border border-gray-200 overflow-hidden">
+                    <div className="px-4 py-3">
+                      <div className="whitespace-pre-wrap text-sm leading-relaxed">
+                        {renderAssistantMessage(message.content)}
+                      </div>
+                    </div>
+                    <div className="px-4 py-2 bg-gray-50 border-t border-gray-100 text-xs text-gray-500">
+                      {new Date(message.timestamp).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
+                    </div>
                   </div>
-                  <div className={`text-xs mt-2 ${message.sender === 'user' ? 'text-blue-100' : 'text-gray-500'}`}>
-                    {new Date(message.timestamp).toLocaleTimeString('vi-VN', {
-                  hour: '2-digit',
-                  minute: '2-digit'
-                })}
+                ) : (
+                  <div className={`px-4 py-3 rounded-2xl bg-blue-600 text-white`}>
+                    <div className="whitespace-pre-wrap text-sm leading-relaxed">
+                      {message.content}
+                    </div>
+                    <div className={`text-xs mt-2 text-blue-100`}>
+                      {new Date(message.timestamp).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             </div>)}
           
@@ -1638,11 +1685,11 @@ Bạn có thể đặt thêm câu hỏi cụ thể hoặc sử dụng các gợi
                 </button>
                 <button className="flex items-center space-x-2 px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors">
                   <FileText className="w-4 h-4" />
-                  <span>📄 Xuất báo cáo</span>
+                  <span>Xuất báo cáo</span>
                 </button>
                 <button onClick={handleBookAppointment} className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-green-500 text-white rounded-xl hover:from-blue-600 hover:to-green-600 transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
                   <Calendar className="w-4 h-4" />
-                  <span>📅 Đặt lịch khám</span>
+                  <span>Đặt lịch khám</span>
                 </button>
               </div>
             </div>}
