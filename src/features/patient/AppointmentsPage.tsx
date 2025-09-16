@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { Appointment } from './HealthcarePlusApp';
 import { useDoctorOfDate, useDoctorSchedule } from '@/hooks/doctor-schedules';
 import { useBookingAppointment } from '@/hooks/appointments';
+import { BookingAppointmentRequest } from '@/lib/api/appointments';
 import { useGetMe } from '@/hooks/auth/useGetMe';
 import { usePatientAppointments, transformAppointmentToTimelineFormat } from '@/hooks/appointments/usePatientAppointments';
 
@@ -243,7 +244,7 @@ export function AppointmentsPage() {
         'follow_up': 'FOLLOW_UP'
       };
 
-      const bookingData = {
+      const bookingData: BookingAppointmentRequest = {
         patientId: currentUser.userId, // Lấy từ user hiện tại
         scheduleId: scheduleId, // Sử dụng scheduleId thực tế từ API
         doctorId: selectedDoctor.id,
@@ -256,6 +257,7 @@ export function AppointmentsPage() {
         } với ${selectedDoctor.name}`, // Sử dụng dữ liệu từ form
         slotId: selectedSlotId, // Sử dụng slotId thực tế từ timeSlotMapping
         consultationType: consultationTypeMap[appointmentType] || 'DIRECT_CONSULTATION',
+        status: 'CONFIRMED',
         addressDetail: appointmentType === 'online' ? 'Tại nhà' : (addressDetail || selectedDoctor.clinicAddress || branches[0].address), // Tư vấn online = Tại nhà, còn lại dùng chi nhánh đã chọn
         // Thêm các field có thể thiếu
         appointmentDate: selectedDate,
