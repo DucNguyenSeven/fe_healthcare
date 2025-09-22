@@ -1,18 +1,16 @@
 'use client'
 
 import React, { useState, useRef, KeyboardEvent } from 'react'
-import { Send, Paperclip, Smile } from 'lucide-react'
+import { Send } from 'lucide-react'
 
 interface MessageInputProps {
   onSendMessage: (content: string) => void
   disabled?: boolean
-  placeholder?: string
 }
 
 export function MessageInput({
   onSendMessage,
-  disabled = false,
-  placeholder = 'Nhập tin nhắn...'
+  disabled = false
 }: MessageInputProps) {
   const [message, setMessage] = useState('')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -49,14 +47,7 @@ export function MessageInput({
 
   return (
     <div className="p-4 border-t border-gray-200 bg-white">
-      <div className="flex items-end space-x-3">
-        {/* Attachment button */}
-        <button
-          disabled={disabled}
-          className="flex-shrink-0 p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          <Paperclip className="w-5 h-5" />
-        </button>
+      <div className="flex items-center space-x-3">
 
         {/* Message input */}
         <div className="flex-1 relative">
@@ -65,20 +56,18 @@ export function MessageInput({
             value={message}
             onChange={handleTextareaChange}
             onKeyPress={handleKeyPress}
-            placeholder={placeholder}
             disabled={disabled}
             rows={1}
-            className="w-full px-4 py-2 pr-12 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none disabled:opacity-50 disabled:cursor-not-allowed"
-            style={{ minHeight: '40px' }}
+            className="w-full px-4 py-2 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none disabled:opacity-50 disabled:cursor-not-allowed scrollbar-hide"
+            style={{
+              minHeight: '40px',
+              overflowY: 'hidden',
+              scrollbarWidth: 'none',
+              msOverflowStyle: 'none'
+            }}
           />
 
-          {/* Emoji button */}
-          <button
-            disabled={disabled}
-            className="absolute right-3 bottom-2 p-1 text-gray-400 hover:text-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <Smile className="w-5 h-5" />
-          </button>
+          
         </div>
 
         {/* Send button */}
