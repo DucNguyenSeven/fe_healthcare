@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import './globals.css'
 import { QueryProvider } from '@/providers/QueryProvider'
 import { AuthProvider } from '@/contexts/AuthContext'
+import { ChatProvider } from '@/features/chat/ChatProvider'
 import { Toaster } from 'sonner'
 
 export const metadata: Metadata = {
@@ -22,6 +23,7 @@ export default function RootLayout({
             <div id="root" className="h-full w-full">
               {children}
             </div>
+            <ChatProvider />
             <Toaster
               position="top-right"
               expand={true}
