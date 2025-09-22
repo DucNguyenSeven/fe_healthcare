@@ -143,22 +143,41 @@ export const AppointmentAndConsultationModule = ({
   const [showExaminationModal, setShowExaminationModal] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState<any>(null);
   const [examinationTab, setExaminationTab] = useState('ai-result');
-  const [vitalSigns, setVitalSigns] = useState({
-    bloodPressure: '',
-    heartRate: '',
-    weight: '',
-    temperature: ''
+  const [labResults, setLabResults] = useState({
+    creatinine: '',
+    eGFR: '',
+    BUN: '',
+    calcium: '',
+    ANA: '',
+    complement: '',
+    urineColor: '',
+    oxalate: '',
+    urinePH: ''
   });
   const [symptoms, setSymptoms] = useState('');
   const [diagnosis, setDiagnosis] = useState('');
+  const [customDiagnosis, setCustomDiagnosis] = useState('');
   const [diagnosisNotes, setDiagnosisNotes] = useState('');
-  const [prescriptionRows, setPrescriptionRows] = useState([{
-    drug: '',
-    dosage: '',
-    quantity: '',
-    usage: '',
-    notes: ''
-  }]);
+  const [treatment, setTreatment] = useState('');
+  const [doctorNote, setDoctorNote] = useState('');
+  const [stage, setStage] = useState('');
+  const [statusHealth, setStatusHealth] = useState('');
+  const [serviceName, setServiceName] = useState('');
+  const [imageAttachments, setImageAttachments] = useState([]);
+  const [prescriptionRows, setPrescriptionRows] = useState(() => {
+    const today = new Date().toISOString().split('T')[0];
+    const nextWeek = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+
+    return [{
+      drug: '',
+      dosage: '',
+      quantity: '',
+      usage: '',
+      notes: '',
+      startDate: today,
+      endDate: nextWeek
+    }];
+  });
   const [prescriptionNotes, setPrescriptionNotes] = useState(`• Uống thuốc đều đặn theo giờ
 • Theo dõi huyết áp hàng ngày
 • Hạn chế muối trong thức ăn
@@ -255,12 +274,17 @@ export const AppointmentAndConsultationModule = ({
     }
   };
   const addPrescriptionRow = () => {
+    const today = new Date().toISOString().split('T')[0];
+    const nextWeek = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+
     setPrescriptionRows([...prescriptionRows, {
       drug: '',
       dosage: '',
       quantity: '',
       usage: '',
-      notes: ''
+      notes: '',
+      startDate: today,
+      endDate: nextWeek
     }]);
   };
   const removePrescriptionRow = (index: number) => {
@@ -280,21 +304,38 @@ export const AppointmentAndConsultationModule = ({
     alert('Đã hoàn thành khám bệnh và lưu hồ sơ');
     setShowExaminationModal(false);
     // Reset form data
-    setVitalSigns({
-      bloodPressure: '',
-      heartRate: '',
-      weight: '',
-      temperature: ''
+    setLabResults({
+      creatinine: '',
+      eGFR: '',
+      BUN: '',
+      calcium: '',
+      ANA: '',
+      complement: '',
+      urineColor: '',
+      oxalate: '',
+      urinePH: ''
     });
     setSymptoms('');
     setDiagnosis('');
+    setCustomDiagnosis('');
     setDiagnosisNotes('');
+    setTreatment('');
+    setDoctorNote('');
+    setStage('');
+    setStatusHealth('');
+    setServiceName('');
+    setImageAttachments([]);
+    const today = new Date().toISOString().split('T')[0];
+    const nextWeek = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+
     setPrescriptionRows([{
       drug: '',
       dosage: '',
       quantity: '',
       usage: '',
-      notes: ''
+      notes: '',
+      startDate: today,
+      endDate: nextWeek
     }]);
     setFollowUpDate('');
   };
@@ -521,43 +562,96 @@ export const AppointmentAndConsultationModule = ({
                     <div className="bg-white border border-gray-200 rounded-2xl p-6">
                       <h4 className="text-lg font-semibold text-[#0F172A] mb-4 flex items-center gap-2">
                         <Activity className="w-5 h-5 text-[#1E75FF]" />
-                        <span>Sinh hiệu</span>
+                        <span>Kết quả xét nghiệm</span>
                       </h4>
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         <div>
                           <label className="block text-sm font-medium text-[#334155] mb-2">
-                            Huyết áp (mmHg)
+                            Creatinin huyết thanh (mg/dL)
                           </label>
-                          <input type="text" placeholder="120/80" value={vitalSigns.bloodPressure} onChange={e => setVitalSigns({
-                        ...vitalSigns,
-                        bloodPressure: e.target.value
+                          <input type="number" step="0.1" placeholder="1.0" value={labResults.creatinine} onChange={e => setLabResults({
+                        ...labResults,
+                        creatinine: e.target.value
                       })} className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent" />
                         </div>
                         <div>
                           <label className="block text-sm font-medium text-[#334155] mb-2">
-                            Nhịp tim (bpm)
+                            eGFR (ml/min)
                           </label>
-                          <input type="number" placeholder="72" value={vitalSigns.heartRate} onChange={e => setVitalSigns({
-                        ...vitalSigns,
-                        heartRate: e.target.value
+                          <input type="number" placeholder="95" value={labResults.eGFR} onChange={e => setLabResults({
+                        ...labResults,
+                        eGFR: e.target.value
                       })} className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent" />
                         </div>
                         <div>
                           <label className="block text-sm font-medium text-[#334155] mb-2">
-                            Cân nặng (kg)
+                            Ure máu (BUN) (mg/dL)
                           </label>
-                          <input type="number" placeholder="70" value={vitalSigns.weight} onChange={e => setVitalSigns({
-                        ...vitalSigns,
-                        weight: e.target.value
+                          <input type="number" placeholder="15" value={labResults.BUN} onChange={e => setLabResults({
+                        ...labResults,
+                        BUN: e.target.value
                       })} className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent" />
                         </div>
                         <div>
                           <label className="block text-sm font-medium text-[#334155] mb-2">
-                            Nhiệt độ (°C)
+                            Canxi huyết thanh (mg/dL)
                           </label>
-                          <input type="number" step="0.1" placeholder="36.5" value={vitalSigns.temperature} onChange={e => setVitalSigns({
-                        ...vitalSigns,
-                        temperature: e.target.value
+                          <input type="number" step="0.1" placeholder="10.0" value={labResults.calcium} onChange={e => setLabResults({
+                        ...labResults,
+                        calcium: e.target.value
+                      })} className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent" />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-[#334155] mb-2">
+                            ANA
+                          </label>
+                          <select value={labResults.ANA} onChange={e => setLabResults({
+                        ...labResults,
+                        ANA: e.target.value
+                      })} className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent">
+                            <option value="">Chọn kết quả</option>
+                            <option value="Âm tính">Âm tính</option>
+                            <option value="Dương tính">Dương tính</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-[#334155] mb-2">
+                            Bổ thể C3/C4 (mg/dL)
+                          </label>
+                          <input type="number" placeholder="130" value={labResults.complement} onChange={e => setLabResults({
+                        ...labResults,
+                        complement: e.target.value
+                      })} className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent" />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-[#334155] mb-2">
+                            Đái màu
+                          </label>
+                          <select value={labResults.urineColor} onChange={e => setLabResults({
+                        ...labResults,
+                        urineColor: e.target.value
+                      })} className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent">
+                            <option value="">Chọn màu</option>
+                            <option value="Âm tính">Âm tính</option>
+                            <option value="Dương tính">Dương tính</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-[#334155] mb-2">
+                            Nồng độ oxalat (mg/day)
+                          </label>
+                          <input type="number" step="0.1" placeholder="1.8" value={labResults.oxalate} onChange={e => setLabResults({
+                        ...labResults,
+                        oxalate: e.target.value
+                      })} className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent" />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-[#334155] mb-2">
+                            pH nước tiểu
+                          </label>
+                          <input type="number" step="0.1" placeholder="7.0" value={labResults.urinePH} onChange={e => setLabResults({
+                        ...labResults,
+                        urinePH: e.target.value
                       })} className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent" />
                         </div>
                       </div>
@@ -591,11 +685,64 @@ export const AppointmentAndConsultationModule = ({
                             <option value="other">Khác...</option>
                           </select>
                         </div>
+                        {diagnosis === 'other' && (
+                          <div>
+                            <label className="block text-sm font-medium text-[#334155] mb-2">
+                              Nhập chẩn đoán
+                            </label>
+                            <input
+                              type="text"
+                              placeholder="Nhập chẩn đoán cụ thể..."
+                              value={customDiagnosis}
+                              onChange={e => setCustomDiagnosis(e.target.value)}
+                              className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent"
+                            />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Treatment Plan */}
+                    <div className="bg-white border border-gray-200 rounded-2xl p-6">
+                      <h4 className="text-lg font-semibold text-[#0F172A] mb-4 flex items-center gap-2">
+                        <ClipboardList className="w-5 h-5 text-[#1E75FF]" />
+                        <span>Kế hoạch điều trị</span>
+                      </h4>
+                      <textarea placeholder="Nhập kế hoạch điều trị chi tiết..." rows={4} value={treatment} onChange={e => setTreatment(e.target.value)} className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent resize-none" />
+                    </div>
+
+{/* Stage and Health Status */}
+                    <div className="bg-white border border-gray-200 rounded-2xl p-6">
+                      <h4 className="text-lg font-semibold text-[#0F172A] mb-4 flex items-center gap-2">
+                        <Activity className="w-5 h-5 text-[#1E75FF]" />
+                        <span>Tình trạng bệnh</span>
+                      </h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                           <label className="block text-sm font-medium text-[#334155] mb-2">
-                            Chẩn đoán phụ và ghi chú
+                            Giai đoạn bệnh
                           </label>
-                          <textarea placeholder="Chẩn đoán phụ và ghi chú..." rows={3} value={diagnosisNotes} onChange={e => setDiagnosisNotes(e.target.value)} className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent resize-none" />
+                          <select value={stage} onChange={e => setStage(e.target.value)} className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent">
+                            <option value="">Chọn giai đoạn</option>
+                            <option value="0">Giai đoạn 0</option>
+                            <option value="1">Giai đoạn 1</option>
+                            <option value="2">Giai đoạn 2</option>
+                            <option value="3">Giai đoạn 3</option>
+                            <option value="4">Giai đoạn 4</option>
+                            <option value="5">Giai đoạn 5</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-[#334155] mb-2">
+                            Tình trạng sức khỏe
+                          </label>
+                          <select value={statusHealth} onChange={e => setStatusHealth(e.target.value)} className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent">
+                            <option value="">Chọn tình trạng</option>
+                            <option value="stable">Ổn định</option>
+                            <option value="improving">Cải thiện</option>
+                            <option value="declining">Suy giảm</option>
+                            <option value="critical">Nguy kịch</option>
+                          </select>
                         </div>
                       </div>
                     </div>
@@ -623,6 +770,8 @@ export const AppointmentAndConsultationModule = ({
                               <th className="px-4 py-3 text-left text-sm font-medium text-[#334155]">Liều lượng</th>
                               <th className="px-4 py-3 text-left text-sm font-medium text-[#334155]">Số lượng</th>
                               <th className="px-4 py-3 text-left text-sm font-medium text-[#334155]">Cách dùng</th>
+                              <th className="px-4 py-3 text-left text-sm font-medium text-[#334155]">Ngày bắt đầu</th>
+                              <th className="px-4 py-3 text-left text-sm font-medium text-[#334155]">Ngày kết thúc</th>
                               <th className="px-4 py-3 text-left text-sm font-medium text-[#334155]">Ghi chú</th>
                               <th className="px-4 py-3 text-center text-sm font-medium text-[#334155]">Thao tác</th>
                             </tr>
@@ -649,6 +798,12 @@ export const AppointmentAndConsultationModule = ({
                                     <option value="1 viên/12h">1 viên/12h</option>
                                     <option value="Theo chỉ định">Theo chỉ định</option>
                                   </select>
+                                </td>
+                                <td className="px-4 py-3">
+                                  <input type="date" value={row.startDate} onChange={e => updatePrescriptionRow(index, 'startDate', e.target.value)} className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent text-sm" />
+                                </td>
+                                <td className="px-4 py-3">
+                                  <input type="date" value={row.endDate} onChange={e => updatePrescriptionRow(index, 'endDate', e.target.value)} className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent text-sm" />
                                 </td>
                                 <td className="px-4 py-3">
                                   <input type="text" placeholder="Uống sau ăn" value={row.notes} onChange={e => updatePrescriptionRow(index, 'notes', e.target.value)} className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent text-sm" />
