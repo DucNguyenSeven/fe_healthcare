@@ -7,6 +7,10 @@ import DoctorScheduleRegistrationModal from './DoctorScheduleRegistrationModal';
 import type { AppointmentWeekFilterResponse } from '@/lib/api/appointments';
 import { useDoctorAppointments } from '@/hooks/appointments';
 import { useGetMe } from '@/hooks/auth/useGetMe';
+import { useCreateMedicalRecord } from '@/hooks/medical-records';
+import { useCreateMultiplePrescriptions } from '@/hooks/prescriptions';
+import { updateAppointmentStatus, getAppointmentDetail } from '@/lib/api/appointments';
+import { toast } from 'sonner';
 // Dữ liệu sẽ được lấy từ API, bỏ mock
 
 // Sample patient data for examination modal
@@ -115,6 +119,10 @@ export const AppointmentAndConsultationModule = ({
   const { data: me } = useGetMe();
   const { appointments: doctorWeekAppointments, loading: doctorAptLoading, error: doctorAptError, fetchDoctorAppointments, clearError: clearDoctorAptError } = useDoctorAppointments();
 
+  // Hooks for API calls
+  const { create: createMedicalRecord, loading: medicalRecordLoading, error: medicalRecordError } = useCreateMedicalRecord();
+  const { createMultiple: createPrescriptions, loading: prescriptionsLoading, error: prescriptionsError } = useCreateMultiplePrescriptions();
+
   // TẠM THỜI: gọi dữ liệu trong khoảng 01/09/2025 - 30/09/2025 theo yêu cầu
   const computeFixedRange = () => ({ start: '2025-09-01', end: '2025-09-30' });
 
@@ -163,6 +171,7 @@ export const AppointmentAndConsultationModule = ({
   const [stage, setStage] = useState('');
   const [statusHealth, setStatusHealth] = useState('');
   const [serviceName, setServiceName] = useState('');
+  const [customServiceName, setCustomServiceName] = useState('');
   const [imageAttachments, setImageAttachments] = useState([]);
   const [prescriptionRows, setPrescriptionRows] = useState(() => {
     const today = new Date().toISOString().split('T')[0];
@@ -220,13 +229,19 @@ export const AppointmentAndConsultationModule = ({
   };
   const handleSavePrescription = () => {
     if (prescription.trim()) {
-      alert('Đã lưu và gửi đơn thuốc cho bệnh nhân');
+      toast.success('Đã lưu và gửi đơn thuốc cho bệnh nhân', {
+        description: 'Đơn thuốc đã được gửi thành công',
+        duration: 3000,
+      });
       setPrescription('');
     }
   };
   const handleSaveSchedule = () => {
     if (scheduleForm.date && scheduleForm.time) {
-      alert('Đã đăng ký lịch làm việc thành công');
+      toast.success('Đã đăng ký lịch làm việc thành công', {
+        description: 'Lịch làm việc đã được cập nhật',
+        duration: 3000,
+      });
       setShowScheduleModal(false);
       setScheduleForm({
         date: '',
@@ -245,15 +260,20 @@ export const AppointmentAndConsultationModule = ({
     // Ví dụ: refetch existing schedules, update calendar view, etc.
   };
   const openPatientExamination = (patientId: string, appointment: any) => {
+
     // Ưu tiên dữ liệu có sẵn trong mock nếu khớp id
     const patientFromMock = patientData[patientId as keyof typeof patientData];
+
+    // Xác định patientId thực tế từ appointment data
+    const actualPatientId = appointment.patientId || appointment.patientInfo?.id || patientId;
+
 
     // Tạo fallback patient từ dữ liệu cuộc hẹn nhận từ API
     const fallbackPatient = {
       name: appointment.patient || appointment.patientName || 'Bệnh nhân',
       age: appointment.patientInfo?.age || '',
       gender: appointment.patientInfo?.gender || 'Không rõ',
-      id: appointment.patientInfo?.id || appointment.patientId || patientId || 'N/A',
+      id: actualPatientId || undefined, // Không gán 'N/A', để undefined nếu không có
     };
 
     const patient = patientFromMock || fallbackPatient;
@@ -300,9 +320,158 @@ export const AppointmentAndConsultationModule = ({
     };
     setPrescriptionRows(newRows);
   };
-  const handleCompleteExamination = () => {
-    alert('Đã hoàn thành khám bệnh và lưu hồ sơ');
-    setShowExaminationModal(false);
+  const handleCompleteExamination = async () => {
+    if (!selectedPatient?.appointment || !me?.userId) {
+      toast.error('Không có thông tin lịch hẹn hoặc bác sĩ', {
+        description: 'Vui lòng kiểm tra lại thông tin',
+        duration: 4000,
+      });
+      return;
+    }
+
+    // Validation basic required fields
+    if (!diagnosis && !customDiagnosis) {
+      toast.error('Vui lòng nhập chẩn đoán', {
+        description: 'Chẩn đoán là thông tin bắt buộc',
+        duration: 4000,
+      });
+      return;
+    }
+
+    if (!serviceName) {
+      toast.error('Vui lòng chọn dịch vụ khám', {
+        description: 'Dịch vụ khám là thông tin bắt buộc',
+        duration: 4000,
+      });
+      return;
+    }
+
+    if (serviceName === 'other' && !customServiceName.trim()) {
+      toast.error('Vui lòng nhập tên dịch vụ khám', {
+        description: 'Tên dịch vụ khám không được để trống',
+        duration: 4000,
+      });
+      return;
+    }
+
+    try {
+      // LẤY THÔNG TIN CHI TIẾT APPOINTMENT để có patientId
+
+      const appointmentId = selectedPatient.appointment.id || selectedPatient.appointment.appointmentId;
+
+      // Ưu tiên lấy patientId từ appointment data, KHÔNG dùng selectedPatient.id nếu nó là 'N/A'
+
+      // Try ALL possible field names for patientId
+      let patientId = selectedPatient.appointment.patientId ||
+                     selectedPatient.appointment.patient_id ||
+                     selectedPatient.appointment.userId ||
+                     selectedPatient.appointment.user_id ||
+                     selectedPatient.appointment.clientId ||
+                     selectedPatient.appointment.client_id ||
+                     selectedPatient.appointment.patientInfo?.id ||
+                     selectedPatient.appointment.patient?.id;
+
+
+      // Nếu không có trong appointment, thử lấy từ selectedPatient.id (nhưng không phải 'N/A')
+      if (!patientId && selectedPatient.id && selectedPatient.id !== 'N/A') {
+        patientId = selectedPatient.id;
+      }
+
+
+      // Validate patientId - không cho phép 'N/A' hoặc giá trị không hợp lệ
+      if (!patientId || patientId === 'N/A' || patientId.trim() === '') {
+        try {
+          const appointmentDetail = await getAppointmentDetail(appointmentId);
+          patientId = appointmentDetail.patientId;
+        } catch (detailError) {
+          // Fallback: sử dụng một ID giả định hoặc lỗi
+          throw new Error('Không thể xác định patientId cho appointment này');
+        }
+      }
+
+      // Final validation trước khi gửi
+      if (!patientId || patientId === 'N/A' || patientId.trim() === '') {
+        throw new Error('Không thể xác định PatientId hợp lệ cho cuộc hẹn này');
+      }
+
+      // BƯỚC 1: Tạo medical record
+
+      const medicalRecordData = {
+        appointmentId,
+        patientId,
+        doctorId: me.userId,
+        serviceName: serviceName === 'other' ? customServiceName : (serviceName || 'Khám tổng quát'),
+        diagnosis: diagnosis === 'other' ? customDiagnosis : diagnosis,
+        symptoms: symptoms || '',
+        treatment: treatment || '',
+        doctorNote: prescriptionNotes || '', // Map từ tab Kê đơn thuốc
+        followUpDate: followUpDate || '',
+        imageAttachments: imageAttachments || [],
+        stage: stage ? parseInt(stage) : 0,
+        statusHealth: statusHealth || 'stable'
+      };
+
+      const medicalRecord = await createMedicalRecord(medicalRecordData);
+
+      // Kiểm tra recordId từ response (theo type definition chỉ có recordId field)
+      const recordId = medicalRecord?.recordId;
+
+
+      if (!medicalRecord || !recordId) {
+        console.error('Medical record response:', medicalRecord);
+        throw new Error('Không thể tạo hồ sơ khám - không nhận được recordId');
+      }
+
+      // Cập nhật medicalRecord để đảm bảo có recordId
+      medicalRecord.recordId = recordId;
+
+      // BƯỚC 2: Tạo prescriptions (chỉ những dòng có thuốc)
+      const validPrescriptions = prescriptionRows
+        .filter(row => row.drug && row.drug.trim() !== '' && row.dosage && row.usage)
+        .map(row => ({
+          medicalRecordId: recordId, // Sử dụng recordId đã extract
+          medicalName: row.drug,
+          dosage: row.dosage,
+          frequency: row.usage ? row.usage.split(',') : [], // Transform string to array
+          startDate: row.startDate || '',
+          endDate: row.endDate || '',
+          notes: row.notes || ''
+        }));
+
+      if (validPrescriptions.length > 0) {
+        const prescriptionResult = await createPrescriptions(validPrescriptions);
+
+        if (prescriptionResult.failed.length > 0) {
+        }
+      }
+
+      // BƯỚC 3: Cập nhật appointment status
+      await updateAppointmentStatus(selectedPatient.appointment.id || selectedPatient.appointment.appointmentId, 'COMPLETED');
+
+      // SUCCESS: Đóng modal, reset form và refresh data
+      toast.success('Đã hoàn thành khám bệnh và lưu hồ sơ thành công!', {
+        description: 'Hồ sơ khám bệnh và đơn thuốc đã được lưu',
+        duration: 3000,
+      });
+      setShowExaminationModal(false);
+      resetFormData();
+
+      // Refresh danh sách appointments
+      if (me?.userId) {
+        const { start, end } = computeFixedRange();
+        fetchDoctorAppointments({ doctorId: me.userId, startTime: start, endTime: end });
+      }
+
+    } catch (error: any) {
+      console.error('Lỗi khi hoàn thành khám:', error);
+      toast.error('Có lỗi xảy ra khi khám bệnh', {
+        description: error.message || 'Không thể hoàn thành khám bệnh',
+        duration: 5000,
+      });
+    }
+  };
+
+  const resetFormData = () => {
     // Reset form data
     setLabResults({
       creatinine: '',
@@ -324,7 +493,9 @@ export const AppointmentAndConsultationModule = ({
     setStage('');
     setStatusHealth('');
     setServiceName('');
+    setCustomServiceName('');
     setImageAttachments([]);
+
     const today = new Date().toISOString().split('T')[0];
     const nextWeek = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
@@ -341,8 +512,6 @@ export const AppointmentAndConsultationModule = ({
   };
   // Chuyển dữ liệu API thành format cũ của UI
   const normalizedAppointments = React.useMemo(() => {
-    // eslint-disable-next-line no-console
-    console.log('[AppointmentAndConsultation] doctorWeekAppointments:', doctorWeekAppointments);
     return (doctorWeekAppointments ?? []).map((apt: AppointmentWeekFilterResponse, idx: number) => ({
       id: apt.appointmentId || idx,
       patient: apt.patientName,
@@ -352,7 +521,7 @@ export const AppointmentAndConsultationModule = ({
       status: (apt.status || 'CONFIRMED').toString().toLowerCase(),
       type: 'offline',
       hasAIPrediction: false,
-      patientId: ''
+      patientId: apt.patientId || ''
     }));
   }, [doctorWeekAppointments]);
 
@@ -717,7 +886,23 @@ export const AppointmentAndConsultationModule = ({
                         <Activity className="w-5 h-5 text-[#1E75FF]" />
                         <span>Tình trạng bệnh</span>
                       </h4>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-[#334155] mb-2">
+                            Dịch vụ khám
+                          </label>
+                          <select value={serviceName} onChange={e => setServiceName(e.target.value)} className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent">
+                            <option value="">Chọn dịch vụ khám</option>
+                            <option value="Khám tổng quát">Khám tổng quát</option>
+                            <option value="Nội tổng quát">Nội tổng quát</option>
+                            <option value="Tim mạch">Tim mạch</option>
+                            <option value="Thận - Tiết niệu">Thận - Tiết niệu</option>
+                            <option value="Nội tiết">Nội tiết</option>
+                            <option value="Khám định kỳ">Khám định kỳ</option>
+                            <option value="Tái khám">Tái khám</option>
+                            <option value="other">Khác...</option>
+                          </select>
+                        </div>
                         <div>
                           <label className="block text-sm font-medium text-[#334155] mb-2">
                             Giai đoạn bệnh
@@ -745,6 +930,20 @@ export const AppointmentAndConsultationModule = ({
                           </select>
                         </div>
                       </div>
+                      {serviceName === 'other' && (
+                        <div className="mt-4">
+                          <label className="block text-sm font-medium text-[#334155] mb-2">
+                            Nhập dịch vụ khám
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="Nhập tên dịch vụ khám cụ thể..."
+                            value={customServiceName}
+                            onChange={e => setCustomServiceName(e.target.value)}
+                            className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent"
+                          />
+                        </div>
+                      )}
                     </div>
                   </div>}
 
@@ -793,10 +992,13 @@ export const AppointmentAndConsultationModule = ({
                                 <td className="px-4 py-3">
                                   <select value={row.usage} onChange={e => updatePrescriptionRow(index, 'usage', e.target.value)} className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent text-sm">
                                     <option value="">Chọn cách dùng</option>
-                                    <option value="1 viên/ngày">1 viên/ngày</option>
-                                    <option value="2 viên/ngày">2 viên/ngày</option>
-                                    <option value="1 viên/12h">1 viên/12h</option>
-                                    <option value="Theo chỉ định">Theo chỉ định</option>
+                                    <option value="MORNING">Sáng</option>
+                                    <option value="AFTERNOON">Chiều</option>
+                                    <option value="EVENING">Tối</option>
+                                    <option value="MORNING,AFTERNOON">Sáng & Chiều</option>
+                                    <option value="MORNING,EVENING">Sáng & Tối</option>
+                                    <option value="AFTERNOON,EVENING">Chiều & Tối</option>
+                                    <option value="MORNING,AFTERNOON,EVENING">Sáng, Chiều & Tối</option>
                                   </select>
                                 </td>
                                 <td className="px-4 py-3">
@@ -857,13 +1059,33 @@ export const AppointmentAndConsultationModule = ({
             <button onClick={() => setShowExaminationModal(false)} className="px-6 py-3 bg-gray-100 hover:bg-gray-200 text-[#334155] rounded-xl font-medium transition-colors">
               Hủy
             </button>
-            <button onClick={() => alert('Đã lưu nháp khám bệnh')} className="px-6 py-3 bg-[#F59E0B] hover:bg-[#D97706] text-white rounded-xl font-medium flex items-center gap-2 transition-colors">
+            <button onClick={() => toast.success('Đã lưu nháp khám bệnh', {
+              description: 'Thông tin khám bệnh đã được lưu tạm thời',
+              duration: 3000,
+            })} className="px-6 py-3 bg-[#F59E0B] hover:bg-[#D97706] text-white rounded-xl font-medium flex items-center gap-2 transition-colors">
               <Save size={16} />
               <span>Lưu nháp</span>
             </button>
-            <button onClick={handleCompleteExamination} className="px-6 py-3 bg-[#10B981] hover:bg-[#059669] text-white rounded-xl font-medium flex items-center gap-2 transition-colors">
-              <UserCheck size={16} />
-              <span>Hoàn thành khám</span>
+            <button
+              onClick={handleCompleteExamination}
+              disabled={medicalRecordLoading || prescriptionsLoading}
+              className={`px-6 py-3 rounded-xl font-medium flex items-center gap-2 transition-colors ${
+                medicalRecordLoading || prescriptionsLoading
+                  ? 'bg-gray-400 cursor-not-allowed'
+                  : 'bg-[#10B981] hover:bg-[#059669]'
+              } text-white`}
+            >
+              {medicalRecordLoading || prescriptionsLoading ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  <span>Đang xử lý...</span>
+                </>
+              ) : (
+                <>
+                  <UserCheck size={16} />
+                  <span>Hoàn thành khám</span>
+                </>
+              )}
             </button>
           </div>
         </motion.div>

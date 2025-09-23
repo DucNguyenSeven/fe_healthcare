@@ -16,13 +16,7 @@ export const useDoctorAppointments = () => {
     setLoading(true);
     setError(null);
     try {
-      // Debug params
-      // eslint-disable-next-line no-console
-      console.log('[useDoctorAppointments] fetch params:', params);
       const res = await getDoctorAppointmentsInWeek(params);
-      // Debug raw response
-      // eslint-disable-next-line no-console
-      console.log('[useDoctorAppointments] response:', res);
       if (res.success) {
         setAppointments(res.data || []);
       } else {
@@ -30,13 +24,11 @@ export const useDoctorAppointments = () => {
       }
     } catch (err: any) {
       const msg = err?.response?.data?.message || err?.message || 'Đã có lỗi xảy ra';
-      // eslint-disable-next-line no-console
-      console.error('[useDoctorAppointments] error:', msg, err);
       setError(msg);
       setAppointments([]);
     } finally {
       setLoading(false);
-    }
+    }   
   }, []);
 
   const clearError = useCallback(() => setError(null), []);
