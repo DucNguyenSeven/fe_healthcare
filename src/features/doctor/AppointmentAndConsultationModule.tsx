@@ -623,17 +623,20 @@ export const AppointmentAndConsultationModule = ({
   // Chuyển dữ liệu API thành format cũ của UI
   const normalizedAppointments = React.useMemo(() => {
     // Transform doctor week appointments (cho tab upcoming)
-    const weekAppointments = (doctorWeekAppointments ?? []).map((apt: AppointmentWeekFilterResponse, idx: number) => ({
-      id: apt.appointmentId || idx,
-      patient: apt.patientName,
-      time: apt.timeSlot?.startTime || '',
-      date: typeof apt.date === 'string' ? apt.date : new Date(apt.date as any).toISOString().split('T')[0],
-      service: apt.note || 'Khám trực tiếp',
-      status: (apt.status || 'CONFIRMED').toString().toLowerCase(),
-      type: 'offline',
-      hasAIPrediction: false,
-      patientId: apt.patientId || ''
-    }));
+    const weekAppointments = (doctorWeekAppointments ?? [])
+      .map((apt: AppointmentWeekFilterResponse, idx: number) => ({
+        id: apt.appointmentId || idx,
+        patient: apt.patientName,
+        time: apt.timeSlot?.startTime || '',
+        date: typeof apt.date === 'string' ? apt.date : new Date(apt.date as any).toISOString().split('T')[0],
+        service: apt.note || 'Khám trực tiếp',
+        status: (apt.status || 'CONFIRMED').toString().toLowerCase(),
+        type: 'offline',
+        hasAIPrediction: false,
+        patientId: apt.patientId || ''
+      }))
+      // Loại bỏ các lịch đã hoàn thành khỏi nguồn tuần để tránh trùng khi gộp với completed
+      .filter(apt => apt.status !== 'completed');
 
     // Transform completed appointments (cho tab completed)
     const completedAppointmentsNormalized = (completedAppointments ?? []).map((apt: any, idx: number) => ({
