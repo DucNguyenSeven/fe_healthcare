@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Calendar, Clock, User, Video, MapPin, CheckCircle, XCircle, AlertCircle, ChevronDown, ChevronUp, Stethoscope, Loader2, Star } from 'lucide-react';
+import { Calendar, Clock, User, Video, MapPin, CheckCircle, XCircle, AlertCircle, ChevronDown, ChevronUp, Stethoscope, Loader2, Star, Eye } from 'lucide-react';
 import { toast } from 'sonner';
 import { Appointment } from './HealthcarePlusApp';
 import { useDoctorOfDate, useDoctorSchedule } from '@/hooks/doctor-schedules';
@@ -392,9 +392,10 @@ export function AppointmentsPage() {
                     </>}
                   {appointment.status === 'completed' && <button
                       onClick={() => handleViewResult(appointment)}
-                      className="px-4 py-2 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors text-sm"
+                      className="px-4 py-2 bg-[#1E75FF] hover:bg-[#1659C9] text-white rounded-xl text-sm font-medium flex items-center justify-center gap-1 transition-colors"
                     >
-                      Xem kết quả
+                      <Eye size={16} />
+                      <span>Xem kết quả</span>
                     </button>}
                 </div>
 

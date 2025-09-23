@@ -7,9 +7,9 @@ import { AuthPages } from './features/auth';
 import { HealthcarePlusApp } from './features/patient';
 import { DoctorAppLayout } from './features/doctor';
 
-let theme: Theme = 'light';
+const theme: Theme = 'light';
 // only use 'centered' container for standalone components, never for full page apps or websites.
-let container: Container = 'none';
+const container: Container = 'none';
 
 type AppPage = 'landing' | 'auth' | 'patient-app' | 'doctor-app';
 

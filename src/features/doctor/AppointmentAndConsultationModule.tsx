@@ -6,11 +6,13 @@ import { Calendar, Clock, Video, User, Phone, MessageSquare, FileText, Check, X,
 import DoctorScheduleRegistrationModal from './DoctorScheduleRegistrationModal';
 import type { AppointmentWeekFilterResponse } from '@/lib/api/appointments';
 import { useDoctorAppointments } from '@/hooks/appointments';
+import { useAppointmentFilter } from '@/hooks/appointments/useAppointmentFilter';
 import { useGetMe } from '@/hooks/auth/useGetMe';
 import { useCreateMedicalRecord } from '@/hooks/medical-records';
 import { useCreateMultiplePrescriptions } from '@/hooks/prescriptions';
 import { updateAppointmentStatus, getAppointmentDetail } from '@/lib/api/appointments';
 import { toast } from 'sonner';
+import { MedicalResultModal } from '@/components/MedicalResultModal';
 // Dữ liệu sẽ được lấy từ API, bỏ mock
 
 // Sample patient data for examination modal
@@ -115,9 +117,24 @@ export const AppointmentAndConsultationModule = ({
   const [isMuted, setIsMuted] = useState(false);
   const [isVideoOn, setIsVideoOn] = useState(true);
 
+  // States cho Medical Result Modal
+  const [showResultModal, setShowResultModal] = useState(false);
+  const [selectedAppointmentId, setSelectedAppointmentId] = useState<string>('');
+  const [selectedDoctorInfo, setSelectedDoctorInfo] = useState<{name: string; specialty?: string; id?: string} | null>(null);
+  const [selectedPatientInfo, setSelectedPatientInfo] = useState<{name: string; id: string; phone?: string; email?: string} | null>(null);
+
   // Fetch appointments theo tuần cho bác sĩ hiện tại
   const { data: me } = useGetMe();
   const { appointments: doctorWeekAppointments, loading: doctorAptLoading, error: doctorAptError, fetchDoctorAppointments, clearError: clearDoctorAptError } = useDoctorAppointments();
+
+  // Hook cho filter appointments (tab Đã Hoàn Thành)
+  const {
+    appointments: completedAppointments,
+    loading: completedLoading,
+    error: completedError,
+    fetchAppointments: fetchCompletedAppointments,
+    clearError: clearCompletedError
+  } = useAppointmentFilter();
 
   // Hooks for API calls
   const { create: createMedicalRecord, loading: medicalRecordLoading, error: medicalRecordError } = useCreateMedicalRecord();
@@ -131,6 +148,19 @@ export const AppointmentAndConsultationModule = ({
     const { start, end } = computeFixedRange();
     fetchDoctorAppointments({ doctorId: me.userId, startTime: start, endTime: end });
   }, [me?.userId, fetchDoctorAppointments]);
+
+  // Fetch completed appointments khi chuyển sang tab completed
+  React.useEffect(() => {
+    if (appointmentTab === 'completed') {
+      fetchCompletedAppointments({
+        status: 'COMPLETED',
+        page: 0,
+        size: 50,
+        sortBy: 'appointmentDate',
+        sortDir: 'DESC'
+      });
+    }
+  }, [appointmentTab, fetchCompletedAppointments]);
 
   // Filter and search states
   const [searchTerm, setSearchTerm] = useState('');
@@ -292,6 +322,35 @@ export const AppointmentAndConsultationModule = ({
       setShowExaminationModal(true);
       setExaminationTab('history');
     }
+  };
+
+  // Handler cho Medical Result Modal
+  const handleViewResult = (appointment: any) => {
+    setSelectedAppointmentId(appointment.id);
+
+    // Set doctor info (current user info)
+    setSelectedDoctorInfo({
+      name: me?.fullName || 'Bác sĩ',
+      specialty: undefined, // TODO: Add specialty to user profile
+      id: me?.userId || undefined
+    });
+
+    // Set patient info từ appointment data
+    setSelectedPatientInfo({
+      name: appointment.patient || 'Bệnh nhân',
+      id: appointment.patientId || '',
+      phone: appointment.patientPhone || undefined,
+      email: appointment.patientEmail || undefined
+    });
+
+    setShowResultModal(true);
+  };
+
+  const handleCloseResultModal = () => {
+    setShowResultModal(false);
+    setSelectedAppointmentId('');
+    setSelectedDoctorInfo(null);
+    setSelectedPatientInfo(null);
   };
   const addPrescriptionRow = () => {
     const today = new Date().toISOString().split('T')[0];
@@ -512,7 +571,8 @@ export const AppointmentAndConsultationModule = ({
   };
   // Chuyển dữ liệu API thành format cũ của UI
   const normalizedAppointments = React.useMemo(() => {
-    return (doctorWeekAppointments ?? []).map((apt: AppointmentWeekFilterResponse, idx: number) => ({
+    // Transform doctor week appointments (cho tab upcoming)
+    const weekAppointments = (doctorWeekAppointments ?? []).map((apt: AppointmentWeekFilterResponse, idx: number) => ({
       id: apt.appointmentId || idx,
       patient: apt.patientName,
       time: apt.timeSlot?.startTime || '',
@@ -523,7 +583,23 @@ export const AppointmentAndConsultationModule = ({
       hasAIPrediction: false,
       patientId: apt.patientId || ''
     }));
-  }, [doctorWeekAppointments]);
+
+    // Transform completed appointments (cho tab completed)
+    const completedAppointmentsNormalized = (completedAppointments ?? []).map((apt: any, idx: number) => ({
+      id: apt.appointmentId || `completed-${idx}`,
+      patient: apt.patient?.fullName || apt.patient?.name || 'Bệnh nhân',
+      time: apt.timeSlot?.startTime || '',
+      date: apt.appointmentDate || '',
+      service: apt.note || 'Khám trực tiếp',
+      status: 'completed',
+      type: apt.consultationType === 'ONLINE_CONSULTATION' ? 'online' : 'offline',
+      hasAIPrediction: false,
+      patientId: apt.patient?.id || ''
+    }));
+
+    // Merge cả 2 sources
+    return [...weekAppointments, ...completedAppointmentsNormalized];
+  }, [doctorWeekAppointments, completedAppointments]);
 
   const filterAppointments = (appointments: any[]) => {
     return appointments.filter(appointment => {
@@ -1092,7 +1168,17 @@ export const AppointmentAndConsultationModule = ({
       </div>;
   };
   const renderAppointments = () => {
-    const currentAppointments = normalizedAppointments; // tạm thời chỉ hiển thị set "sắp tới" từ API CONFIRMED
+    // Lọc appointments theo tab hiện tại
+    const currentAppointments = normalizedAppointments.filter(appointment => {
+      if (appointmentTab === 'upcoming') {
+        // Tab "Sắp tới": hiển thị appointments có status là CONFIRMED hoặc PENDING
+        return appointment.status === 'confirmed' || appointment.status === 'pending';
+      } else if (appointmentTab === 'completed') {
+        // Tab "Đã Hoàn Thành": hiển thị appointments có status là COMPLETED
+        return appointment.status === 'completed';
+      }
+      return false;
+    });
     const filteredAppointments = filterAppointments(currentAppointments);
     return <div className="p-6 space-y-6">
         <div className="flex items-center justify-between" style={{
@@ -1108,11 +1194,8 @@ export const AppointmentAndConsultationModule = ({
               id: 'upcoming',
               label: 'Sắp tới'
             }, {
-              id: 'past',
-              label: 'Đã qua'
-            }, {
-              id: 'cancelled',
-              label: 'Đã hủy'
+              id: 'completed',
+              label: 'Đã Hoàn Thành'
             }].map(tab => <button key={tab.id} onClick={() => setAppointmentTab(tab.id)} className={`px-6 py-4 font-medium transition-colors ${appointmentTab === tab.id ? 'text-[#1E75FF] border-b-2 border-[#1E75FF]' : 'text-[#334155] hover:text-[#1E75FF]'}`}>
                   {tab.label}
                 </button>)}
@@ -1145,16 +1228,16 @@ export const AppointmentAndConsultationModule = ({
           </div>
 
           <div className="p-6">
-            {doctorAptLoading && (
+            {(doctorAptLoading || (appointmentTab === 'completed' && completedLoading)) && (
               <div className="text-center py-8 text-[#334155]">Đang tải lịch hẹn...</div>
             )}
-            {doctorAptError && (
+            {(doctorAptError || (appointmentTab === 'completed' && completedError)) && (
               <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-4">
                 <div className="flex items-center">
                   <AlertTriangle className="w-5 h-5 text-red-500 mr-2" />
-                  <span className="text-red-700">{doctorAptError}</span>
+                  <span className="text-red-700">{doctorAptError || completedError}</span>
                 </div>
-                <button onClick={clearDoctorAptError} className="mt-2 text-sm text-red-600 hover:text-red-800 underline">Thử lại</button>
+                <button onClick={appointmentTab === 'completed' ? clearCompletedError : clearDoctorAptError} className="mt-2 text-sm text-red-600 hover:text-red-800 underline">Thử lại</button>
               </div>
             )}
             {filteredAppointments.length === 0 ? <div className="text-center py-12">
@@ -1220,9 +1303,9 @@ export const AppointmentAndConsultationModule = ({
                         </button>
                       </div>}
 
-                    {appointmentTab === 'past' && appointment.status === 'completed' && <button onClick={() => viewPatientHistory(appointment.patientId)} className="w-full bg-[#1E75FF] hover:bg-[#1659C9] text-white py-2 px-3 rounded-xl text-sm font-medium flex items-center justify-center gap-1 transition-colors">
+                    {appointmentTab === 'completed' && appointment.status === 'completed' && <button onClick={() => handleViewResult(appointment)} className="w-full bg-[#1E75FF] hover:bg-[#1659C9] text-white py-2 px-3 rounded-xl text-sm font-medium flex items-center justify-center gap-1 transition-colors">
                         <Eye size={16} />
-                        <span>Xem kết quả khám</span>
+                        <span>Xem kết quả</span>
                       </button>}
                   </motion.div>)}
               </div>}
@@ -1537,5 +1620,14 @@ export const AppointmentAndConsultationModule = ({
       <AnimatePresence>
         {showExaminationModal && renderExaminationModal()}
       </AnimatePresence>
+
+      {/* Medical Result Modal */}
+      <MedicalResultModal
+        isOpen={showResultModal}
+        onClose={handleCloseResultModal}
+        appointmentId={selectedAppointmentId}
+        patientInfo={selectedPatientInfo ?? undefined}
+        doctorInfo={selectedDoctorInfo ?? undefined}
+      />
     </div>;
 };
