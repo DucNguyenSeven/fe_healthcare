@@ -9,6 +9,7 @@ import { useBookingAppointment } from '@/hooks/appointments';
 import { BookingAppointmentRequest } from '@/lib/api/appointments';
 import { useGetMe } from '@/hooks/auth/useGetMe';
 import { usePatientAppointments, transformAppointmentToTimelineFormat } from '@/hooks/appointments/usePatientAppointments';
+import { MedicalResultModal } from '@/components/MedicalResultModal';
 
 
 
@@ -40,6 +41,10 @@ export function AppointmentsPage() {
   const [showBookingForm, setShowBookingForm] = useState(false);
   const [expandedAppointments, setExpandedAppointments] = useState<Set<string>>(new Set());
   const [selectedDoctor, setSelectedDoctor] = useState<Doctor | null>(null);
+
+  // State cho Medical Result Modal
+  const [showResultModal, setShowResultModal] = useState(false);
+  const [selectedAppointmentId, setSelectedAppointmentId] = useState<string>('');
   const [selectedDate, setSelectedDate] = useState<string>('');
   const [selectedTime, setSelectedTime] = useState<string>('');
   const [appointmentType, setAppointmentType] = useState<'direct' | 'online' | 'lab_test' | 'follow_up'>('direct');
@@ -121,6 +126,17 @@ export function AppointmentsPage() {
       newExpanded.add(appointmentId);
     }
     setExpandedAppointments(newExpanded);
+  };
+
+  // Handlers cho Medical Result Modal
+  const handleViewResult = (appointmentId: string) => {
+    setSelectedAppointmentId(appointmentId);
+    setShowResultModal(true);
+  };
+
+  const handleCloseResultModal = () => {
+    setShowResultModal(false);
+    setSelectedAppointmentId('');
   };
 
   const getStatusColor = (status: string) => {
@@ -367,7 +383,10 @@ export function AppointmentsPage() {
                         Hủy lịch
                       </button>
                     </>}
-                  {appointment.status === 'completed' && <button className="px-4 py-2 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors text-sm">
+                  {appointment.status === 'completed' && <button
+                      onClick={() => handleViewResult(appointment.id)}
+                      className="px-4 py-2 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors text-sm"
+                    >
                       Xem kết quả
                     </button>}
                 </div>
@@ -910,5 +929,18 @@ export function AppointmentsPage() {
           </div>}
         </div>
       )}
+
+      {/* Medical Result Modal */}
+      <MedicalResultModal
+        isOpen={showResultModal}
+        onClose={handleCloseResultModal}
+        appointmentId={selectedAppointmentId}
+        patientInfo={{
+          name: currentUser?.fullName || 'Bệnh nhân',
+          id: currentUser?.userId || '',
+          phone: currentUser?.phone || '',
+          email: currentUser?.email || ''
+        }}
+      />
     </div>;
 }
