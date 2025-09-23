@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect } from 'react';
-import { X, User, Stethoscope, Calendar, Clock, MapPin, Phone, Mail, FileText, Pill, AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
+import { X, User, Stethoscope, Calendar, FileText, Pill, AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
 import { useMedicalResultsByAppointment } from '@/hooks/medical-results';
 
 interface MedicalResultModalProps {
@@ -16,9 +16,14 @@ interface MedicalResultModalProps {
     age?: number;
     gender?: string;
   };
+  doctorInfo?: {
+    name: string;
+    specialty?: string;
+    id?: string;
+  };
 }
 
-export function MedicalResultModal({ isOpen, onClose, appointmentId, patientInfo }: MedicalResultModalProps) {
+export function MedicalResultModal({ isOpen, onClose, appointmentId, patientInfo, doctorInfo }: MedicalResultModalProps) {
   // API hook
   const { fetchMedicalResults, loading, error, data, clearError } = useMedicalResultsByAppointment();
 
@@ -147,6 +152,34 @@ export function MedicalResultModal({ isOpen, onClose, appointmentId, patientInfo
                 </div>
               </div>
             </div>
+
+            {/* Doctor Info */}
+            {doctorInfo && (
+              <div className="bg-white border border-gray-200 rounded-xl p-4 sm:p-5">
+                <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4 flex items-center">
+                  <Stethoscope className="w-4 h-4 sm:w-5 sm:h-5 mr-2 text-blue-600" />
+                  Bác sĩ khám
+                </h3>
+                <div className="space-y-3 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Tên bác sĩ:</span>
+                    <span className="font-medium">{doctorInfo.name}</span>
+                  </div>
+                  {doctorInfo.specialty && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Chuyên khoa:</span>
+                      <span className="font-medium">{doctorInfo.specialty}</span>
+                    </div>
+                  )}
+                  {doctorInfo.id && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Mã bác sĩ:</span>
+                      <span className="font-medium">{doctorInfo.id}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Patient Info */}
             <div className="bg-white border border-gray-200 rounded-xl p-4 sm:p-5">

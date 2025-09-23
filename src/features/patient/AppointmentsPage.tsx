@@ -45,6 +45,7 @@ export function AppointmentsPage() {
   // State cho Medical Result Modal
   const [showResultModal, setShowResultModal] = useState(false);
   const [selectedAppointmentId, setSelectedAppointmentId] = useState<string>('');
+  const [selectedDoctorInfo, setSelectedDoctorInfo] = useState<{name: string; specialty?: string; id?: string} | null>(null);
   const [selectedDate, setSelectedDate] = useState<string>('');
   const [selectedTime, setSelectedTime] = useState<string>('');
   const [appointmentType, setAppointmentType] = useState<'direct' | 'online' | 'lab_test' | 'follow_up'>('direct');
@@ -129,14 +130,20 @@ export function AppointmentsPage() {
   };
 
   // Handlers cho Medical Result Modal
-  const handleViewResult = (appointmentId: string) => {
-    setSelectedAppointmentId(appointmentId);
+  const handleViewResult = (appointment: any) => {
+    setSelectedAppointmentId(appointment.id);
+    setSelectedDoctorInfo({
+      name: appointment.doctor || 'Bác sĩ',
+      specialty: appointment.specialty || undefined,
+      id: appointment.doctorId || undefined
+    });
     setShowResultModal(true);
   };
 
   const handleCloseResultModal = () => {
     setShowResultModal(false);
     setSelectedAppointmentId('');
+    setSelectedDoctorInfo(null);
   };
 
   const getStatusColor = (status: string) => {
@@ -384,7 +391,7 @@ export function AppointmentsPage() {
                       </button>
                     </>}
                   {appointment.status === 'completed' && <button
-                      onClick={() => handleViewResult(appointment.id)}
+                      onClick={() => handleViewResult(appointment)}
                       className="px-4 py-2 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors text-sm"
                     >
                       Xem kết quả
@@ -941,6 +948,7 @@ export function AppointmentsPage() {
           phone: currentUser?.phone || '',
           email: currentUser?.email || ''
         }}
+        doctorInfo={selectedDoctorInfo}
       />
     </div>;
 }
