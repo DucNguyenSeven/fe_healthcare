@@ -454,18 +454,7 @@ export function AppointmentsPage() {
                         <span className="text-gray-600 block mb-1">Ghi chú:</span>
                         <span className="font-medium text-gray-900 block">{appointment.note}</span>
                       </div>}
-                      {appointment.status === 'completed' && <div className="mt-4">
-                        <span className="text-gray-600 block mb-2">Kết quả khám:</span>
-                        <p className="text-gray-600 mb-3">Tình trạng sức khỏe ổn định. Tiếp tục theo dõi định kỳ.</p>
-                        <div className="flex space-x-2">
-                          <button className="px-3 py-1 bg-blue-100 text-blue-700 rounded-lg text-xs hover:bg-blue-200 transition-colors">
-                            Tải đơn thuốc
-                          </button>
-                          <button className="px-3 py-1 bg-green-100 text-green-700 rounded-lg text-xs hover:bg-green-200 transition-colors">
-                            Xem báo cáo
-                          </button>
-                        </div>
-                      </div>}
+                      {/* Removed result summary and action buttons for completed appointments */}
                     </div>
                   </div>
                 </div>
@@ -948,7 +937,7 @@ export function AppointmentsPage() {
           phone: currentUser?.phone || '',
           email: currentUser?.email || ''
         }}
-        doctorInfo={selectedDoctorInfo}
+        doctorInfo={selectedDoctorInfo ?? undefined}
       />
     </div>;
 }
