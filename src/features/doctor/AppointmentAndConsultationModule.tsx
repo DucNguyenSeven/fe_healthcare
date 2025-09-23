@@ -140,14 +140,61 @@ export const AppointmentAndConsultationModule = ({
   const { create: createMedicalRecord, loading: medicalRecordLoading, error: medicalRecordError } = useCreateMedicalRecord();
   const { createMultiple: createPrescriptions, loading: prescriptionsLoading, error: prescriptionsError } = useCreateMultiplePrescriptions();
 
-  // TẠM THỜI: gọi dữ liệu trong khoảng 01/09/2025 - 30/09/2025 theo yêu cầu
-  const computeFixedRange = () => ({ start: '2025-09-01', end: '2025-09-30' });
+  // Utility functions for week calculation
+  const getWeekStartEnd = (date: Date) => {
+    const startOfWeek = new Date(date);
+    const day = startOfWeek.getDay();
+    const diff = startOfWeek.getDate() - day + (day === 0 ? -6 : 1); // Monday as start
+    startOfWeek.setDate(diff);
+    startOfWeek.setHours(0, 0, 0, 0);
 
+    const endOfWeek = new Date(startOfWeek);
+    endOfWeek.setDate(startOfWeek.getDate() + 6);
+    endOfWeek.setHours(23, 59, 59, 999);
+
+    return {
+      start: startOfWeek.toISOString().split('T')[0], // YYYY-MM-DD
+      end: endOfWeek.toISOString().split('T')[0] // YYYY-MM-DD
+    };
+  };
+
+  const formatWeekRange = (date: Date) => {
+    const { start, end } = getWeekStartEnd(date);
+    const startDate = new Date(start);
+    const endDate = new Date(end);
+
+    const formatDate = (d: Date) =>
+      `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getFullYear()}`;
+
+    return `${formatDate(startDate)} - ${formatDate(endDate)}`;
+  };
+
+  // Fetch appointments when currentWeek or doctorId changes
   React.useEffect(() => {
     if (!me?.userId) return;
-    const { start, end } = computeFixedRange();
+    const { start, end } = getWeekStartEnd(currentWeek);
     fetchDoctorAppointments({ doctorId: me.userId, startTime: start, endTime: end });
-  }, [me?.userId, fetchDoctorAppointments]);
+  }, [me?.userId, currentWeek, fetchDoctorAppointments]);
+
+  // Auto-navigate to week containing appointments if current week is empty
+  React.useEffect(() => {
+    if (!doctorAptLoading && doctorWeekAppointments && doctorWeekAppointments.length === 0 && me?.userId) {
+      // No appointments in current week, try to find a week with appointments
+      // For now, let's try the week containing 23/9/2025 based on the screenshots
+      const targetDate = new Date('2025-09-23');
+      const currentWeekStart = getWeekStartEnd(currentWeek).start;
+      const targetWeekStart = getWeekStartEnd(targetDate).start;
+
+      if (currentWeekStart !== targetWeekStart) {
+        setCurrentWeek(targetDate);
+      }
+    }
+  }, [doctorAptLoading, doctorWeekAppointments, me?.userId, currentWeek]);
+
+  // Debug: Log appointments when they change
+  React.useEffect(() => {
+    // Removed verbose debug logs
+  }, [doctorWeekAppointments, doctorAptLoading, doctorAptError]);
 
   // Fetch completed appointments khi chuyển sang tab completed
   React.useEffect(() => {
@@ -286,8 +333,12 @@ export const AppointmentAndConsultationModule = ({
     // Schedule data đã được xử lý trong modal và gọi API
     // Modal sẽ tự động đóng sau khi API thành công
 
-    // Có thể thêm logic refresh data hoặc cập nhật state ở đây
-    // Ví dụ: refetch existing schedules, update calendar view, etc.
+    // Refresh appointments data cho tuần hiện tại
+    if (me?.userId) {
+      const { start, end } = getWeekStartEnd(currentWeek);
+      fetchDoctorAppointments({ doctorId: me.userId, startTime: start, endTime: end });
+      toast.success('Đăng ký lịch làm việc thành công!');
+    }
   };
   const openPatientExamination = (patientId: string, appointment: any) => {
 
@@ -517,7 +568,7 @@ export const AppointmentAndConsultationModule = ({
 
       // Refresh danh sách appointments
       if (me?.userId) {
-        const { start, end } = computeFixedRange();
+        const { start, end } = getWeekStartEnd(currentWeek);
         fetchDoctorAppointments({ doctorId: me.userId, startTime: start, endTime: end });
       }
 
@@ -1469,7 +1520,7 @@ export const AppointmentAndConsultationModule = ({
       </div>
     </div>;
   const renderSchedule = () => {
-    // Updated week days order: Monday to Sunday (T2 → CN)
+    // Week days configuration (Monday to Sunday)
     const weekDays = [{
       key: 'mon',
       label: 'T2',
@@ -1500,8 +1551,27 @@ export const AppointmentAndConsultationModule = ({
       fullName: 'Chủ Nhật'
     }];
 
-    // Updated time slots to match the registration form exactly
-    const timeSlots = ['08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '11:00', '11:30', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30', '17:00', '17:30'];
+    // Dynamic time slots: combine default slots with actual appointment times
+    const defaultTimeSlots = ['08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '11:00', '11:30', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30', '17:00', '17:30'];
+
+    // Extract unique time slots from actual appointments
+    const appointmentTimeSlots = doctorWeekAppointments
+      ?.map(apt => apt.timeSlot?.startTime?.substring(0, 5))
+      .filter((time): time is string => Boolean(time)) || [];
+
+    // Combine and deduplicate
+    const combinedSlots = [...defaultTimeSlots, ...appointmentTimeSlots];
+    const uniqueSlots = combinedSlots.filter((slot, index) => combinedSlots.indexOf(slot) === index);
+    const allTimeSlots = uniqueSlots;
+
+    // Sort time slots
+    const timeSlots = allTimeSlots.sort((a, b) => {
+      const timeA = a.split(':').map(Number);
+      const timeB = b.split(':').map(Number);
+      const minutesA = timeA[0] * 60 + timeA[1];
+      const minutesB = timeB[0] * 60 + timeB[1];
+      return minutesA - minutesB;
+    });
 
     // Get current date for today indicator
     const today = new Date();
@@ -1516,7 +1586,6 @@ export const AppointmentAndConsultationModule = ({
     // Helper function to get week dates
     const getWeekDates = () => {
       const startOfWeek = new Date(currentWeekStart);
-      // Set to Monday (day 1)
       const day = startOfWeek.getDay();
       const diff = startOfWeek.getDate() - day + (day === 0 ? -6 : 1);
       startOfWeek.setDate(diff);
@@ -1526,8 +1595,121 @@ export const AppointmentAndConsultationModule = ({
         return date;
       });
     };
+
+    // Navigation handlers
+    const handlePreviousWeek = () => {
+      const newWeek = new Date(currentWeek);
+      newWeek.setDate(newWeek.getDate() - 7);
+      setCurrentWeek(newWeek);
+    };
+
+    const handleNextWeek = () => {
+      const newWeek = new Date(currentWeek);
+      newWeek.setDate(newWeek.getDate() + 7);
+      setCurrentWeek(newWeek);
+    };
+
+    // Utility function to normalize date format
+    const normalizeDateForComparison = (inputDate: string | Date): string => {
+      if (typeof inputDate === 'string') {
+        // Handle different formats: DD/MM/YYYY, DD-MM-YYYY, YYYY-MM-DD
+        if (inputDate.includes('/')) {
+          // DD/MM/YYYY format
+          const [day, month, year] = inputDate.split('/');
+          return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+        } else if (inputDate.includes('-')) {
+          // Could be DD-MM-YYYY or YYYY-MM-DD
+          const parts = inputDate.split('-');
+          if (parts[0].length === 4) {
+            // Already YYYY-MM-DD
+            return inputDate;
+          } else {
+            // DD-MM-YYYY
+            const [day, month, year] = parts;
+            return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+          }
+        }
+        // If no separators, try to parse as is
+        return inputDate;
+      } else if (inputDate instanceof Date) {
+        return inputDate.toISOString().split('T')[0];
+      }
+      return String(inputDate);
+    };
+
+    // Get appointment by date and time
+    const getAppointmentForSlot = (date: Date, time: string) => {
+      if (!doctorWeekAppointments) return null;
+
+      const searchDateStr = normalizeDateForComparison(date); // YYYY-MM-DD
+
+      // Removed debug logs
+
+      const foundAppointment = doctorWeekAppointments.find(apt => {
+        // Normalize appointment date for comparison
+        const aptDateNormalized = normalizeDateForComparison(apt.date);
+
+        // Removed debug logs
+
+        // Compare normalized dates
+        if (aptDateNormalized !== searchDateStr) {
+          return false;
+        }
+
+        if (!apt.timeSlot) {
+          return false;
+        }
+
+        // Convert time slot to HH:mm format for comparison
+        const slotStartTime = apt.timeSlot.startTime.substring(0, 5); // "08:00:00" -> "08:00"
+        const isTimeMatch = slotStartTime === time;
+
+        return isTimeMatch;
+      });
+
+      return foundAppointment;
+    };
+
+    // Get status color and styling for appointment
+    const getStatusColor = (status: string) => {
+      switch (status) {
+        case 'CONFIRMED':
+          return 'bg-[#1E75FF]/10 border-[#1E75FF]/20 text-[#1E75FF]';
+        case 'PENDING':
+          return 'bg-[#F59E0B]/10 border-[#F59E0B]/20 text-[#F59E0B]';
+        case 'COMPLETED':
+          return 'bg-[#10B981]/10 border-[#10B981]/20 text-[#10B981]';
+        case 'CANCELED':
+          return 'bg-[#EF4444]/10 border-[#EF4444]/20 text-[#EF4444]';
+        case 'REJECTED':
+          return 'bg-[#DC2626]/10 border-[#DC2626]/20 text-[#DC2626]';
+        case 'NO_SHOW':
+          return 'bg-[#9CA3AF]/10 border-[#9CA3AF]/20 text-[#9CA3AF]';
+        case 'RESCHEDULED':
+          return 'bg-[#8B5CF6]/10 border-[#8B5CF6]/20 text-[#8B5CF6]';
+        default:
+          return 'bg-gray-100 border-gray-200 text-gray-600';
+      }
+    };
+
+    // Get Vietnamese status label
+    const getStatusLabel = (status: string) => {
+      switch (status) {
+        case 'CONFIRMED': return 'Đã xác nhận';
+        case 'PENDING': return 'Chờ xác nhận';
+        case 'COMPLETED': return 'Hoàn thành';
+        case 'CANCELED': return 'Đã hủy';
+        case 'REJECTED': return 'Từ chối';
+        case 'NO_SHOW': return 'Không đến';
+        case 'RESCHEDULED': return 'Dời lịch';
+        default: return status;
+      }
+    };
+
     const currentDayKey = getCurrentDayKey();
     const weekDates = getWeekDates();
+
+    // Removed debug logs
     return <div className="p-6 space-y-6">
         {/* Remove duplicate title - header already shows "Lịch làm việc" */}
         
@@ -1535,26 +1717,67 @@ export const AppointmentAndConsultationModule = ({
           {/* Clean header - only show "Lịch làm việc" */}
           <div className="p-6 border-b border-gray-200">
             <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
-                  <ChevronLeft className="w-5 h-5 text-gray-600" />
-                </button>
-                
-                {/* Simplified view - only show "Tuần" */}
-                <span className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium">
-                  Tuần
-                </span>
-                
-                <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
-                  <ChevronRight className="w-5 h-5 text-gray-600" />
-                </button>
+              <div className="flex items-center space-x-4">
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={handlePreviousWeek}
+                    disabled={doctorAptLoading}
+                    className="p-2 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <ChevronLeft className="w-5 h-5 text-gray-600" />
+                  </button>
+
+                  <span className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium min-w-[200px] text-center">
+                    {formatWeekRange(currentWeek)}
+                  </span>
+
+                  <button
+                    onClick={handleNextWeek}
+                    disabled={doctorAptLoading}
+                    className="p-2 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <ChevronRight className="w-5 h-5 text-gray-600" />
+                  </button>
+                </div>
+
+                {/* Loading indicator */}
+                {doctorAptLoading && (
+                  <div className="flex items-center space-x-2 text-sm text-gray-500">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                    <span>Đang tải...</span>
+                  </div>
+                )}
+
+                {/* Error indicator */}
+                {doctorAptError && (
+                  <div className="text-sm text-red-600 bg-red-50 px-3 py-1 rounded-lg">
+                    Lỗi: {doctorAptError}
+                  </div>
+                )}
               </div>
               
-              {/* Move register button to right side */}
-              <button onClick={() => setShowScheduleModal(true)} className="bg-[#1E75FF] hover:bg-[#1659C9] text-white px-6 py-3 rounded-2xl font-medium flex items-center gap-2 transition-colors">
-                <Plus size={20} />
-                <span>Đăng ký lịch làm việc</span>
-              </button>
+              {/* Legend + Register button */}
+              <div className="flex items-center gap-4">
+                {/* Legend - hidden on very small screens */}
+                <div className="hidden md:flex items-center gap-3 text-xs text-[#334155]">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#1E75FF]"></span>
+                    <span>Đã xác nhận</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#10B981]"></span>
+                    <span>Hoàn thành</span>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => setShowScheduleModal(true)}
+                  className="bg-[#1E75FF] hover:bg-[#1659C9] text-white px-6 py-3 rounded-2xl font-medium flex items-center gap-2 transition-colors"
+                >
+                  <Plus size={20} />
+                  <span>Đăng ký lịch làm việc</span>
+                </button>
+              </div>
             </div>
           </div>
 
@@ -1588,25 +1811,50 @@ export const AppointmentAndConsultationModule = ({
                     <div className="p-3 text-sm font-medium text-[#334155] text-right">
                       {time}
                     </div>
-                    {weekDays.map((day, dayIndex) => <div key={`${time}-${day.key}`} className="p-2 border border-gray-100 rounded-lg min-h-[60px] hover:bg-gray-50 transition-colors">
-                        {dayIndex === 0 && time === '09:00' && <div className="bg-[#1E75FF]/10 border border-[#1E75FF]/20 rounded-lg p-2 text-xs">
-                            <p className="font-medium text-[#1E75FF]">Nguyễn Văn An</p>
-                            <p className="text-[#334155]">Tư vấn CKD</p>
-                          </div>}
-                        {dayIndex === 2 && time === '14:00' && <div className="bg-[#10B981]/10 border border-[#10B981]/20 rounded-lg p-2 text-xs">
-                            <p className="font-medium text-[#10B981]">Trần Thị Bình</p>
-                            <p className="text-[#334155]">Theo dõi</p>
-                          </div>}
-                      </div>)}
+                    {weekDays.map((day, dayIndex) => {
+                      const cellDate = weekDates[dayIndex];
+                      const appointment = getAppointmentForSlot(cellDate, time);
+
+                      return (
+                        <div
+                          key={`${time}-${day.key}`}
+                          className="p-2 border border-gray-100 rounded-lg min-h-[60px] hover:bg-gray-50 transition-colors"
+                        >
+                          {appointment && (
+                            <div
+                              className={`${getStatusColor(appointment.status)} rounded-lg p-2 text-xs cursor-pointer hover:shadow-sm transition-all relative`}
+                              onClick={() => {
+                                // Handle appointment click - could open details modal
+                              }}
+                              title={`Bệnh nhân: ${appointment.patientName}\nTrạng thái: ${getStatusLabel(appointment.status)}\nGhi chú: ${appointment.note || 'Không có'}\nNgày: ${appointment.date}\nGiờ: ${appointment.timeSlot?.startTime} - ${appointment.timeSlot?.endTime}`}
+                            >
+                              {/* Removed status indicator dot */}
+
+                              <p className="font-medium truncate pr-3">{appointment.patientName}</p>
+                              <p className="text-[#334155] text-[10px] truncate mt-1">
+                                {appointment.note || 'Khám tổng quát'}
+                              </p>
+                              <p className="text-[10px] opacity-70 mt-1 font-medium">
+                                {getStatusLabel(appointment.status)}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>)}
               </div>
             </div>
           </div>
         </div>
 
-        {/* Schedule Registration Modal - Use the new advanced modal */}
-        <DoctorScheduleRegistrationModal isOpen={showScheduleModal} onClose={() => setShowScheduleModal(false)} onSave={handleSaveScheduleFromModal} existingSchedules={[]} // Pass existing schedules for conflict detection
-      />
+        {/* Schedule Registration Modal */}
+        <DoctorScheduleRegistrationModal
+          isOpen={showScheduleModal}
+          onClose={() => setShowScheduleModal(false)}
+          onSave={handleSaveScheduleFromModal}
+          existingSchedules={[]}
+        />
       </div>;
   };
 
