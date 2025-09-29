@@ -1,11 +1,11 @@
 'use client'
 
-import React, { useRef, useEffect } from 'react'
-import { ChatConversation, ChatMessage, ChatUser } from './types'
+import React, { useRef, useEffect, useMemo } from 'react'
+import { ChatConversation, ChatUser } from './types'
 import { ChatHeader } from './components/ChatHeader'
 import { MessageItem } from './MessageItem'
 import { MessageInput } from './MessageInput'
-import { getMessagesByConversationId } from '@/data/mock/chat-data'
+import { useWebSocketChat } from '@/contexts/WebSocketChatContext'
 
 interface ChatWindowProps {
   conversation: ChatConversation
@@ -23,8 +23,23 @@ export function ChatWindow({
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const otherParticipant = conversation.participants[0]
 
+  const {
+    messages: allMessages,
+    loadMessages,
+    isLoading
+  } = useWebSocketChat()
+
   // Get messages for this conversation
-  const messages = getMessagesByConversationId(conversation.id)
+  const messages = useMemo(() => {
+    return allMessages[conversation.id] || []
+  }, [allMessages, conversation.id])
+
+  // Load messages when conversation changes
+  useEffect(() => {
+    if (conversation.id) {
+      loadMessages(conversation.id)
+    }
+  }, [conversation.id, loadMessages])
 
   // Scroll to bottom when messages change
   useEffect(() => {

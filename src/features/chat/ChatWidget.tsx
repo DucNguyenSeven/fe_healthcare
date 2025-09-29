@@ -2,22 +2,34 @@
 
 import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, Maximize2 } from 'lucide-react'
+import { X, Maximize2, AlertCircle } from 'lucide-react'
 import { ChatButton } from './components/ChatButton'
 import { ConversationList } from './ConversationList'
 import { ChatWindow } from './ChatWindow'
-import { ChatWidgetView, ChatConversation, ChatUser } from './types'
-import { getConversationsByRole } from '@/data/mock/chat-data'
+import { ChatWidgetView, ChatUser } from './types'
 import { useAuthContext } from '@/contexts/AuthContext'
+import { useWebSocketChat } from '@/contexts/WebSocketChatContext'
 
 export function ChatWidget() {
   const [view, setView] = useState<ChatWidgetView>('collapsed')
-  const [activeConversationId, setActiveConversationId] = useState<string | null>(null)
-  const [conversations, setConversations] = useState<ChatConversation[]>([])
   const [isExpanded, setIsExpanded] = useState(false)
   const { user } = useAuthContext()
 
-  // Mock current user based on auth context
+  const {
+    conversations,
+    activeConversationId,
+    connectionStatus,
+    isLoading,
+    error,
+    setActiveConversation,
+    joinConversation,
+    sendChatMessage,
+    markAsRead,
+    reconnect,
+    clearError
+  } = useWebSocketChat()
+
+  // Current user based on auth context
   const currentUser: ChatUser = {
     id: user?.userId || 'current-user',
     name: user?.fullName || 'User',
@@ -25,12 +37,6 @@ export function ChatWidget() {
     role: user?.role === 'DOCTOR' ? 'doctor' : 'patient',
     isOnline: true
   }
-
-  // Load conversations based on user role
-  useEffect(() => {
-    const userConversations = getConversationsByRole(currentUser.role)
-    setConversations(userConversations)
-  }, [currentUser.role])
 
   // Calculate total unread count
   const totalUnreadCount = conversations.reduce((sum, conv) => sum + conv.unreadCount, 0)
@@ -41,66 +47,52 @@ export function ChatWidget() {
   const handleToggleWidget = () => {
     if (view === 'collapsed') {
       setView('conversations')
+      // Clear error when opening widget
+      if (error) clearError()
     } else {
       setView('collapsed')
-      setActiveConversationId(null)
+      setActiveConversation(null)
       setIsExpanded(false) // Reset expand state when closing
     }
   }
 
-  const handleConversationSelect = (conversationId: string) => {
-    setActiveConversationId(conversationId)
-    setView('chat')
-
-    // Mark conversation as read (in real app, this would be an API call)
-    setConversations(prev =>
-      prev.map(conv =>
-        conv.id === conversationId
-          ? { ...conv, unreadCount: 0 }
-          : conv
-      )
-    )
+  const handleConversationSelect = async (conversationId: string) => {
+    try {
+      setView('chat')
+      await joinConversation(conversationId)
+      markAsRead(conversationId)
+    } catch (error) {
+      // Silent error handling
+    }
   }
 
   const handleBackToConversations = () => {
-    setActiveConversationId(null)
+    setActiveConversation(null)
     setView('conversations')
   }
 
-  const handleSendMessage = (content: string) => {
-    // In a real app, this would send the message via API
-    console.log('Sending message:', content)
+  const handleSendMessage = async (content: string) => {
+    if (!activeConversationId) return
 
-    // Mock: Add message to conversation (simplified)
-    if (activeConversationId) {
-      const newMessage = {
-        id: `msg-${Date.now()}`,
-        conversationId: activeConversationId,
-        senderId: currentUser.id,
-        content,
-        timestamp: new Date().toISOString(),
-        type: 'text' as const,
-        isRead: false
-      }
-
-      // Update last message in conversation
-      setConversations(prev =>
-        prev.map(conv =>
-          conv.id === activeConversationId
-            ? {
-                ...conv,
-                lastMessage: newMessage,
-                updatedAt: newMessage.timestamp
-              }
-            : conv
-        )
-      )
+    try {
+      await sendChatMessage(activeConversationId, content)
+    } catch (error) {
+      // Silent error handling
     }
   }
 
   const handleToggleExpand = () => {
     setIsExpanded(!isExpanded)
   }
+
+  const handleRetryConnection = async () => {
+    try {
+      await reconnect()
+    } catch (error) {
+      // Silent error handling
+    }
+  }
+
 
   return (
     <>
@@ -151,6 +143,44 @@ export function ChatWidget() {
                 <X className="w-4 h-4 text-gray-600" />
               </button>
             </div>
+
+            {/* Error Banner */}
+            {error && (
+              <div className="bg-red-50 border-b border-red-200 p-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <AlertCircle className="w-4 h-4 text-red-600" />
+                    <span className="text-sm text-red-700">{error}</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    {connectionStatus === 'error' && (
+                      <button
+                        onClick={handleRetryConnection}
+                        className="text-xs text-red-600 hover:text-red-700 underline"
+                      >
+                        Thử lại
+                      </button>
+                    )}
+                    <button
+                      onClick={clearError}
+                      className="text-red-600 hover:text-red-700"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Loading Overlay */}
+            {isLoading && (
+              <div className="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center z-20">
+                <div className="flex items-center space-x-2">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                  <span className="text-sm text-gray-600">Đang tải...</span>
+                </div>
+              </div>
+            )}
 
             {/* Content based on current view */}
             {view === 'conversations' && (
