@@ -8,9 +8,15 @@ interface ChatButtonProps {
   unreadCount: number
   onClick: () => void
   isOpen: boolean
+  isExpanded?: boolean
 }
 
-export function ChatButton({ unreadCount, onClick, isOpen }: ChatButtonProps) {
+export function ChatButton({ unreadCount, onClick, isOpen, isExpanded = false }: ChatButtonProps) {
+  // Hide button when expanded to prevent blocking send button
+  if (isExpanded) {
+    return null
+  }
+
   return (
     <motion.button
       onClick={onClick}

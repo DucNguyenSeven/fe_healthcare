@@ -112,6 +112,7 @@ export function ChatWidget() {
         unreadCount={totalUnreadCount}
         onClick={handleToggleWidget}
         isOpen={view !== 'collapsed'}
+        isExpanded={isExpanded}
       />
 
       {/* Chat Widget Window */}
@@ -129,7 +130,7 @@ export function ChatWidget() {
             className={`
               fixed bg-white rounded-2xl shadow-2xl border border-gray-200 z-[9998] overflow-hidden transition-all duration-300
               ${isExpanded
-                ? 'bottom-4 right-4 left-4 top-4 md:bottom-20 md:right-4 md:left-auto md:top-auto md:w-96 md:h-[500px]'
+                ? 'inset-4'
                 : 'bottom-20 right-4 w-80 h-96'
               }
             `}

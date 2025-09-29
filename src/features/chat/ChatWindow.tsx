@@ -20,7 +20,6 @@ export function ChatWindow({
   onBack,
   onSendMessage
 }: ChatWindowProps) {
-  const messagesEndRef = useRef<HTMLDivElement>(null)
   const otherParticipant = conversation.participants[0]
 
   const {
@@ -29,17 +28,12 @@ export function ChatWindow({
     connectionStatus
   } = useWebSocketChat()
 
-  // Get messages for this conversation
+  // Get messages for this conversation (reversed: newest first)
   const messages = useMemo(() => {
     const msgs = allMessages[conversation.id] || []
     console.log('[ChatWindow] Messages:', msgs.length, 'messages for conversation:', conversation.id)
-    return msgs
+    return [...msgs].reverse()
   }, [allMessages, conversation.id])
-
-  // Scroll to bottom when messages change
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages])
 
   const handleSendMessage = (content: string) => {
     onSendMessage(content)
@@ -56,14 +50,14 @@ export function ChatWindow({
       />
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-2">
+      <div className="flex-1 overflow-y-auto p-4 flex flex-col-reverse gap-2">
         {messages.length > 0 ? (
           <>
             {messages.map((message, index) => {
               const isOwn = message.senderId === currentUser.id
               const sender = isOwn ? currentUser : otherParticipant
-              const previousMessage = messages[index - 1]
-              const showAvatar = !isOwn && (!previousMessage || previousMessage.senderId !== message.senderId)
+              const nextMessage = messages[index + 1]
+              const showAvatar = !isOwn && (!nextMessage || nextMessage.senderId !== message.senderId)
 
               // Generate stable key - fallback to index if id is missing
               const key = message.id || `msg-${index}-${message.timestamp}`
@@ -79,7 +73,6 @@ export function ChatWindow({
                 />
               )
             })}
-            <div ref={messagesEndRef} />
           </>
         ) : (
           <div className="flex-1 flex items-center justify-center">

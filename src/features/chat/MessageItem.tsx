@@ -29,7 +29,7 @@ export function MessageItem({
   }
 
   return (
-    <div className={`flex ${isOwn ? 'justify-end' : 'justify-start'} ${showAvatar ? 'mb-4' : 'mb-1'}`}>
+    <div className={`flex ${isOwn ? 'justify-end' : 'justify-start'} ${showAvatar ? 'mb-4' : 'mb-3'}`}>
       <div className={`flex ${isOwn ? 'flex-row-reverse' : 'flex-row'} items-end space-x-2`}>
         {/* Avatar or placeholder */}
         {!isOwn && (
