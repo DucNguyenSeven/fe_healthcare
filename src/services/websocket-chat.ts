@@ -265,8 +265,10 @@ class WebSocketChatService {
    * Handle incoming WebSocket messages
    */
   private handleIncomingMessage(response: WebSocketResponse): void {
-    if ((response.action === 'welcome' || response.action === 'hello') && this.connectionState === 'handshaking') {
+    // Backend sends 'connection' action on successful connection
+    if ((response.action === 'welcome' || response.action === 'hello' || response.action === 'connection') && this.connectionState === 'handshaking') {
       this.connectionState = 'ready';
+      console.log('WebSocket handshake complete, connection is ready');
 
       setTimeout(() => {
         this.flushMessageQueue();

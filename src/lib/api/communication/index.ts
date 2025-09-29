@@ -4,11 +4,13 @@
  */
 
 import webSocketChatService, {
-  type WebSocketResponse,
   type CreateGroupData,
   type SendMessageData,
   type ChatMember
 } from '@/services/websocket-chat';
+
+// Re-export WebSocketResponse for context usage
+export type { WebSocketResponse } from '@/services/websocket-chat';
 
 // ============ Types ============
 
@@ -54,7 +56,7 @@ function waitForResponse<T = any>(
       reject(new Error(`Timeout waiting for ${expectedAction} response`));
     }, timeout);
 
-    const handler = (response: WebSocketResponse) => {
+    const handler = (response: any) => {
       if (response.action === expectedAction) {
         clearTimeout(timeoutId);
         webSocketChatService.removeMessageHandler(handler);
@@ -272,14 +274,14 @@ export function disconnect(): void {
 /**
  * Add a message handler for real-time updates
  */
-export function addMessageHandler(handler: (response: WebSocketResponse) => void): void {
+export function addMessageHandler(handler: (response: any) => void): void {
   webSocketChatService.addMessageHandler(handler);
 }
 
 /**
  * Remove a message handler
  */
-export function removeMessageHandler(handler: (response: WebSocketResponse) => void): void {
+export function removeMessageHandler(handler: (response: any) => void): void {
   webSocketChatService.removeMessageHandler(handler);
 }
 

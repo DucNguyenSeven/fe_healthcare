@@ -26,7 +26,8 @@ export function ChatWindow({
   const {
     messages: allMessages,
     loadMessages,
-    isLoading
+    isLoading,
+    connectionStatus
   } = useWebSocketChat()
 
   // Get messages for this conversation
@@ -108,6 +109,7 @@ export function ChatWindow({
         onSendMessage={handleSendMessage}
         placeholder={`Nhắn tin cho ${otherParticipant.name}...`}
         autoFocus={messages.length === 0}
+        isConnected={connectionStatus === 'connected'}
       />
     </div>
   )

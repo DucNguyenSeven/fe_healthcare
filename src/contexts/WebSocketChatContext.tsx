@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useReducer, useEffect, useCallback, useRef, ReactNode } from 'react';
 import { useAuthContext } from './AuthContext';
+import { toast } from 'sonner';
 import {
   getUserGroups,
   getGroupMessages,
@@ -23,6 +24,7 @@ import type {
   WebSocketResponse
 } from '@/lib/api/communication';
 import type { ChatMember } from '@/services/websocket-chat';
+import webSocketChatService from '@/services/websocket-chat';
 import { ChatConversation, ChatMessage, ChatUser } from '@/features/chat/types';
 
 // ============ State Types ============
@@ -144,15 +146,40 @@ function webSocketChatReducer(state: WebSocketChatState, action: WebSocketChatAc
       const message = mapMessageToChatMessage(action.payload);
       const existingMessages = state.messages[action.payload.groupId] || [];
 
-      // Check if message already exists to avoid duplicates
+      // Check if message already exists to avoid duplicates (by messageId)
       const messageExists = existingMessages.some(m => m.id === message.id);
-      if (messageExists) return state;
+      if (messageExists) {
+        console.log('[Reducer] Message already exists, skipping:', message.id);
+        return state;
+      }
+
+      // Check if this is a real message replacing an optimistic one
+      // Optimistic messages have id like "temp-timestamp"
+      // If we have a message with same content and sender within last few seconds, replace it
+      const isOptimisticReplacement = message.id && !message.id.startsWith('temp-');
+      let updatedMessages = [...existingMessages];
+
+      if (isOptimisticReplacement) {
+        // Find and remove optimistic message with same content
+        const optimisticIndex = updatedMessages.findIndex(
+          m => m.id.startsWith('temp-') &&
+               m.senderId === message.senderId &&
+               m.content === message.content
+        );
+
+        if (optimisticIndex !== -1) {
+          console.log('[Reducer] Replacing optimistic message with real message');
+          updatedMessages = updatedMessages.filter((_, i) => i !== optimisticIndex);
+        }
+      }
+
+      updatedMessages.push(message);
 
       return {
         ...state,
         messages: {
           ...state.messages,
-          [action.payload.groupId]: [...existingMessages, message]
+          [action.payload.groupId]: updatedMessages
         },
         // Update last message in conversation
         conversations: state.conversations.map(conv =>
@@ -239,37 +266,77 @@ export function WebSocketChatProvider({ children }: WebSocketChatProviderProps) 
   // ============ WebSocket Message Handler ============
 
   const handleWebSocketMessage = useCallback((response: WebSocketResponse) => {
+    console.log('[WebSocket] Received message:', response.action, response);
 
     switch (response.action) {
       case 'message_received':
-        // Only handle incoming messages for real-time updates
-        dispatch({ type: 'ADD_MESSAGE', payload: response.data });
+        // Handle incoming messages for real-time updates
+        const message = response.data;
+        console.log('[WebSocket] message_received:', message);
 
-        // Update unread count if not active conversation
-        if (response.data.groupId !== state.activeConversationId) {
-          const currentCount = state.unreadCounts[response.data.groupId] || 0;
+        dispatch({ type: 'ADD_MESSAGE', payload: message });
+
+        // Check if message is from another user (not from current user)
+        const isFromOtherUser = user && message.senderId !== user.userId;
+        const isNotActiveConversation = message.groupId !== state.activeConversationId;
+
+        console.log('[WebSocket] isFromOtherUser:', isFromOtherUser, 'isNotActiveConversation:', isNotActiveConversation);
+
+        // Show notification if message is from another user and (widget is closed OR different conversation is active)
+        if (isFromOtherUser && isNotActiveConversation) {
+          // Find the conversation to get sender info
+          const conversation = state.conversations.find(conv => conv.id === message.groupId);
+          const senderName = conversation?.participants.find(p => p.id === message.senderId)?.name || 'Người gửi';
+
+          console.log('[WebSocket] Showing notification for message from:', senderName);
+
+          // Show toast notification
+          toast.info(`${senderName}: ${message.content}`, {
+            description: 'Bạn có tin nhắn mới',
+            duration: 5000,
+            action: {
+              label: 'Xem',
+              onClick: () => {
+                dispatch({ type: 'SET_ACTIVE_CONVERSATION', payload: message.groupId });
+              }
+            }
+          });
+
+          // Update unread count
+          const currentCount = state.unreadCounts[message.groupId] || 0;
           dispatch({
             type: 'UPDATE_UNREAD_COUNT',
             payload: {
-              groupId: response.data.groupId,
+              groupId: message.groupId,
               count: currentCount + 1
             }
           });
         }
         break;
 
+      case 'join_group':
+        console.log('[WebSocket] join_group response:', response.data);
+        // Successfully joined group, can now receive messages for this group
+        break;
+
+      case 'messages':
+        // Response from get_messages action
+        console.log('[WebSocket] messages response:', response.data);
+        break;
+
+      case 'groups':
+        // Response from get_groups action
+        console.log('[WebSocket] groups response:', response.data);
+        break;
+
       case 'error':
-        console.log('WebSocket error (for info only):', response.data);
-        // Don't dispatch errors from WebSocket since we're using REST API
+        console.log('[WebSocket] error:', response.data);
         break;
 
       case 'connection':
-        console.log('WebSocket connection event:', response.data);
-        break;
-
       case 'welcome':
       case 'hello':
-        console.log('WebSocket handshake successful:', response.action);
+        console.log('[WebSocket] Handshake successful:', response.action);
         // Load conversations via REST API when connection is established
         if (user && loadConversationsRef.current) {
           loadConversationsRef.current();
@@ -277,10 +344,10 @@ export function WebSocketChatProvider({ children }: WebSocketChatProviderProps) 
         break;
 
       default:
-        console.log('Unhandled WebSocket message:', response.action, response.data);
+        console.log('[WebSocket] Unhandled message:', response.action, response.data);
         break;
     }
-  }, [state.activeConversationId, state.unreadCounts, user]);
+  }, [state.activeConversationId, state.unreadCounts, state.conversations, user]);
 
   // ============ Actions (Moved before Effects) ============
 
@@ -341,14 +408,36 @@ export function WebSocketChatProvider({ children }: WebSocketChatProviderProps) 
     }
 
     try {
-      // Use REST API to send message
-      const message = await sendMessageViaREST(groupId, user.userId, content);
+      // Check if WebSocket is ready
+      if (webSocketChatService.isReady()) {
+        // Send via WebSocket for real-time delivery
+        webSocketChatService.sendChatMessage({
+          groupId,
+          senderId: user.userId,
+          content: content.trim(),
+          messageType: 'TEXT'
+        });
 
-      // Add the message to local state immediately (optimistic update)
-      dispatch({ type: 'ADD_MESSAGE', payload: message });
+        // Optimistic update: add temporary message to UI immediately
+        const optimisticMessage: Message = {
+          messageId: `temp-${Date.now()}`,
+          groupId,
+          senderId: user.userId,
+          content: content.trim(),
+          sendAt: new Date().toISOString(),
+          createdAt: new Date().toISOString()
+        };
+        dispatch({ type: 'ADD_MESSAGE', payload: optimisticMessage });
+      } else {
+        // Fallback to REST API if WebSocket is not ready
+        console.log('WebSocket not ready, using REST API fallback');
+        const message = await sendMessageViaREST(groupId, user.userId, content);
+        dispatch({ type: 'ADD_MESSAGE', payload: message });
+      }
     } catch (error) {
-      console.error('Failed to send message via REST API:', error);
+      console.error('Failed to send message:', error);
       dispatch({ type: 'SET_ERROR', payload: 'Không thể gửi tin nhắn' });
+      toast.error('Không thể gửi tin nhắn. Vui lòng thử lại.');
     }
   }, [user]);
 
@@ -361,39 +450,13 @@ export function WebSocketChatProvider({ children }: WebSocketChatProviderProps) 
       throw new Error('User not found');
     }
 
-    // Generate optimistic conversation ID and data
-    const optimisticGroupId = `temp-${Date.now()}`;
-    const groupName = customGroupName || `Cuộc trò chuyện ${Date.now()}`;
-
     try {
-
-      // Create optimistic conversation and add it to state immediately
-      const optimisticGroup: Group = {
-        groupId: optimisticGroupId,
-        groupName,
-        appointmentId,
-        members,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        lastMessageContent: undefined,
-        timeLastMessage: undefined
-      };
-
-      const optimisticConversation = mapGroupToConversation(optimisticGroup, user.userId);
-
-      // Add optimistic conversation to state immediately for better UX
-      dispatch({ type: 'ADD_CONVERSATION', payload: optimisticGroup });
       dispatch({ type: 'SET_LOADING', payload: true });
 
-      // Use REST API creation (now optimized to skip WebSocket timeout)
+      // Use REST API creation
       const actualGroup = await createGroup(members, appointmentId, customGroupName);
 
-      // Replace optimistic conversation with actual one
-      // Instead of refreshing all conversations, just update this one
-      const actualConversation = mapGroupToConversation(actualGroup, user.userId);
-
-      // For now, just refresh all conversations to get the actual one
-      // TODO: Implement proper optimistic update replacement
+      // Refresh all conversations to get the actual one
       if (user?.userId) {
         await loadConversations();
       }
@@ -425,22 +488,34 @@ export function WebSocketChatProvider({ children }: WebSocketChatProviderProps) 
 
   const joinConversation = useCallback(async (groupId: string) => {
     try {
-      // For REST API approach, we don't need to explicitly "join" a group
-      // Just set active conversation and load messages
+      console.log(`[joinConversation] Joining group ${groupId}`);
+
+      // Set active conversation first
       setActiveConversation(groupId);
 
-      // Try to load messages using REST API
+      // Join group via WebSocket for real-time updates
+      if (webSocketChatService.isReady()) {
+        webSocketChatService.joinGroup(groupId);
+        console.log(`[joinConversation] Joined group ${groupId} via WebSocket`);
+      } else {
+        console.log('[joinConversation] WebSocket not ready, skipping join_group action');
+      }
+
+      // ALWAYS load messages using REST API (to ensure we have latest messages)
       try {
+        console.log(`[joinConversation] Loading messages for group ${groupId}`);
         const messages = await getGroupMessagesViaREST(groupId);
+        console.log(`[joinConversation] Loaded ${messages.length} messages`);
         dispatch({ type: 'SET_MESSAGES', payload: { groupId, messages } });
       } catch (messageError) {
-        console.log('Could not load messages for group, setting empty messages:', messageError);
+        console.log('[joinConversation] Could not load messages for group, setting empty messages:', messageError);
         // Set empty messages for the group so UI can show empty state
         dispatch({ type: 'SET_MESSAGES', payload: { groupId, messages: [] } });
       }
     } catch (error) {
-      console.error('Failed to join conversation:', error);
+      console.error('[joinConversation] Failed to join conversation:', error);
       dispatch({ type: 'SET_ERROR', payload: 'Không thể tham gia cuộc trò chuyện' });
+      toast.error('Không thể tham gia cuộc trò chuyện');
     }
   }, [setActiveConversation]);
 
