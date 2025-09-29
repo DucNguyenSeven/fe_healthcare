@@ -20,10 +20,11 @@ export default function RootLayout({
       <body className="h-full w-full m-0 p-0">
         <QueryProvider>
           <AuthProvider>
-            <div id="root" className="h-full w-full">
-              {children}
-            </div>
-            <ChatProvider />
+            <ChatProvider>
+              <div id="root" className="h-full w-full">
+                {children}
+              </div>
+            </ChatProvider>
             <Toaster
               position="top-right"
               expand={true}

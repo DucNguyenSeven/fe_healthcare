@@ -93,6 +93,14 @@ export function ChatWidget() {
     }
   }
 
+  // Auto-open widget when a new conversation is set
+  useEffect(() => {
+    if (activeConversationId && view === 'collapsed') {
+      setView('chat')
+      // Auto-join the conversation
+      joinConversation(activeConversationId)
+    }
+  }, [activeConversationId, view, joinConversation])
 
   return (
     <>
@@ -174,10 +182,13 @@ export function ChatWidget() {
 
             {/* Loading Overlay */}
             {isLoading && (
-              <div className="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center z-20">
-                <div className="flex items-center space-x-2">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-                  <span className="text-sm text-gray-600">Đang tải...</span>
+              <div className="absolute inset-0 bg-white bg-opacity-90 flex items-center justify-center z-20">
+                <div className="flex flex-col items-center space-y-3">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                  <span className="text-sm text-gray-600 font-medium">Đang tạo cuộc trò chuyện...</span>
+                  <span className="text-xs text-gray-500 text-center max-w-48">
+                    Vui lòng chờ trong giây lát
+                  </span>
                 </div>
               </div>
             )}

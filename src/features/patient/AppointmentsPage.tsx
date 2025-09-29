@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Calendar, Clock, User, Video, MapPin, CheckCircle, XCircle, AlertCircle, ChevronDown, ChevronUp, Stethoscope, Loader2, Star, Eye } from 'lucide-react';
+import { Calendar, Clock, User, Video, MapPin, CheckCircle, XCircle, AlertCircle, ChevronDown, ChevronUp, Stethoscope, Loader2, Star, Eye, MessageCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { Appointment } from './HealthcarePlusApp';
 import { useDoctorOfDate, useDoctorSchedule } from '@/hooks/doctor-schedules';
@@ -10,6 +10,7 @@ import { BookingAppointmentRequest } from '@/lib/api/appointments';
 import { useGetMe } from '@/hooks/auth/useGetMe';
 import { usePatientAppointments, transformAppointmentToTimelineFormat } from '@/hooks/appointments/usePatientAppointments';
 import { MedicalResultModal } from '@/components/MedicalResultModal';
+import { useWebSocketChat } from '@/contexts/WebSocketChatContext';
 
 
 
@@ -71,6 +72,14 @@ export function AppointmentsPage() {
     clearError: clearAppointmentsError
   } = usePatientAppointments();
 
+  // Hook để sử dụng WebSocket Chat
+  const {
+    createNewConversation,
+    setActiveConversation,
+    isLoading: chatLoading,
+    error: chatError
+  } = useWebSocketChat();
+
   // State để lưu thông tin cần thiết cho booking
   const [selectedSlotId, setSelectedSlotId] = useState<number | null>(null);
 
@@ -78,6 +87,9 @@ export function AppointmentsPage() {
   const [symptoms, setSymptoms] = useState<string>('');
   const [note, setNote] = useState<string>('');
   const [addressDetail, setAddressDetail] = useState<string>('');
+
+  // State cho chat
+  const [isCreatingChat, setIsCreatingChat] = useState<string | null>(null);
 
   // Ref để track xem đã fetch appointments chưa
   const hasInitialFetchRef = useRef(false);
@@ -144,6 +156,98 @@ export function AppointmentsPage() {
     setShowResultModal(false);
     setSelectedAppointmentId('');
     setSelectedDoctorInfo(null);
+  };
+
+  // Function để tạo tên group tự động
+  const generateGroupName = () => {
+    // Tạo tên group dựa trên timestamp để đảm bảo unique
+    const now = new Date();
+    const timestamp = now.getTime();
+    const conversationNumber = Math.floor(timestamp / 1000) % 1000; // Lấy 3 số cuối của timestamp
+    return `Cuộc trò chuyện ${conversationNumber}`;
+  };
+
+  // Function để bắt đầu chat với bác sĩ
+  const handleStartChat = async (appointment: any) => {
+    if (!currentUser) {
+      toast.error('Chưa đăng nhập', {
+        description: 'Vui lòng đăng nhập để sử dụng tính năng chat',
+        duration: 4000,
+      });
+      return;
+    }
+
+    // Validation: Check if doctor info exists
+    if (!appointment.doctorInfo?.doctorId || !appointment.doctorInfo?.fullName) {
+      console.error('Missing doctor info:', appointment.doctorInfo);
+      toast.error('Thông tin bác sĩ không đầy đủ', {
+        description: 'Không thể tạo cuộc trò chuyện với bác sĩ này',
+        duration: 4000,
+      });
+      return;
+    }
+
+    setIsCreatingChat(appointment.id);
+
+    // Show immediate feedback
+    toast.loading('Đang tạo cuộc trò chuyện...', {
+      id: `creating-chat-${appointment.id}`,
+      description: 'Vui lòng chờ trong giây lát',
+      duration: Infinity // Will be dismissed manually
+    });
+
+    try {
+
+      // Tạo danh sách members cho group chat với đúng structure từ API
+      const members = [
+        {
+          userId: currentUser.userId,
+          fullName: currentUser.fullName || 'Bệnh nhân',
+          avatarUrl: currentUser.avatarUrl || '/api/placeholder/40/40'
+        },
+        {
+          userId: appointment.doctorInfo.doctorId,
+          fullName: appointment.doctorInfo.fullName,
+          avatarUrl: appointment.doctorInfo.avatarUrl || '/api/placeholder/40/40'
+        }
+      ];
+
+      // Tạo group chat với tên tự động
+      const groupName = generateGroupName();
+
+      const groupId = await createNewConversation(
+        members,
+        appointment.id, // appointmentId để liên kết
+        groupName // tên group tự động
+      );
+
+      // Dismiss loading toast first
+      toast.dismiss(`creating-chat-${appointment.id}`);
+
+      // Set active conversation và mở chat widget
+      setActiveConversation(groupId);
+
+      toast.success('Tạo cuộc trò chuyện thành công!', {
+        description: 'Bạn có thể bắt đầu nhắn tin với bác sĩ ngay',
+        duration: 3000,
+      });
+
+      // Trigger mở ChatWidget (sẽ được implement sau)
+      // ChatWidget sẽ tự động mở khi có activeConversation
+
+    } catch (error) {
+      console.error('Failed to create chat:', error);
+
+      // Dismiss loading toast
+      toast.dismiss(`creating-chat-${appointment.id}`);
+
+      toast.error('Không thể tạo cuộc trò chuyện', {
+        description: 'Vui lòng kiểm tra kết nối và thử lại',
+        duration: 4000,
+      });
+    } finally {
+      setIsCreatingChat(null);
+    }
   };
 
   const getStatusColor = (status: string) => {
@@ -390,13 +494,29 @@ export function AppointmentsPage() {
                         Hủy lịch
                       </button>
                     </>}
-                  {appointment.status === 'completed' && <button
-                      onClick={() => handleViewResult(appointment)}
-                      className="px-4 py-2 bg-[#1E75FF] hover:bg-[#1659C9] text-white rounded-xl text-sm font-medium flex items-center justify-center gap-1 transition-colors"
-                    >
-                      <Eye size={16} />
-                      <span>Xem kết quả</span>
-                    </button>}
+                  {appointment.status === 'completed' && <>
+                      <button
+                        onClick={() => handleViewResult(appointment)}
+                        className="px-4 py-2 bg-[#1E75FF] hover:bg-[#1659C9] text-white rounded-xl text-sm font-medium flex items-center justify-center gap-1 transition-colors"
+                      >
+                        <Eye size={16} />
+                        <span>Xem kết quả</span>
+                      </button>
+                      <button
+                        onClick={() => handleStartChat(appointment)}
+                        disabled={isCreatingChat === appointment.id || chatLoading}
+                        className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-xl text-sm font-medium flex items-center justify-center gap-1 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {(isCreatingChat === appointment.id || chatLoading) ? (
+                          <Loader2 size={16} className="animate-spin" />
+                        ) : (
+                          <MessageCircle size={16} />
+                        )}
+                        <span>
+                          {(isCreatingChat === appointment.id || chatLoading) ? 'Đang tạo...' : 'Nhắn tin'}
+                        </span>
+                      </button>
+                    </>}
                 </div>
 
                 <button onClick={() => toggleAppointmentExpansion(appointment.id)} className="flex items-center space-x-1 text-gray-500 hover:text-gray-700 transition-colors text-sm">

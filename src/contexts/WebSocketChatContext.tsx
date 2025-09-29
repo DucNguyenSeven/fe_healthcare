@@ -12,7 +12,10 @@ import {
   removeMessageHandler,
   connect,
   disconnect,
-  getConnectionStatus
+  getConnectionStatus,
+  sendMessageViaREST,
+  getGroupMessagesViaREST,
+  getUserGroupsViaREST
 } from '@/lib/api/communication';
 import type {
   Group,
@@ -44,7 +47,7 @@ type WebSocketChatAction =
   | { type: 'SET_CONNECTION_STATUS'; payload: WebSocketChatState['connectionStatus'] }
   | { type: 'SET_LOADING'; payload: boolean }
   | { type: 'SET_ERROR'; payload: string | null }
-  | { type: 'SET_CONVERSATIONS'; payload: Group[] }
+  | { type: 'SET_CONVERSATIONS'; payload: ChatConversation[] }
   | { type: 'ADD_CONVERSATION'; payload: Group }
   | { type: 'SET_MESSAGES'; payload: { groupId: string; messages: Message[] } }
   | { type: 'ADD_MESSAGE'; payload: Message }
@@ -76,7 +79,7 @@ function mapGroupToConversation(group: Group, currentUserId: string): ChatConver
     isRead: true
   } : undefined;
 
-  return {
+  const conversation = {
     id: group.groupId,
     participants,
     lastMessage,
@@ -85,6 +88,8 @@ function mapGroupToConversation(group: Group, currentUserId: string): ChatConver
     updatedAt: group.updatedAt,
     isTyping: false
   };
+
+  return conversation;
 }
 
 function mapMessageToChatMessage(message: Message): ChatMessage {
@@ -115,17 +120,14 @@ function webSocketChatReducer(state: WebSocketChatState, action: WebSocketChatAc
     case 'SET_CONVERSATIONS':
       return {
         ...state,
-        conversations: action.payload.map(group =>
-          mapGroupToConversation(group, state.activeConversationId || '')
-        )
+        conversations: action.payload // Already mapped in loadConversations
       };
 
     case 'ADD_CONVERSATION': {
-      const newConversation = mapGroupToConversation(action.payload, state.activeConversationId || '');
-      return {
-        ...state,
-        conversations: [newConversation, ...state.conversations]
-      };
+      // Note: This action is deprecated in favor of calling loadConversations after group creation
+      // But keeping for compatibility with WebSocket messages
+      console.log('ADD_CONVERSATION action (deprecated):', action.payload);
+      return state; // Don't modify state, rely on loadConversations instead
     }
 
     case 'SET_MESSAGES': {
@@ -199,7 +201,7 @@ interface WebSocketChatContextType extends WebSocketChatState {
   loadConversations: () => Promise<void>;
   loadMessages: (groupId: string) => Promise<void>;
   sendChatMessage: (groupId: string, content: string) => Promise<void>;
-  createNewConversation: (members: ChatMember[], appointmentId?: string) => Promise<string>;
+  createNewConversation: (members: ChatMember[], appointmentId?: string, customGroupName?: string) => Promise<string>;
   setActiveConversation: (conversationId: string | null) => void;
   markAsRead: (groupId: string) => void;
   joinConversation: (groupId: string) => Promise<void>;
@@ -239,27 +241,8 @@ export function WebSocketChatProvider({ children }: WebSocketChatProviderProps) 
   const handleWebSocketMessage = useCallback((response: WebSocketResponse) => {
 
     switch (response.action) {
-      case 'groups':
-        dispatch({ type: 'SET_CONVERSATIONS', payload: response.data });
-        break;
-
-      case 'messages':
-        if (state.activeConversationId) {
-          dispatch({
-            type: 'SET_MESSAGES',
-            payload: {
-              groupId: state.activeConversationId,
-              messages: response.data
-            }
-          });
-        }
-        break;
-
-      case 'group_created':
-        dispatch({ type: 'ADD_CONVERSATION', payload: response.data });
-        break;
-
       case 'message_received':
+        // Only handle incoming messages for real-time updates
         dispatch({ type: 'ADD_MESSAGE', payload: response.data });
 
         // Update unread count if not active conversation
@@ -276,20 +259,25 @@ export function WebSocketChatProvider({ children }: WebSocketChatProviderProps) 
         break;
 
       case 'error':
-        dispatch({ type: 'SET_ERROR', payload: response.data });
+        console.log('WebSocket error (for info only):', response.data);
+        // Don't dispatch errors from WebSocket since we're using REST API
         break;
 
       case 'connection':
+        console.log('WebSocket connection event:', response.data);
         break;
 
       case 'welcome':
       case 'hello':
+        console.log('WebSocket handshake successful:', response.action);
+        // Load conversations via REST API when connection is established
         if (user && loadConversationsRef.current) {
           loadConversationsRef.current();
         }
         break;
 
       default:
+        console.log('Unhandled WebSocket message:', response.action, response.data);
         break;
     }
   }, [state.activeConversationId, state.unreadCounts, user]);
@@ -309,9 +297,15 @@ export function WebSocketChatProvider({ children }: WebSocketChatProviderProps) 
       dispatch({ type: 'SET_LOADING', payload: true });
       dispatch({ type: 'SET_ERROR', payload: null });
 
-      const groups = await getUserGroups(user.userId);
-      dispatch({ type: 'SET_CONVERSATIONS', payload: groups });
+      // Use REST API instead of WebSocket
+      const groups = await getUserGroupsViaREST(user.userId);
+
+      // Map groups to conversations with current user context
+      const conversations = groups.map(group => mapGroupToConversation(group, user.userId));
+
+      dispatch({ type: 'SET_CONVERSATIONS', payload: conversations });
     } catch (error) {
+      console.error('Failed to load conversations via REST API:', error);
       dispatch({ type: 'SET_ERROR', payload: 'Không thể tải danh sách cuộc trò chuyện' });
     } finally {
       dispatch({ type: 'SET_LOADING', payload: false });
@@ -321,11 +315,21 @@ export function WebSocketChatProvider({ children }: WebSocketChatProviderProps) 
   const loadMessages = useCallback(async (groupId: string) => {
     try {
       dispatch({ type: 'SET_LOADING', payload: true });
-      const messages = await getGroupMessages(groupId);
+
+      // Use REST API instead of WebSocket
+      const messages = await getGroupMessagesViaREST(groupId);
       dispatch({ type: 'SET_MESSAGES', payload: { groupId, messages } });
-    } catch (error) {
-      console.error('Failed to load messages:', error);
-      dispatch({ type: 'SET_ERROR', payload: 'Không thể tải tin nhắn' });
+    } catch (error: any) {
+      console.error('Failed to load messages via REST API:', error);
+
+      // For new groups with no messages, don't show error - just set empty messages
+      if (error?.message?.includes('404') || error?.message?.includes('not found') || error?.message?.includes('No messages')) {
+        console.log('Group has no messages yet, setting empty array');
+        dispatch({ type: 'SET_MESSAGES', payload: { groupId, messages: [] } });
+      } else {
+        // Only set error for actual failures (network issues, server errors, etc)
+        dispatch({ type: 'SET_ERROR', payload: 'Không thể tải tin nhắn' });
+      }
     } finally {
       dispatch({ type: 'SET_LOADING', payload: false });
     }
@@ -337,29 +341,78 @@ export function WebSocketChatProvider({ children }: WebSocketChatProviderProps) 
     }
 
     try {
-      await sendMessage(groupId, user.userId, content);
+      // Use REST API to send message
+      const message = await sendMessageViaREST(groupId, user.userId, content);
+
+      // Add the message to local state immediately (optimistic update)
+      dispatch({ type: 'ADD_MESSAGE', payload: message });
     } catch (error) {
+      console.error('Failed to send message via REST API:', error);
       dispatch({ type: 'SET_ERROR', payload: 'Không thể gửi tin nhắn' });
     }
   }, [user]);
 
   const createNewConversation = useCallback(async (
     members: ChatMember[],
-    appointmentId?: string
+    appointmentId?: string,
+    customGroupName?: string
   ): Promise<string> => {
+    if (!user?.userId) {
+      throw new Error('User not found');
+    }
+
+    // Generate optimistic conversation ID and data
+    const optimisticGroupId = `temp-${Date.now()}`;
+    const groupName = customGroupName || `Cuộc trò chuyện ${Date.now()}`;
+
     try {
+
+      // Create optimistic conversation and add it to state immediately
+      const optimisticGroup: Group = {
+        groupId: optimisticGroupId,
+        groupName,
+        appointmentId,
+        members,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        lastMessageContent: undefined,
+        timeLastMessage: undefined
+      };
+
+      const optimisticConversation = mapGroupToConversation(optimisticGroup, user.userId);
+
+      // Add optimistic conversation to state immediately for better UX
+      dispatch({ type: 'ADD_CONVERSATION', payload: optimisticGroup });
       dispatch({ type: 'SET_LOADING', payload: true });
-      const group = await createGroup(members, appointmentId);
-      // Group will be added via WebSocket response
-      return group.groupId;
+
+      // Use REST API creation (now optimized to skip WebSocket timeout)
+      const actualGroup = await createGroup(members, appointmentId, customGroupName);
+
+      // Replace optimistic conversation with actual one
+      // Instead of refreshing all conversations, just update this one
+      const actualConversation = mapGroupToConversation(actualGroup, user.userId);
+
+      // For now, just refresh all conversations to get the actual one
+      // TODO: Implement proper optimistic update replacement
+      if (user?.userId) {
+        await loadConversations();
+      }
+
+      return actualGroup.groupId;
     } catch (error) {
       console.error('Failed to create conversation:', error);
+
+      // Remove optimistic conversation on error by refreshing
+      if (user?.userId) {
+        await loadConversations();
+      }
+
       dispatch({ type: 'SET_ERROR', payload: 'Không thể tạo cuộc trò chuyện' });
       throw error;
     } finally {
       dispatch({ type: 'SET_LOADING', payload: false });
     }
-  }, []);
+  }, [user, loadConversations]);
 
   const setActiveConversation = useCallback((conversationId: string | null) => {
     dispatch({ type: 'SET_ACTIVE_CONVERSATION', payload: conversationId });
@@ -372,14 +425,24 @@ export function WebSocketChatProvider({ children }: WebSocketChatProviderProps) 
 
   const joinConversation = useCallback(async (groupId: string) => {
     try {
-      await joinGroup(groupId);
-      await loadMessages(groupId);
+      // For REST API approach, we don't need to explicitly "join" a group
+      // Just set active conversation and load messages
       setActiveConversation(groupId);
+
+      // Try to load messages using REST API
+      try {
+        const messages = await getGroupMessagesViaREST(groupId);
+        dispatch({ type: 'SET_MESSAGES', payload: { groupId, messages } });
+      } catch (messageError) {
+        console.log('Could not load messages for group, setting empty messages:', messageError);
+        // Set empty messages for the group so UI can show empty state
+        dispatch({ type: 'SET_MESSAGES', payload: { groupId, messages: [] } });
+      }
     } catch (error) {
       console.error('Failed to join conversation:', error);
       dispatch({ type: 'SET_ERROR', payload: 'Không thể tham gia cuộc trò chuyện' });
     }
-  }, [loadMessages, setActiveConversation]);
+  }, [setActiveConversation]);
 
   const reconnect = useCallback(async () => {
     try {
@@ -454,8 +517,13 @@ export function WebSocketChatProvider({ children }: WebSocketChatProviderProps) 
     };
   }, [isAuthenticated, user?.userId]); // Only depend on userId to prevent unnecessary re-connections
 
-  // Note: Conversations are now loaded via welcome message handler
-  // This ensures proper handshake completion before sending requests
+  // Auto-load conversations when user is authenticated
+  useEffect(() => {
+    if (!isAuthenticated || !user?.userId) return;
+
+    // Load conversations once when user is authenticated
+    loadConversations();
+  }, [isAuthenticated, user?.userId, loadConversations]);
 
   // Monitor connection status with reduced frequency
   useEffect(() => {

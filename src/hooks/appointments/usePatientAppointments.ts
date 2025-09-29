@@ -285,7 +285,8 @@ export const transformAppointmentToTimelineFormat = (appointment: AppointmentRes
   const result = {
     id: appointment.appointmentId,
     service: getServiceName(appointment.consultationType, appointment.note),
-    doctor: getDoctorName(),
+    doctor: getDoctorName(), // String for display
+    doctorInfo: appointment.doctor, // Preserve full object for chat functionality
     date: appointment.appointmentDate,
     time: appointment.timeSlot.startTime,
     status: (statusMapping[appointment.status] || 'upcoming') as 'upcoming' | 'completed' | 'cancelled',

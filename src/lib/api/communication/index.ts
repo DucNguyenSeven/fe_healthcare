@@ -91,27 +91,21 @@ function generateGroupName(existingGroups: Group[]): string {
 // ============ API Functions ============
 
 /**
- * Get all groups for a user
+ * Get all groups for a user using REST API only (optimized for reliability)
  */
 export async function getUserGroups(userId: string, page: number = 0, size: number = 20): Promise<Group[]> {
-  await ensureConnection();
-
-  const responsePromise = waitForResponse<Group[]>('groups');
-  webSocketChatService.getUserGroups({ userId, page, size });
-
-  return responsePromise;
+  // Use REST API directly for better reliability
+  return await getUserGroupsViaREST(userId, page, size);
 }
 
 /**
- * Create a new group with auto-generated name
+ * Create a new group using REST API fallback
  */
-export async function createGroup(
+export async function createGroupViaREST(
   members: ChatMember[],
   appointmentId?: string,
   customGroupName?: string
 ): Promise<Group> {
-  await ensureConnection();
-
   // Get existing groups to generate name if not provided
   let groupName = customGroupName;
   if (!groupName) {
@@ -124,17 +118,71 @@ export async function createGroup(
     }
   }
 
-  const createData: CreateGroupData = {
+  const createData = {
     groupName,
     members,
     ...(appointmentId && { appointmentId })
   };
 
-  const responsePromise = waitForResponse<Group>('group_created');
-  webSocketChatService.createGroup(createData);
 
-  return responsePromise;
+  const response = await fetch(`${process.env.NEXT_PUBLIC_CHAT_SERVICE_URL}/api/communication/groups`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(createData)
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+  }
+
+  const result = await response.json();
+
+  // Map backend GroupResponse to frontend Group format
+  if (result && result.groupId) {
+    const mappedGroup: Group = {
+      groupId: result.groupId,
+      groupName: result.groupName,
+      appointmentId: result.appointmentId,
+      lastMessageContent: result.lastMessageContent || null,
+      timeLastMessage: result.timeLastMessage || null,
+      members: result.members || [],
+      createdAt: result.createdAt || new Date().toISOString(),
+      updatedAt: result.updatedAt || new Date().toISOString()
+    };
+
+    return mappedGroup;
+  } else {
+    throw new Error('Invalid response format from backend');
+  }
 }
+
+/**
+ * Create a new group using REST API only (optimized for speed)
+ */
+export async function createGroup(
+  members: ChatMember[],
+  appointmentId?: string,
+  customGroupName?: string
+): Promise<Group> {
+  // Get existing groups to generate name if not provided
+  let groupName = customGroupName;
+  if (!groupName) {
+    try {
+      // Use REST API to get existing groups for name generation
+      const existingGroups = await getUserGroupsViaREST(members[0]?.userId);
+      groupName = generateGroupName(existingGroups);
+    } catch (error) {
+      // Fallback if we can't get existing groups
+      groupName = `Cuộc trò chuyện ${Date.now()}`;
+    }
+  }
+
+  return await createGroupViaREST(members, appointmentId, groupName);
+}
+
 
 /**
  * Send a message to a group
@@ -233,6 +281,109 @@ export function addMessageHandler(handler: (response: WebSocketResponse) => void
  */
 export function removeMessageHandler(handler: (response: WebSocketResponse) => void): void {
   webSocketChatService.removeMessageHandler(handler);
+}
+
+// ============ REST API Functions (No WebSocket) ============
+
+/**
+ * Send message via REST API (no WebSocket dependency)
+ */
+export async function sendMessageViaREST(
+  groupId: string,
+  senderId: string,
+  content: string,
+  messageType: 'TEXT' | 'IMAGE' | 'FILE' = 'TEXT'
+): Promise<Message> {
+  const response = await fetch(`${process.env.NEXT_PUBLIC_CHAT_SERVICE_URL}/api/communication/messages`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      groupId,
+      senderId,
+      content,
+      messageType
+    })
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Failed to send message: ${response.status} ${errorText}`);
+  }
+
+  const result = await response.json();
+  return result;
+}
+
+/**
+ * Get group messages via REST API (no WebSocket dependency)
+ */
+export async function getGroupMessagesViaREST(
+  groupId: string,
+  page: number = 0,
+  size: number = 20
+): Promise<Message[]> {
+  const query = new URLSearchParams({
+    page: page.toString(),
+    size: size.toString()
+  });
+
+  const response = await fetch(
+    `${process.env.NEXT_PUBLIC_CHAT_SERVICE_URL}/api/communication/groups/${groupId}/messages?${query.toString()}`,
+    {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      }
+    }
+  );
+
+  if (!response.ok) {
+    // Handle 404 for empty groups gracefully
+    if (response.status === 404) {
+      return [];
+    }
+    const errorText = await response.text();
+    throw new Error(`Failed to get messages: ${response.status} ${errorText}`);
+  }
+
+  const result = await response.json();
+  return Array.isArray(result) ? result : [];
+}
+
+/**
+ * Get user groups via REST API (no WebSocket dependency)
+ */
+export async function getUserGroupsViaREST(
+  userId: string,
+  page: number = 0,
+  size: number = 20
+): Promise<Group[]> {
+
+  const query = new URLSearchParams({
+    page: page.toString(),
+    size: size.toString()
+  });
+
+  const response = await fetch(
+    `${process.env.NEXT_PUBLIC_CHAT_SERVICE_URL}/api/communication/users/${userId}/groups?${query.toString()}`,
+    {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      }
+    }
+  );
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Failed to get user groups: ${response.status} ${errorText}`);
+  }
+
+  const result = await response.json();
+
+  return Array.isArray(result) ? result : [];
 }
 
 // Legacy compatibility exports

@@ -6,26 +6,29 @@ import { ChatWidget } from './ChatWidget'
 import { useAuthContext } from '@/contexts/AuthContext'
 import { WebSocketChatProvider } from '@/contexts/WebSocketChatContext'
 
-export function ChatProvider() {
+interface ChatProviderProps {
+  children?: React.ReactNode
+}
+
+export function ChatProvider({ children }: ChatProviderProps) {
   const { isAuthenticated, user } = useAuthContext()
   const pathname = usePathname()
 
   // Don't show chat widget on auth pages
   const isAuthRoute = pathname?.startsWith('/auth') || pathname === '/'
 
-  // Only show chat widget for authenticated users who are doctors or patients
-  if (!isAuthenticated || !user || isAuthRoute) {
-    return null
+  // Always wrap children with WebSocketChatProvider for authenticated users
+  if (!isAuthenticated || !user) {
+    return children || null
   }
 
-  // Only show for doctor and patient roles
-  if (user.role !== 'DOCTOR' && user.role !== 'PATIENT') {
-    return null
-  }
+  // Only show chat widget for doctor and patient roles, but still provide context
+  const shouldShowChatWidget = (user.role === 'DOCTOR' || user.role === 'PATIENT') && !isAuthRoute
 
   return (
     <WebSocketChatProvider>
-      <ChatWidget />
+      {children}
+      {shouldShowChatWidget && <ChatWidget />}
     </WebSocketChatProvider>
   )
 }

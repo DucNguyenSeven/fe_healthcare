@@ -1,19 +1,34 @@
 'use client'
 
-import React, { useState, useRef, KeyboardEvent } from 'react'
+import React, { useState, useRef, KeyboardEvent, useEffect } from 'react'
 import { Send } from 'lucide-react'
 
 interface MessageInputProps {
   onSendMessage: (content: string) => void
   disabled?: boolean
+  placeholder?: string
+  autoFocus?: boolean
 }
 
 export function MessageInput({
   onSendMessage,
-  disabled = false
+  disabled = false,
+  placeholder = 'Nhập tin nhắn...',
+  autoFocus = false
 }: MessageInputProps) {
   const [message, setMessage] = useState('')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+
+  // Auto-focus effect
+  useEffect(() => {
+    if (autoFocus && textareaRef.current && !disabled) {
+      // Small delay to ensure the component is mounted
+      const timer = setTimeout(() => {
+        textareaRef.current?.focus()
+      }, 100)
+      return () => clearTimeout(timer)
+    }
+  }, [autoFocus, disabled])
 
   const handleSend = () => {
     const trimmedMessage = message.trim()
@@ -57,6 +72,7 @@ export function MessageInput({
             onChange={handleTextareaChange}
             onKeyPress={handleKeyPress}
             disabled={disabled}
+            placeholder={placeholder}
             rows={1}
             className="w-full px-4 py-2 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none disabled:opacity-50 disabled:cursor-not-allowed scrollbar-hide"
             style={{

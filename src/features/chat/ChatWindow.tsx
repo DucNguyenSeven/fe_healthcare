@@ -58,7 +58,6 @@ export function ChatWindow({
       <ChatHeader
         user={otherParticipant}
         onBack={onBack}
-        isTyping={conversation.isTyping}
       />
 
       {/* Messages */}
@@ -86,15 +85,18 @@ export function ChatWindow({
           </>
         ) : (
           <div className="flex-1 flex items-center justify-center">
-            <div className="text-center">
-              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <span className="text-2xl">💬</span>
+            <div className="text-center px-6">
+              <div className="w-20 h-20 bg-gradient-to-br from-blue-50 to-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <span className="text-3xl">👋</span>
               </div>
-              <h4 className="font-medium text-gray-900 mb-2">
-                Bắt đầu cuộc trò chuyện
+              <h4 className="font-semibold text-gray-900 mb-2 text-lg">
+                Hãy bắt đầu cuộc trò chuyện!
               </h4>
-              <p className="text-sm text-gray-600">
-                Gửi tin nhắn đầu tiên cho {otherParticipant.name}
+              <p className="text-sm text-gray-600 mb-1">
+                Gửi tin nhắn đầu tiên cho <span className="font-medium">{otherParticipant.name}</span>
+              </p>
+              <p className="text-xs text-gray-500">
+                Bác sĩ sẽ nhận được thông báo và phản hồi sớm nhất có thể
               </p>
             </div>
           </div>
@@ -105,6 +107,7 @@ export function ChatWindow({
       <MessageInput
         onSendMessage={handleSendMessage}
         placeholder={`Nhắn tin cho ${otherParticipant.name}...`}
+        autoFocus={messages.length === 0}
       />
     </div>
   )
