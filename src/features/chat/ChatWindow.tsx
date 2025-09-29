@@ -25,22 +25,16 @@ export function ChatWindow({
 
   const {
     messages: allMessages,
-    loadMessages,
     isLoading,
     connectionStatus
   } = useWebSocketChat()
 
   // Get messages for this conversation
   const messages = useMemo(() => {
-    return allMessages[conversation.id] || []
+    const msgs = allMessages[conversation.id] || []
+    console.log('[ChatWindow] Messages:', msgs.length, 'messages for conversation:', conversation.id)
+    return msgs
   }, [allMessages, conversation.id])
-
-  // Load messages when conversation changes
-  useEffect(() => {
-    if (conversation.id) {
-      loadMessages(conversation.id)
-    }
-  }, [conversation.id, loadMessages])
 
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -71,9 +65,12 @@ export function ChatWindow({
               const previousMessage = messages[index - 1]
               const showAvatar = !isOwn && (!previousMessage || previousMessage.senderId !== message.senderId)
 
+              // Generate stable key - fallback to index if id is missing
+              const key = message.id || `msg-${index}-${message.timestamp}`
+
               return (
                 <MessageItem
-                  key={message.id}
+                  key={key}
                   message={message}
                   sender={sender}
                   isOwn={isOwn}

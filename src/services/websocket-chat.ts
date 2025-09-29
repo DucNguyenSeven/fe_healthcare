@@ -31,6 +31,7 @@ export interface SendMessageData {
   senderId: string;
   content: string;
   messageType?: 'TEXT' | 'IMAGE' | 'FILE';
+  tempMessageId?: string;  // For optimistic update tracking
 }
 
 export interface GetMessagesData {

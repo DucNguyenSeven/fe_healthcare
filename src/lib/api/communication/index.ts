@@ -33,6 +33,7 @@ export interface Message {
   content: string;
   sendAt: string;
   createdAt: string;
+  tempMessageId?: string;  // For optimistic update tracking
 }
 
 export interface CommunicationApiError {
@@ -294,8 +295,16 @@ export async function sendMessageViaREST(
   groupId: string,
   senderId: string,
   content: string,
-  messageType: 'TEXT' | 'IMAGE' | 'FILE' = 'TEXT'
+  messageType: 'TEXT' | 'IMAGE' | 'FILE' = 'TEXT',
+  tempMessageId?: string
 ): Promise<Message> {
+  console.log('[sendMessageViaREST] Sending message:', {
+    groupId,
+    senderId,
+    content: content.substring(0, 30),
+    tempMessageId
+  });
+
   const response = await fetch(`${process.env.NEXT_PUBLIC_CHAT_SERVICE_URL}/api/communication/messages`, {
     method: 'POST',
     headers: {
@@ -305,16 +314,19 @@ export async function sendMessageViaREST(
       groupId,
       senderId,
       content,
-      messageType
+      messageType,
+      tempMessageId  // Include tempMessageId in request
     })
   });
 
   if (!response.ok) {
     const errorText = await response.text();
+    console.error('[sendMessageViaREST] Failed:', response.status, errorText);
     throw new Error(`Failed to send message: ${response.status} ${errorText}`);
   }
 
   const result = await response.json();
+  console.log('[sendMessageViaREST] Success:', result.messageId, 'tempId:', result.tempMessageId);
   return result;
 }
 
