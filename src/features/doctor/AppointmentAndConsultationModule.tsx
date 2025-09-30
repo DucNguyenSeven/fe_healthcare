@@ -176,20 +176,6 @@ export const AppointmentAndConsultationModule = ({
     fetchDoctorAppointments({ doctorId: me.userId, startTime: start, endTime: end });
   }, [me?.userId, currentWeek, fetchDoctorAppointments]);
 
-  // Auto-navigate to week containing appointments if current week is empty
-  React.useEffect(() => {
-    if (!doctorAptLoading && doctorWeekAppointments && doctorWeekAppointments.length === 0 && me?.userId) {
-      // No appointments in current week, try to find a week with appointments
-      // For now, let's try the week containing 23/9/2025 based on the screenshots
-      const targetDate = new Date('2025-09-23');
-      const currentWeekStart = getWeekStartEnd(currentWeek).start;
-      const targetWeekStart = getWeekStartEnd(targetDate).start;
-
-      if (currentWeekStart !== targetWeekStart) {
-        setCurrentWeek(targetDate);
-      }
-    }
-  }, [doctorAptLoading, doctorWeekAppointments, me?.userId, currentWeek]);
 
   // Debug: Log appointments when they change
   React.useEffect(() => {

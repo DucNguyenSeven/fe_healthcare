@@ -5,6 +5,8 @@ import { Send, Bot, User, Upload, FileText, Clock, Trash2, MessageCircle, AlertT
 import { User as UserType } from './HealthcarePlusApp';
 import { getAccessToken } from '@/utils/auth/token';
 import { useChatService } from '@/hooks/useChatService';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 interface AIAssistantPageProps {
   user: UserType;
   onNavigate?: (page: 'appointments') => void;
@@ -510,30 +512,64 @@ Bạn nên tuân thủ nghiêm ngặt chế độ điều trị và tái khám �
 
 Bạn có thể đặt thêm câu hỏi cụ thể hoặc sử dụng các gợi ý bên dưới để tôi có thể hỗ trợ tốt hơn.`;
   };
-  // Rich rendering for assistant message: highlight blocks like Lưu ý/Khuyến nghị and bullet lists
+  // Rich rendering for assistant message with markdown support
   const renderAssistantMessage = (text: string) => {
-    // Simple heuristics: split into paragraphs, convert lines starting with numbers or bullets to lists,
-    // highlight paragraphs starting with certain keywords
-    const paragraphs = text.split(/\n\n+/);
-    return <div className="space-y-3">
-      {paragraphs.map((para, idx) => {
-        const trimmed = para.trim();
-        const isNote = /^\s*(Lưu ý|Luu y|LƯU Ý|Khuyến nghị|Khuyen nghi|Kết luận|Ket luan)/i.test(trimmed);
-        const lines = trimmed.split(/\n/);
-        const isList = lines.length > 1 && lines.every(l => /^([•\-\*]|\d+\.|\d+\))/i.test(l.trim()));
-        if (isList) {
-          return <ul key={idx} className="list-disc pl-5 space-y-1">{lines.map((l, i) => <li key={i}>{l.replace(/^([•\-\*]|\d+\.|\d+\))\s*/,'')}</li>)}</ul>;
-        }
-        return (
-          <div key={idx} className={isNote ? 'p-3 rounded-xl bg-yellow-50 border border-yellow-200 text-yellow-900' : ''}>
-            {isNote && <div className="text-xs font-semibold tracking-wide uppercase mb-1 text-yellow-700">{trimmed.split(':')[0]}</div>}
-            <div className="[&_strong]:font-semibold [&_strong]:text-gray-900">
-              {trimmed}
-            </div>
-          </div>
-        );
-      })}
-    </div>;
+    return (
+      <div className="prose prose-sm max-w-none">
+        <ReactMarkdown
+          remarkPlugins={[remarkGfm]}
+          components={{
+            // Headings
+            h1: ({node, ...props}) => <h1 className="text-xl font-bold text-gray-900 mt-5 mb-2.5" {...props} />,
+            h2: ({node, ...props}) => <h2 className="text-lg font-bold text-gray-900 mt-4 mb-2.5" {...props} />,
+            h3: ({node, ...props}) => <h3 className="text-base font-semibold text-gray-900 mt-3 mb-2" {...props} />,
+
+            // Paragraphs - comfortable spacing
+            p: ({node, ...props}) => <p className="text-gray-700 leading-relaxed mb-3" {...props} />,
+
+            // Lists
+            ul: ({node, ...props}) => <ul className="list-disc pl-5 space-y-1.5 mb-3 text-gray-700" {...props} />,
+            ol: ({node, ...props}) => <ol className="list-decimal pl-5 space-y-1.5 mb-3 text-gray-700" {...props} />,
+            li: ({node, ...props}) => <li className="leading-relaxed" {...props} />,
+
+            // Strong/Bold
+            strong: ({node, ...props}) => <strong className="font-semibold text-gray-900" {...props} />,
+
+            // Emphasis/Italic
+            em: ({node, ...props}) => <em className="italic text-gray-800" {...props} />,
+
+            // Code
+            code: ({node, inline, ...props}: any) =>
+              inline
+                ? <code className="px-1.5 py-0.5 bg-gray-100 text-pink-600 rounded text-sm font-mono" {...props} />
+                : <code className="block p-3 bg-gray-900 text-gray-100 rounded-lg text-sm font-mono overflow-x-auto my-2" {...props} />,
+
+            // Blockquotes
+            blockquote: ({node, ...props}) => (
+              <blockquote className="border-l-4 border-blue-500 pl-4 py-2 my-3 bg-blue-50 text-gray-700 italic" {...props} />
+            ),
+
+            // Tables
+            table: ({node, ...props}) => (
+              <div className="overflow-x-auto my-3">
+                <table className="min-w-full divide-y divide-gray-300 border border-gray-300" {...props} />
+              </div>
+            ),
+            thead: ({node, ...props}) => <thead className="bg-gray-100" {...props} />,
+            th: ({node, ...props}) => <th className="px-3 py-2 text-left text-sm font-semibold text-gray-900 border border-gray-300" {...props} />,
+            td: ({node, ...props}) => <td className="px-3 py-2 text-sm text-gray-700 border border-gray-300" {...props} />,
+
+            // Links
+            a: ({node, ...props}) => <a className="text-blue-600 hover:text-blue-800 underline" {...props} />,
+
+            // Horizontal rule
+            hr: ({node, ...props}) => <hr className="my-4 border-gray-300" {...props} />,
+          }}
+        >
+          {text}
+        </ReactMarkdown>
+      </div>
+    );
   };
   const handleBookAppointment = () => {
     // Lưu thông tin dự đoán vào localStorage để tham khảo

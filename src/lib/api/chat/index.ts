@@ -1,6 +1,7 @@
 // Chat service API client
 // Base URL can be configured via env
-const CHAT_BASE_URL = process.env.NEXT_PUBLIC_CHAT_BASE_URL || 'http://localhost:8086';
+// Base URL from .env.local; single source of truth
+const CHAT_BASE_URL = process.env.NEXT_PUBLIC_CHATBOT_BASE_URL || 'http://localhost:8086';
 
 export type ChatRequest = {
   message: string;
@@ -48,11 +49,3 @@ export async function chatStream(payload: ChatRequest): Promise<ReadableStream<U
 }
 
 export default { health, chat, chatStream };
-
-import { api } from "@/lib/api/client";
-import type { ChatRequest, ChatResponse } from "@/lib/api/types";
-
-export const ChatApi = {
-  ask: (payload: ChatRequest) =>
-    api.post<ChatResponse>("/api/chat/ask", payload).then(res => res.data),
-};
