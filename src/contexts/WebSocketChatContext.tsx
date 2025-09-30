@@ -183,7 +183,39 @@ function webSocketChatReducer(state: WebSocketChatState, action: WebSocketChatAc
       // Check if message already exists to avoid duplicates (by messageId)
       const messageExists = existingMessages.some(m => m.id === message.id);
       if (messageExists) {
-        console.log('[Reducer] Message already exists, skipping:', message.id);
+        console.log('[Reducer] Message already exists, checking if notification needed:', message.id);
+
+        // Check if this is from another user and should show notification
+        const isFromOtherUser = currentUserId && message.senderId !== currentUserId;
+        const isNotActiveConversation = action.payload.groupId !== state.activeConversationId;
+
+        if (isFromOtherUser && isNotActiveConversation) {
+          // Message exists but user hasn't seen it yet - update unread count
+          const currentCount = state.unreadCounts[action.payload.groupId] || 0;
+
+          console.log('[Reducer] Message from other user, updating unread count:', currentCount, '→', currentCount + 1);
+
+          return {
+            ...state,
+            unreadCounts: {
+              ...state.unreadCounts,
+              [action.payload.groupId]: currentCount + 1
+            },
+            conversations: state.conversations.map(conv =>
+              conv.id === action.payload.groupId
+                ? {
+                    ...conv,
+                    lastMessage: message,
+                    updatedAt: message.timestamp,
+                    unreadCount: (conv.unreadCount || 0) + 1
+                  }
+                : conv
+            )
+          };
+        }
+
+        // Message exists and no need to notify - just return state
+        console.log('[Reducer] Message from self or already in active conversation, skipping');
         return state;
       }
 
@@ -375,27 +407,30 @@ export function WebSocketChatProvider({ children }: WebSocketChatProviderProps) 
         const isFromOtherUser = user && message.senderId !== user.userId;
         const isNotActiveConversation = message.groupId !== state.activeConversationId;
 
+        // Only show notification for doctors (patients and admins don't get these notifications)
+        const isDoctor = user?.role === 'DOCTOR';
+
         console.log('[WebSocket] Message context:', {
           isFromOtherUser,
           isNotActiveConversation,
+          isDoctor,
           activeConversationId: state.activeConversationId
         });
 
-        // Show notification if message is from another user and (widget is closed OR different conversation is active)
-        if (isFromOtherUser && isNotActiveConversation) {
-          // Find the conversation to get sender info
-          const conversation = state.conversations.find(conv => conv.id === message.groupId);
-          const senderName = conversation?.participants.find(p => p.id === message.senderId)?.name || 'Người gửi';
+        // Show notification only if:
+        // 1. Message from other user (not self)
+        // 2. Not in active conversation (not currently viewing)
+        // 3. Current user is DOCTOR (only doctors get patient message notifications)
+        if (isFromOtherUser && isNotActiveConversation && isDoctor) {
+          console.log('[WebSocket] Showing notification for message from patient');
 
-          console.log('[WebSocket] Showing notification for message from:', senderName);
-
-          // Show toast notification with better formatting
+          // Show toast notification with message content
           const truncatedContent = message.content.length > 60
             ? message.content.substring(0, 60) + '...'
             : message.content;
 
           toast.info(truncatedContent, {
-            description: `Tin nhắn mới từ ${senderName}`,
+            description: 'Tin nhắn mới từ Bệnh nhân',
             duration: 5000,
             action: {
               label: 'Xem',
@@ -406,6 +441,42 @@ export function WebSocketChatProvider({ children }: WebSocketChatProviderProps) 
           });
 
           // Unread count is now automatically handled in ADD_MESSAGE reducer
+        }
+        break;
+
+      case 'group_created':
+        console.log('[WebSocket] group_created:', response.data);
+        const newGroup = response.data;
+
+        // Check if current user is a member of this new group
+        const isMember = newGroup.members?.some((m: any) => m.userId === user?.userId);
+
+        if (isMember) {
+          // Reload conversations to show new group
+          if (loadConversationsRef.current) {
+            loadConversationsRef.current();
+          }
+
+          // Show notification only for doctors (patients don't need this notification)
+          // Patients already get "Tạo cuộc trò chuyện thành công" from AppointmentsPage
+          const isDoctor = user?.role === 'DOCTOR';
+
+          if (isDoctor) {
+            // Get other participant name for notification
+            const otherParticipant = newGroup.members?.find((m: any) => m.userId !== user?.userId);
+            const participantName = otherParticipant?.fullName || 'Người dùng';
+
+            toast.info('Cuộc trò chuyện mới', {
+              description: `Bệnh nhân ${participantName} đã bắt đầu cuộc trò chuyện với bạn`,
+              duration: 5000,
+              action: {
+                label: 'Xem',
+                onClick: () => {
+                  dispatch({ type: 'SET_ACTIVE_CONVERSATION', payload: newGroup.groupId });
+                }
+              }
+            });
+          }
         }
         break;
 
