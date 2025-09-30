@@ -140,7 +140,6 @@ function webSocketChatReducer(state: WebSocketChatState, action: WebSocketChatAc
     case 'ADD_CONVERSATION': {
       // Note: This action is deprecated in favor of calling loadConversations after group creation
       // But keeping for compatibility with WebSocket messages
-      console.log('ADD_CONVERSATION action (deprecated):', action.payload);
       return state; // Don't modify state, rely on loadConversations instead
     }
 
@@ -160,22 +159,11 @@ function webSocketChatReducer(state: WebSocketChatState, action: WebSocketChatAc
       const tempMessageId = action.payload.tempMessageId;
       const currentUserId = action.payload.currentUserId;
 
-      console.log('[Reducer ADD_MESSAGE]', {
-        messageId: message.id,
-        tempMessageId,
-        groupId: action.payload.groupId,
-        content: message.content.slice(0, 30),
-        existingCount: existingMessages.length,
-        senderId: message.senderId,
-        currentUserId
-      });
-
       // Validate required fields
       if (!message.senderId || !message.id) {
-        console.error('[Reducer] ❌ Invalid message, missing required fields:', {
+        console.error('[Reducer] Invalid message, missing required fields:', {
           senderId: message.senderId,
-          messageId: message.id,
-          rawPayload: action.payload
+          messageId: message.id
         });
         return state; // Skip invalid messages
       }
@@ -183,8 +171,6 @@ function webSocketChatReducer(state: WebSocketChatState, action: WebSocketChatAc
       // Check if message already exists to avoid duplicates (by messageId)
       const messageExists = existingMessages.some(m => m.id === message.id);
       if (messageExists) {
-        console.log('[Reducer] Message already exists, skipping to avoid duplicate:', message.id);
-        // Message already processed, no need to update unread count again
         return state;
       }
 
@@ -192,23 +178,13 @@ function webSocketChatReducer(state: WebSocketChatState, action: WebSocketChatAc
 
       // Strategy 1: Replace by tempMessageId (100% accurate)
       if (tempMessageId) {
-        console.log('[Reducer] Looking for tempId:', tempMessageId);
-        console.log('[Reducer] Current message IDs:', updatedMessages.map(m => m.id));
-
         const optimisticIndex = updatedMessages.findIndex(m => m.id === tempMessageId);
-
         if (optimisticIndex !== -1) {
-          console.log('[Reducer] ✅ Replacing optimistic message by tempId:', tempMessageId, '→', message.id);
           updatedMessages = updatedMessages.filter((_, i) => i !== optimisticIndex);
-        } else {
-          console.log('[Reducer] ⚠️ tempMessageId not found in messages:', tempMessageId);
-          console.log('[Reducer] ⚠️ This might be a broadcast from another user or timing issue');
         }
       }
       // Strategy 2: Fallback - content matching (for broadcasts without tempId)
       else if (!message.id.startsWith('temp-')) {
-        console.log('[Reducer] No tempMessageId, trying content matching fallback');
-
         const now = new Date(message.timestamp).getTime();
         const optimisticIndex = updatedMessages.findIndex(m => {
           if (!m.id.startsWith('temp-')) return false;
@@ -224,27 +200,16 @@ function webSocketChatReducer(state: WebSocketChatState, action: WebSocketChatAc
         });
 
         if (optimisticIndex !== -1) {
-          console.log('[Reducer] ✅ Replacing by content matching (fallback):', updatedMessages[optimisticIndex].id, '→', message.id);
           updatedMessages = updatedMessages.filter((_, i) => i !== optimisticIndex);
-        } else {
-          console.log('[Reducer] ℹ️ No optimistic message found for content matching - might be from another user');
         }
       }
 
       updatedMessages.push(message);
 
-      console.log('[Reducer] Added message, new count:', updatedMessages.length);
-
       // Check if message is from another user and not in active conversation
       const isFromOtherUser = currentUserId && message.senderId !== currentUserId;
       const isNotActiveConversation = action.payload.groupId !== state.activeConversationId;
       const shouldIncrementUnread = isFromOtherUser && isNotActiveConversation;
-
-      console.log('[Reducer] Unread check:', {
-        isFromOtherUser,
-        isNotActiveConversation,
-        shouldIncrementUnread
-      });
 
       // Update unread count if needed
       let newUnreadCounts = state.unreadCounts;
@@ -254,7 +219,6 @@ function webSocketChatReducer(state: WebSocketChatState, action: WebSocketChatAc
           ...state.unreadCounts,
           [action.payload.groupId]: currentCount + 1
         };
-        console.log('[Reducer] Incrementing unread count:', currentCount, '→', currentCount + 1);
       }
 
       return {
@@ -356,23 +320,15 @@ export function WebSocketChatProvider({ children }: WebSocketChatProviderProps) 
   // Ref to track activeConversationId in real-time (avoid stale closure)
   const activeConversationIdRef = useRef<string | null>(null);
 
+  // Ref to track messages that have already shown toast (avoid duplicate toasts)
+  const shownToastMessagesRef = useRef<Set<string>>(new Set());
+
   // ============ WebSocket Message Handler ============
 
   const handleWebSocketMessage = useCallback((response: WebSocketResponse) => {
-    console.log('[WebSocket] Received message:', response.action, response);
-
     switch (response.action) {
       case 'message_received':
-        // Handle incoming messages for real-time updates
         const message = response.data;
-        console.log('[WebSocket] message_received:', {
-          messageId: message.messageId,
-          groupId: message.groupId,
-          senderId: message.senderId,
-          content: message.content?.substring(0, 30),
-          currentUserId: user?.userId
-        });
-
         dispatch({ type: 'ADD_MESSAGE', payload: { ...message, currentUserId: user?.userId } });
 
         // Check if message is from another user (not from current user)
@@ -380,48 +336,47 @@ export function WebSocketChatProvider({ children }: WebSocketChatProviderProps) 
         // Use ref to get real-time activeConversationId (avoid stale closure)
         const isNotActiveConversation = message.groupId !== activeConversationIdRef.current;
 
-        console.log('[WebSocket] Message context:', {
-          isFromOtherUser,
-          isNotActiveConversation,
-          currentUserRole: user?.role,
-          activeConversationId: activeConversationIdRef.current
-        });
-
         // Show notification if:
         // 1. Message from other user (not self)
         // 2. Not in active conversation (not currently viewing)
-        // Both doctors and patients should receive toast notifications
+        // 3. Toast not already shown for this message (avoid duplicates)
         if (isFromOtherUser && isNotActiveConversation) {
-          console.log('[WebSocket] Showing notification for new message');
+          // Check if toast already shown for this message ID
+          if (!shownToastMessagesRef.current.has(message.messageId)) {
+            // Mark message as toast shown
+            shownToastMessagesRef.current.add(message.messageId);
 
-          // Show toast notification with message content
-          const truncatedContent = message.content.length > 60
-            ? message.content.substring(0, 60) + '...'
-            : message.content;
+            // Auto cleanup after 1 minute to prevent memory leak
+            setTimeout(() => {
+              shownToastMessagesRef.current.delete(message.messageId);
+            }, 60000);
 
-          // Determine sender role for notification description
-          const isCurrentUserDoctor = user?.role === 'DOCTOR';
-          const notificationDescription = isCurrentUserDoctor
-            ? 'Tin nhắn mới từ Bệnh nhân'
-            : 'Tin nhắn mới từ Bác sĩ';
+            // Show toast notification with message content
+            const truncatedContent = message.content.length > 60
+              ? message.content.substring(0, 60) + '...'
+              : message.content;
 
-          toast.info(truncatedContent, {
-            description: notificationDescription,
-            duration: 5000,
-            action: {
-              label: 'Xem',
-              onClick: () => {
-                dispatch({ type: 'SET_ACTIVE_CONVERSATION', payload: message.groupId });
+            // Determine sender role for notification description
+            const isCurrentUserDoctor = user?.role === 'DOCTOR';
+            const notificationDescription = isCurrentUserDoctor
+              ? 'Tin nhắn mới từ Bệnh nhân'
+              : 'Tin nhắn mới từ Bác sĩ';
+
+            toast.info(truncatedContent, {
+              description: notificationDescription,
+              duration: 5000,
+              action: {
+                label: 'Xem',
+                onClick: () => {
+                  dispatch({ type: 'SET_ACTIVE_CONVERSATION', payload: message.groupId });
+                }
               }
-            }
-          });
-
-          // Unread count is now automatically handled in ADD_MESSAGE reducer
+            });
+          }
         }
         break;
 
       case 'group_created':
-        console.log('[WebSocket] group_created:', response.data);
         const newGroup = response.data;
 
         // Check if current user is a member of this new group
@@ -431,6 +386,11 @@ export function WebSocketChatProvider({ children }: WebSocketChatProviderProps) 
           // Reload conversations to show new group
           if (loadConversationsRef.current) {
             loadConversationsRef.current();
+          }
+
+          // Join group via WebSocket to receive real-time messages
+          if (webSocketChatService.isReady()) {
+            webSocketChatService.joinGroup(newGroup.groupId);
           }
 
           // Show notification only for doctors (patients don't need this notification)
@@ -456,40 +416,24 @@ export function WebSocketChatProvider({ children }: WebSocketChatProviderProps) 
         }
         break;
 
-      case 'join_group':
-        console.log('[WebSocket] join_group response:', response.data);
-        // Successfully joined group, can now receive messages for this group
-        break;
-
-      case 'messages':
-        // Response from get_messages action
-        console.log('[WebSocket] messages response:', response.data);
-        break;
-
-      case 'groups':
-        // Response from get_groups action
-        console.log('[WebSocket] groups response:', response.data);
-        break;
-
-      case 'error':
-        console.log('[WebSocket] error:', response.data);
-        break;
-
       case 'connection':
       case 'welcome':
       case 'hello':
-        console.log('[WebSocket] Handshake successful:', response.action);
         // Load conversations via REST API when connection is established
         if (user && loadConversationsRef.current) {
           loadConversationsRef.current();
         }
         break;
 
+      case 'join_group':
+      case 'messages':
+      case 'groups':
+      case 'error':
       default:
-        console.log('[WebSocket] Unhandled message:', response.action, response.data);
+        // Silent handling
         break;
     }
-  }, [state.unreadCounts, state.conversations, user]); // Removed state.activeConversationId - using ref instead
+  }, [state.unreadCounts, state.conversations, user]);
 
   // ============ Actions (Moved before Effects) ============
 
@@ -525,18 +469,15 @@ export function WebSocketChatProvider({ children }: WebSocketChatProviderProps) 
     try {
       dispatch({ type: 'SET_LOADING', payload: true });
 
-      // Use REST API instead of WebSocket
       const messages = await getGroupMessagesViaREST(groupId);
       dispatch({ type: 'SET_MESSAGES', payload: { groupId, messages } });
     } catch (error: any) {
-      console.error('Failed to load messages via REST API:', error);
+      console.error('Failed to load messages:', error);
 
       // For new groups with no messages, don't show error - just set empty messages
       if (error?.message?.includes('404') || error?.message?.includes('not found') || error?.message?.includes('No messages')) {
-        console.log('Group has no messages yet, setting empty array');
         dispatch({ type: 'SET_MESSAGES', payload: { groupId, messages: [] } });
       } else {
-        // Only set error for actual failures (network issues, server errors, etc)
         dispatch({ type: 'SET_ERROR', payload: 'Không thể tải tin nhắn' });
       }
     } finally {
@@ -546,26 +487,16 @@ export function WebSocketChatProvider({ children }: WebSocketChatProviderProps) 
 
   const sendChatMessage = useCallback(async (groupId: string, content: string) => {
     if (!user || !groupId || !content.trim()) {
-      console.log('[sendChatMessage] Invalid params:', { user: !!user, groupId, content: content?.length });
       return;
     }
 
     // Generate unique tempMessageId
     const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
 
-    console.log('[sendChatMessage] Sending message:', {
-      groupId,
-      senderId: user.userId,
-      content: content.trim().slice(0, 50),
-      tempId,
-      wsReady: webSocketChatService.isReady(),
-      connectionState: webSocketChatService.getStatus()
-    });
-
     try {
       // Always create optimistic message first for immediate UI feedback
       const optimisticMessage: Message = {
-        messageId: tempId,  // Use tempId as messageId
+        messageId: tempId,
         groupId,
         senderId: user.userId,
         content: content.trim(),
@@ -573,28 +504,23 @@ export function WebSocketChatProvider({ children }: WebSocketChatProviderProps) 
         createdAt: new Date().toISOString()
       };
 
-      console.log('[sendChatMessage] Adding optimistic message:', tempId);
       dispatch({ type: 'ADD_MESSAGE', payload: { ...optimisticMessage, currentUserId: user.userId } });
 
       // Try WebSocket first, fallback to REST
       if (webSocketChatService.isReady()) {
-        console.log('[sendChatMessage] Sending via WebSocket with tempId:', tempId);
         webSocketChatService.sendChatMessage({
           groupId,
           senderId: user.userId,
           content: content.trim(),
           messageType: 'TEXT',
-          tempMessageId: tempId  // Send tempId to backend
+          tempMessageId: tempId
         });
       } else {
-        // Fallback to REST API if WebSocket is not ready
-        console.log('[sendChatMessage] WebSocket not ready, using REST API fallback with tempId:', tempId);
         const message = await sendMessageViaREST(groupId, user.userId, content, 'TEXT', tempId);
-        console.log('[sendChatMessage] REST API response:', message);
         dispatch({ type: 'ADD_MESSAGE', payload: { ...message, currentUserId: user.userId } });
       }
     } catch (error) {
-      console.error('[sendChatMessage] Failed to send message:', error);
+      console.error('Failed to send message:', error);
       dispatch({ type: 'SET_ERROR', payload: 'Không thể gửi tin nhắn' });
       toast.error('Không thể gửi tin nhắn. Vui lòng thử lại.');
     }
@@ -623,16 +549,14 @@ export function WebSocketChatProvider({ children }: WebSocketChatProviderProps) 
       // Set active conversation to update UI immediately
       dispatch({ type: 'SET_ACTIVE_CONVERSATION', payload: actualGroup.groupId });
 
-      // Load messages for the group (handles both new group with empty messages and existing group with history)
+      // Load messages for the group
       let isExistingGroup = false;
       try {
         const messages = await getGroupMessagesViaREST(actualGroup.groupId);
-        isExistingGroup = messages.length > 0; // If has messages, it's an existing group
+        isExistingGroup = messages.length > 0;
         dispatch({ type: 'SET_MESSAGES', payload: { groupId: actualGroup.groupId, messages } });
       } catch (messageError: any) {
-        // For new groups with no messages, set empty array
-        console.log('[createNewConversation] No messages found, setting empty array');
-        isExistingGroup = false; // No messages = new group
+        isExistingGroup = false;
         dispatch({ type: 'SET_MESSAGES', payload: { groupId: actualGroup.groupId, messages: [] } });
       }
 
@@ -671,34 +595,23 @@ export function WebSocketChatProvider({ children }: WebSocketChatProviderProps) 
 
   const joinConversation = useCallback(async (groupId: string) => {
     try {
-      console.log(`[joinConversation] Starting join for group ${groupId}`);
-
       // Set active conversation first to update UI immediately
       setActiveConversation(groupId);
 
-      // ALWAYS load messages using REST API first (to ensure we have latest messages)
+      // Load messages using REST API
       try {
-        console.log(`[joinConversation] Loading messages for group ${groupId}`);
         const messages = await getGroupMessagesViaREST(groupId);
-        console.log(`[joinConversation] Loaded ${messages.length} messages from REST API`);
         dispatch({ type: 'SET_MESSAGES', payload: { groupId, messages } });
       } catch (messageError: any) {
-        console.log('[joinConversation] Could not load messages for group:', messageError?.message);
-        // Set empty messages for the group so UI can show empty state
         dispatch({ type: 'SET_MESSAGES', payload: { groupId, messages: [] } });
       }
 
-      // Join group via WebSocket for real-time updates (non-blocking)
+      // Join group via WebSocket for real-time updates
       if (webSocketChatService.isReady()) {
-        console.log(`[joinConversation] Joining group ${groupId} via WebSocket for real-time updates`);
         webSocketChatService.joinGroup(groupId);
-      } else {
-        console.log('[joinConversation] WebSocket not ready, will join later when connected');
       }
-
-      console.log(`[joinConversation] Completed join for group ${groupId}`);
     } catch (error) {
-      console.error('[joinConversation] Failed to join conversation:', error);
+      console.error('Failed to join conversation:', error);
       dispatch({ type: 'SET_ERROR', payload: 'Không thể tham gia cuộc trò chuyện' });
       toast.error('Không thể tham gia cuộc trò chuyện');
     }

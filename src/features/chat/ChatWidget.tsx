@@ -57,15 +57,12 @@ export function ChatWidget() {
   }
 
   const handleConversationSelect = async (conversationId: string) => {
-    console.log('[ChatWidget] Selecting conversation:', conversationId)
     try {
       setView('chat')
-      console.log('[ChatWidget] Joining conversation...')
       await joinConversation(conversationId)
-      console.log('[ChatWidget] Joined conversation successfully')
       markAsRead(conversationId)
     } catch (error) {
-      console.error('[ChatWidget] Failed to join conversation:', error)
+      console.error('Failed to join conversation:', error)
     }
   }
 

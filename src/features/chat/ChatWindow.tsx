@@ -31,7 +31,6 @@ export function ChatWindow({
   // Get messages for this conversation (reversed: newest first)
   const messages = useMemo(() => {
     const msgs = allMessages[conversation.id] || []
-    console.log('[ChatWindow] Messages:', msgs.length, 'messages for conversation:', conversation.id)
     return [...msgs].reverse()
   }, [allMessages, conversation.id])
 
