@@ -384,6 +384,9 @@ export function WebSocketChatProvider({ children }: WebSocketChatProviderProps) 
   // Ref to avoid circular dependency
   const loadConversationsRef = useRef<(() => Promise<void>) | null>(null);
 
+  // Ref to track activeConversationId in real-time (avoid stale closure)
+  const activeConversationIdRef = useRef<string | null>(null);
+
   // ============ WebSocket Message Handler ============
 
   const handleWebSocketMessage = useCallback((response: WebSocketResponse) => {
@@ -405,32 +408,36 @@ export function WebSocketChatProvider({ children }: WebSocketChatProviderProps) 
 
         // Check if message is from another user (not from current user)
         const isFromOtherUser = user && message.senderId !== user.userId;
-        const isNotActiveConversation = message.groupId !== state.activeConversationId;
-
-        // Only show notification for doctors (patients and admins don't get these notifications)
-        const isDoctor = user?.role === 'DOCTOR';
+        // Use ref to get real-time activeConversationId (avoid stale closure)
+        const isNotActiveConversation = message.groupId !== activeConversationIdRef.current;
 
         console.log('[WebSocket] Message context:', {
           isFromOtherUser,
           isNotActiveConversation,
-          isDoctor,
-          activeConversationId: state.activeConversationId
+          currentUserRole: user?.role,
+          activeConversationId: activeConversationIdRef.current
         });
 
-        // Show notification only if:
+        // Show notification if:
         // 1. Message from other user (not self)
         // 2. Not in active conversation (not currently viewing)
-        // 3. Current user is DOCTOR (only doctors get patient message notifications)
-        if (isFromOtherUser && isNotActiveConversation && isDoctor) {
-          console.log('[WebSocket] Showing notification for message from patient');
+        // Both doctors and patients should receive toast notifications
+        if (isFromOtherUser && isNotActiveConversation) {
+          console.log('[WebSocket] Showing notification for new message');
 
           // Show toast notification with message content
           const truncatedContent = message.content.length > 60
             ? message.content.substring(0, 60) + '...'
             : message.content;
 
+          // Determine sender role for notification description
+          const isCurrentUserDoctor = user?.role === 'DOCTOR';
+          const notificationDescription = isCurrentUserDoctor
+            ? 'Tin nhắn mới từ Bệnh nhân'
+            : 'Tin nhắn mới từ Bác sĩ';
+
           toast.info(truncatedContent, {
-            description: 'Tin nhắn mới từ Bệnh nhân',
+            description: notificationDescription,
             duration: 5000,
             action: {
               label: 'Xem',
@@ -513,7 +520,7 @@ export function WebSocketChatProvider({ children }: WebSocketChatProviderProps) 
         console.log('[WebSocket] Unhandled message:', response.action, response.data);
         break;
     }
-  }, [state.activeConversationId, state.unreadCounts, state.conversations, user]);
+  }, [state.unreadCounts, state.conversations, user]); // Removed state.activeConversationId - using ref instead
 
   // ============ Actions (Moved before Effects) ============
 
@@ -749,6 +756,11 @@ export function WebSocketChatProvider({ children }: WebSocketChatProviderProps) 
   useEffect(() => {
     loadConversationsRef.current = loadConversations;
   }, [loadConversations]);
+
+  // Sync activeConversationId with ref for real-time access in callbacks
+  useEffect(() => {
+    activeConversationIdRef.current = state.activeConversationId;
+  }, [state.activeConversationId]);
 
   // ============ Effects ============
 
