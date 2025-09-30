@@ -215,7 +215,7 @@ export function AppointmentsPage() {
       // Tạo group chat với tên tự động
       const groupName = generateGroupName();
 
-      const groupId = await createNewConversation(
+      const { groupId, isExistingGroup } = await createNewConversation(
         members,
         appointment.id, // appointmentId để liên kết
         groupName // tên group tự động
@@ -224,16 +224,22 @@ export function AppointmentsPage() {
       // Dismiss loading toast first
       toast.dismiss(`creating-chat-${appointment.id}`);
 
-      // Set active conversation và mở chat widget
-      setActiveConversation(groupId);
+      // No need to call setActiveConversation here - it's already handled in createNewConversation
 
-      toast.success('Tạo cuộc trò chuyện thành công!', {
-        description: 'Bạn có thể bắt đầu nhắn tin với bác sĩ ngay',
-        duration: 3000,
-      });
+      // Show appropriate toast message based on whether group already exists
+      if (isExistingGroup) {
+        toast.success('Đã mở cuộc trò chuyện', {
+          description: 'Tiếp tục trò chuyện với bác sĩ',
+          duration: 3000,
+        });
+      } else {
+        toast.success('Tạo cuộc trò chuyện thành công!', {
+          description: 'Bạn có thể bắt đầu nhắn tin với bác sĩ ngay',
+          duration: 3000,
+        });
+      }
 
-      // Trigger mở ChatWidget (sẽ được implement sau)
-      // ChatWidget sẽ tự động mở khi có activeConversation
+      // ChatWidget will automatically open when activeConversation is set
 
     } catch (error) {
       console.error('Failed to create chat:', error);

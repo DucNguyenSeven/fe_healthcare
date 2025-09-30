@@ -317,7 +317,7 @@ interface WebSocketChatContextType extends WebSocketChatState {
   loadConversations: () => Promise<void>;
   loadMessages: (groupId: string) => Promise<void>;
   sendChatMessage: (groupId: string, content: string) => Promise<void>;
-  createNewConversation: (members: ChatMember[], appointmentId?: string, customGroupName?: string) => Promise<string>;
+  createNewConversation: (members: ChatMember[], appointmentId?: string, customGroupName?: string) => Promise<{ groupId: string; isExistingGroup: boolean }>;
   setActiveConversation: (conversationId: string | null) => void;
   markAsRead: (groupId: string) => void;
   joinConversation: (groupId: string) => Promise<void>;
@@ -557,7 +557,7 @@ export function WebSocketChatProvider({ children }: WebSocketChatProviderProps) 
     members: ChatMember[],
     appointmentId?: string,
     customGroupName?: string
-  ): Promise<string> => {
+  ): Promise<{ groupId: string; isExistingGroup: boolean }> => {
     if (!user?.userId) {
       throw new Error('User not found');
     }
@@ -565,7 +565,7 @@ export function WebSocketChatProvider({ children }: WebSocketChatProviderProps) 
     try {
       dispatch({ type: 'SET_LOADING', payload: true });
 
-      // Use REST API creation
+      // Use REST API creation (backend will return new group or existing group if duplicate)
       const actualGroup = await createGroup(members, appointmentId, customGroupName);
 
       // Refresh all conversations to get the actual one
@@ -573,7 +573,31 @@ export function WebSocketChatProvider({ children }: WebSocketChatProviderProps) 
         await loadConversations();
       }
 
-      return actualGroup.groupId;
+      // Set active conversation to update UI immediately
+      dispatch({ type: 'SET_ACTIVE_CONVERSATION', payload: actualGroup.groupId });
+
+      // Load messages for the group (handles both new group with empty messages and existing group with history)
+      let isExistingGroup = false;
+      try {
+        const messages = await getGroupMessagesViaREST(actualGroup.groupId);
+        isExistingGroup = messages.length > 0; // If has messages, it's an existing group
+        dispatch({ type: 'SET_MESSAGES', payload: { groupId: actualGroup.groupId, messages } });
+      } catch (messageError: any) {
+        // For new groups with no messages, set empty array
+        console.log('[createNewConversation] No messages found, setting empty array');
+        isExistingGroup = false; // No messages = new group
+        dispatch({ type: 'SET_MESSAGES', payload: { groupId: actualGroup.groupId, messages: [] } });
+      }
+
+      // Join group via WebSocket for real-time updates (non-blocking)
+      if (webSocketChatService.isReady()) {
+        webSocketChatService.joinGroup(actualGroup.groupId);
+      }
+
+      // Mark as read
+      dispatch({ type: 'UPDATE_UNREAD_COUNT', payload: { groupId: actualGroup.groupId, count: 0 } });
+
+      return { groupId: actualGroup.groupId, isExistingGroup };
     } catch (error) {
       console.error('Failed to create conversation:', error);
 
