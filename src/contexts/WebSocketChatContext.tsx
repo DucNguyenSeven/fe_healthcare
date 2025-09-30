@@ -183,39 +183,8 @@ function webSocketChatReducer(state: WebSocketChatState, action: WebSocketChatAc
       // Check if message already exists to avoid duplicates (by messageId)
       const messageExists = existingMessages.some(m => m.id === message.id);
       if (messageExists) {
-        console.log('[Reducer] Message already exists, checking if notification needed:', message.id);
-
-        // Check if this is from another user and should show notification
-        const isFromOtherUser = currentUserId && message.senderId !== currentUserId;
-        const isNotActiveConversation = action.payload.groupId !== state.activeConversationId;
-
-        if (isFromOtherUser && isNotActiveConversation) {
-          // Message exists but user hasn't seen it yet - update unread count
-          const currentCount = state.unreadCounts[action.payload.groupId] || 0;
-
-          console.log('[Reducer] Message from other user, updating unread count:', currentCount, '→', currentCount + 1);
-
-          return {
-            ...state,
-            unreadCounts: {
-              ...state.unreadCounts,
-              [action.payload.groupId]: currentCount + 1
-            },
-            conversations: state.conversations.map(conv =>
-              conv.id === action.payload.groupId
-                ? {
-                    ...conv,
-                    lastMessage: message,
-                    updatedAt: message.timestamp,
-                    unreadCount: (conv.unreadCount || 0) + 1
-                  }
-                : conv
-            )
-          };
-        }
-
-        // Message exists and no need to notify - just return state
-        console.log('[Reducer] Message from self or already in active conversation, skipping');
+        console.log('[Reducer] Message already exists, skipping to avoid duplicate:', message.id);
+        // Message already processed, no need to update unread count again
         return state;
       }
 
