@@ -266,6 +266,21 @@ export async function connect(): Promise<void> {
 }
 
 /**
+ * Authenticate user with WebSocket server
+ * Must be called after connection is established
+ */
+export function authenticate(userId: string): void {
+  webSocketChatService.authenticate(userId);
+}
+
+/**
+ * Check if user is authenticated
+ */
+export function isAuthenticated(): boolean {
+  return webSocketChatService.isUserAuthenticated();
+}
+
+/**
  * Disconnect from WebSocket
  */
 export function disconnect(): void {

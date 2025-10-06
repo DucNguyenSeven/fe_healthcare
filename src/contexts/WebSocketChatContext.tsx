@@ -327,6 +327,18 @@ export function WebSocketChatProvider({ children }: WebSocketChatProviderProps) 
 
   const handleWebSocketMessage = useCallback((response: WebSocketResponse) => {
     switch (response.action) {
+      case 'authenticate':
+      case 'authenticated':
+        // Authentication successful, now we can load conversations
+        if (response.status === 'success' || response.status === 'ok') {
+          console.log('✅ WebSocket authenticated successfully');
+          // Load conversations after successful authentication
+          if (user && loadConversationsRef.current) {
+            loadConversationsRef.current();
+          }
+        }
+        break;
+
       case 'message_received':
         const message = response.data;
         dispatch({ type: 'ADD_MESSAGE', payload: { ...message, currentUserId: user?.userId } });
@@ -419,9 +431,10 @@ export function WebSocketChatProvider({ children }: WebSocketChatProviderProps) 
       case 'connection':
       case 'welcome':
       case 'hello':
-        // Load conversations via REST API when connection is established
-        if (user && loadConversationsRef.current) {
-          loadConversationsRef.current();
+        // After welcome, send authenticate request
+        if (user?.userId) {
+          console.log('📡 Received welcome, sending authenticate request...');
+          webSocketChatService.authenticate(user.userId);
         }
         break;
 
@@ -695,13 +708,8 @@ export function WebSocketChatProvider({ children }: WebSocketChatProviderProps) 
     };
   }, [isAuthenticated, user?.userId]); // Only depend on userId to prevent unnecessary re-connections
 
-  // Auto-load conversations when user is authenticated
-  useEffect(() => {
-    if (!isAuthenticated || !user?.userId) return;
-
-    // Load conversations once when user is authenticated
-    loadConversations();
-  }, [isAuthenticated, user?.userId, loadConversations]);
+  // Auto-load conversations removed - now triggered by authenticate response
+  // See handleWebSocketMessage case 'authenticate' for the new flow
 
   // Monitor connection status with reduced frequency
   useEffect(() => {

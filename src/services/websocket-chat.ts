@@ -56,11 +56,13 @@ class WebSocketChatService {
   private maxReconnectAttempts = 5;
   private reconnectDelay = 2000;
   private isConnecting = false;
-  private connectionState: 'disconnected' | 'connecting' | 'handshaking' | 'ready' = 'disconnected';
+  private connectionState: 'disconnected' | 'connecting' | 'handshaking' | 'authenticating' | 'ready' = 'disconnected';
   private connectionStabilizationDelay = 300;
   private pingInterval: NodeJS.Timeout | null = null;
   private connectionLock = false;
   private connectionPromise: Promise<void> | null = null;
+  private isAuthenticated = false;
+  private currentUserId: string | null = null;
 
   private readonly wsUrl: string;
 
@@ -132,6 +134,8 @@ class WebSocketChatService {
     this.connectionState = 'disconnected';
     this.connectionLock = false;
     this.connectionPromise = null;
+    this.isAuthenticated = false;
+    this.currentUserId = null;
   }
 
   /**
@@ -161,10 +165,10 @@ class WebSocketChatService {
   }
 
   /**
-   * Check if WebSocket is ready for normal operations (after handshake)
+   * Check if WebSocket is ready for normal operations (after authentication)
    */
   isReady(): boolean {
-    return this.isConnected() && this.connectionState === 'ready';
+    return this.isConnected() && this.connectionState === 'ready' && this.isAuthenticated;
   }
 
   /**
@@ -266,14 +270,26 @@ class WebSocketChatService {
    * Handle incoming WebSocket messages
    */
   private handleIncomingMessage(response: WebSocketResponse): void {
-    // Backend sends 'connection' action on successful connection
+    // Backend sends 'connection' action on successful connection - wait for authenticate
     if ((response.action === 'welcome' || response.action === 'hello' || response.action === 'connection') && this.connectionState === 'handshaking') {
-      this.connectionState = 'ready';
-      console.log('WebSocket handshake complete, connection is ready');
+      console.log('WebSocket handshake complete, waiting for authentication');
+      // DO NOT set to 'ready' yet - wait for authenticate to be called by context
+    }
 
-      setTimeout(() => {
-        this.flushMessageQueue();
-      }, 50);
+    // Handle authenticate response
+    if (response.action === 'authenticate' || response.action === 'authenticated') {
+      if (response.status === 'success' || response.status === 'ok') {
+        this.isAuthenticated = true;
+        this.connectionState = 'ready';
+        console.log('WebSocket authenticated, connection is ready');
+
+        setTimeout(() => {
+          this.flushMessageQueue();
+        }, 50);
+      } else {
+        console.error('WebSocket authentication failed:', response);
+        this.isAuthenticated = false;
+      }
     }
 
     if (response.action === 'pong') {
@@ -366,6 +382,24 @@ class WebSocketChatService {
   // =============== Chat API Methods ===============
 
   /**
+   * Authenticate user with WebSocket server
+   * Must be called after receiving welcome message
+   */
+  authenticate(userId: string): void {
+    console.log('Sending authenticate request for userId:', userId);
+    this.currentUserId = userId;
+    this.connectionState = 'authenticating';
+    this.sendMessage('authenticate', { userId });
+  }
+
+  /**
+   * Check if user is authenticated
+   */
+  isUserAuthenticated(): boolean {
+    return this.isAuthenticated;
+  }
+
+  /**
    * Create a new group chat
    */
   createGroup(data: CreateGroupData): void {
@@ -427,7 +461,8 @@ class WebSocketChatService {
   getStatus(): 'connecting' | 'connected' | 'disconnected' | 'error' {
     if (this.connectionState === 'connecting' || this.isConnecting) return 'connecting';
     if (this.connectionState === 'handshaking') return 'connecting';
-    if (this.connectionState === 'ready') return 'connected';
+    if (this.connectionState === 'authenticating') return 'connecting';
+    if (this.connectionState === 'ready' && this.isAuthenticated) return 'connected';
     if (this.reconnectAttempts > 0 && this.reconnectAttempts < this.maxReconnectAttempts) return 'connecting';
     if (this.reconnectAttempts >= this.maxReconnectAttempts) return 'error';
     return 'disconnected';
