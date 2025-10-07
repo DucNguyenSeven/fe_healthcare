@@ -2,14 +2,16 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { User as UserIcon, Phone, Mail, MapPin, Calendar, Heart, AlertTriangle, Upload, FileText, Download, Trash2, Edit3, Save, X, Plus, Clock, Shield, Camera, Check, Activity } from 'lucide-react';
+import { User as UserIcon, Phone, Mail, MapPin, Calendar, Heart, AlertTriangle, Upload, FileText, Download, Trash2, Edit3, Save, X, Plus, Clock, Shield, Camera, Check, Activity, Pill, CalendarCheck, ClipboardList } from 'lucide-react';
 import { useGetMe } from '@/hooks/auth/useGetMe';
 import { useCreateHealthMetricPanel } from '@/hooks/health-metrics/useCreatePanel';
 import { usePatientHealthPanels } from '@/hooks/health-metrics/usePatientPanels';
 import { useUpdateUser } from '@/hooks/auth/useUpdateUser';
 import { useUpdateAvatar } from '@/hooks/auth/useUpdateAvatar';
+import { useGetMedicalRecords } from '@/hooks/medical-records';
 import type { GetMeResponse } from '@/types/auth';
 import type { UpdateUserRequest } from '@/lib/api/types';
+import type { MedicalRecordWithPrescriptions } from '@/types/medical-record';
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
 interface ProfileRecordsPageProps {}
 interface MedicalFile {
@@ -77,6 +79,17 @@ export function ProfileRecordsPage(_props: ProfileRecordsPageProps = {}) {
   const [showAvatarErrorNotification, setShowAvatarErrorNotification] = useState(false);
   const [dateError, setDateError] = useState<string>('');
   const { createPanel, isLoading: isCreatingPanel, error: createPanelError } = useCreateHealthMetricPanel();
+
+  // Medical Records - Use API hook instead of mock data
+  const {
+    records: medicalRecords,
+    loading: medicalRecordsLoading,
+    error: medicalRecordsError,
+    refetch: refetchMedicalRecords
+  } = useGetMedicalRecords(user?.userId);
+
+  const [selectedRecord, setSelectedRecord] = useState<MedicalRecordWithPrescriptions | null>(null);
+  const [showRecordDetailModal, setShowRecordDetailModal] = useState(false);
 
   // New test result form data
   const [newTestData, setNewTestData] = useState<NewTestResult>({
@@ -235,8 +248,8 @@ export function ProfileRecordsPage(_props: ProfileRecordsPageProps = {}) {
     icon: Activity
   }, {
     id: 'medical',
-    label: 'Tiền sử & dị ứng',
-    icon: Heart
+    label: 'Hồ sơ khám',
+    icon: FileText
   }, {
     id: 'files',
     label: 'Tệp y khoa',
@@ -907,129 +920,183 @@ export function ProfileRecordsPage(_props: ProfileRecordsPageProps = {}) {
         </div>
       </div>
     </div>;
-  const renderMedicalHistory = () => <div className="space-y-6">
-      <div className="flex items-center justify-between" style={{ display: "none" }}>
-        <h2 className="text-2xl font-semibold text-gray-900">Tiền sử bệnh & Dị ứng</h2>
-      </div>
+  const renderMedicalHistory = () => {
+    const handleViewDetail = (record: MedicalRecordWithPrescriptions) => {
+      setSelectedRecord(record);
+      setShowRecordDetailModal(true);
+    };
 
-      {/* Current Medications */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6" style={{ display: "none" }}>
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-gray-900 flex items-center">
-            <Clock className="w-5 h-5 mr-2 text-blue-500" />
-            Đang dùng thuốc
-          </h3>
-          <button className="text-blue-600 hover:text-blue-700 text-sm font-medium flex items-center">
-            <Plus className="w-4 h-4 mr-1" />
-            Thêm thuốc mới
-          </button>
-        </div>
-        
-        <div className="space-y-3">
-          <div className="flex items-center justify-between p-4 bg-blue-50 rounded-xl border border-blue-200">
-            <div className="flex items-center space-x-3">
-              <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-              <div>
-                <p className="font-medium text-gray-900">Penicillin</p>
-                <p className="text-sm text-gray-600">Sử dụng từ ngày 15/6/2023</p>
-              </div>
+    return (
+      <div className="space-y-6">
+        {/* Medical Records List */}
+        <div className="bg-white rounded-2xl shadow-[0_10px_24px_rgba(16,24,40,0.08)] p-8">
+
+          {/* Loading State */}
+          {medicalRecordsLoading && (
+            <div className="text-center py-12">
+              <div className="w-8 h-8 border-4 border-[#1E75FF] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+              <p className="text-gray-600">Đang tải hồ sơ khám...</p>
             </div>
-            <div className="flex items-center space-x-2">
-              <span className="px-3 py-1 bg-red-100 text-red-800 text-xs rounded-full font-medium">
-                Dị ứng
-              </span>
-              <button className="text-gray-400 hover:text-gray-600">
-                <X className="w-4 h-4" />
+          )}
+
+          {/* Error State */}
+          {medicalRecordsError && !medicalRecordsLoading && (
+            <div className="text-center py-12">
+              <AlertTriangle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+              <p className="text-red-600 mb-4">{medicalRecordsError}</p>
+              <button
+                onClick={() => refetchMedicalRecords()}
+                className="px-4 py-2 bg-[#1E75FF] text-white rounded-xl hover:bg-[#1659C9] transition-colors"
+              >
+                Thử lại
               </button>
             </div>
-          </div>
+          )}
 
-          <div className="flex items-center justify-between p-4 bg-orange-50 rounded-xl border border-orange-200">
-            <div className="flex items-center space-x-3">
-              <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
+          {/* Empty State */}
+          {!medicalRecordsLoading && !medicalRecordsError && medicalRecords.length === 0 && (
+            <div className="text-center py-12">
+              <ClipboardList className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+              <p className="text-gray-500">Chưa có hồ sơ khám bệnh nào</p>
+            </div>
+          )}
+
+          {/* Records List */}
+          {!medicalRecordsLoading && !medicalRecordsError && medicalRecords.length > 0 && (
+            <div className="space-y-4">
+              {medicalRecords.map((record, index) => (
+                <div
+                  key={record.recordId}
+                  className="border border-gray-200 rounded-2xl p-6 hover:shadow-md transition-shadow"
+                >
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex items-start gap-4">
+                      <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                        <span className="text-sm font-medium text-blue-600">{index + 1}</span>
+                      </div>
+                      <div>
+                        <h4 className="font-semibold text-[#0F172A] text-lg mb-2">
+                          Cuộc khám ngày {formatDate(record.createdAt)}
+                        </h4>
+                        <div className="grid grid-cols-2 gap-4 mb-3">
+                          <div className="flex items-center gap-2 text-sm text-gray-600">
+                            <UserIcon className="w-4 h-4" />
+                            <span>BS. {record.doctorName}</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-sm text-gray-600">
+                            <Activity className="w-4 h-4" />
+                            <span>{record.serviceName}</span>
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <div className="flex items-start gap-2">
+                            <ClipboardList className="w-4 h-4 text-gray-500 mt-0.5" />
+                            <div>
+                              <span className="text-sm font-medium text-gray-700">Chẩn đoán: </span>
+                              <span className="text-sm text-gray-600">{record.diagnosis}</span>
+                            </div>
+                          </div>
+                          <div className="flex items-start gap-2">
+                            <AlertTriangle className="w-4 h-4 text-gray-500 mt-0.5" />
+                            <div>
+                              <span className="text-sm font-medium text-gray-700">Triệu chứng: </span>
+                              <span className="text-sm text-gray-600">
+                                {record.symptoms && record.symptoms.length > 100
+                                  ? `${record.symptoms.substring(0, 100)}...`
+                                  : record.symptoms || 'Không có thông tin'}
+                              </span>
+                            </div>
+                          </div>
+                          {record.followUpDate && (
+                            <div className="flex items-center gap-2">
+                              <CalendarCheck className="w-4 h-4 text-orange-500" />
+                              <span className="text-sm font-medium text-orange-600">
+                                Tái khám: {formatDate(record.followUpDate)}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => handleViewDetail(record)}
+                      className="px-4 py-2 bg-[#1E75FF] text-white rounded-xl hover:bg-[#1659C9] transition-colors text-sm font-medium flex items-center gap-2"
+                    >
+                      <FileText className="w-4 h-4" />
+                      Xem chi tiết
+                    </button>
+                  </div>
+
+                  {/* Prescriptions Summary */}
+                  {record.prescriptions.length > 0 && (
+                    <div className="mt-4 pt-4 border-t border-gray-200">
+                      <div className="flex items-center gap-2 mb-3">
+                        <Pill className="w-4 h-4 text-blue-600" />
+                        <h5 className="font-medium text-gray-900">
+                          Đơn thuốc ({record.prescriptions.length} loại)
+                        </h5>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {record.prescriptions.slice(0, 4).map((prescription) => {
+                          const frequencies = parseFrequency(prescription.frequency);
+                          return (
+                            <div
+                              key={prescription.prescriptionId}
+                              className="bg-blue-50 p-3 rounded-xl"
+                            >
+                              <div className="flex items-start justify-between">
+                                <div>
+                                  <p className="font-medium text-gray-900 text-sm">
+                                    {prescription.medicalName}
+                                  </p>
+                                  <p className="text-xs text-gray-600 mt-1">
+                                    Liều: {prescription.dosage}
+                                  </p>
+                                  <div className="flex items-center gap-1 mt-1">
+                                    {frequencies.map((freq, idx) => (
+                                      <span
+                                        key={idx}
+                                        className="px-2 py-0.5 bg-white rounded-full text-xs text-gray-700"
+                                      >
+                                        {frequencyMap[freq] || freq}
+                                      </span>
+                                    ))}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      {record.prescriptions.length > 4 && (
+                        <p className="text-sm text-blue-600 mt-2">
+                          +{record.prescriptions.length - 4} thuốc khác
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Info Notice */}
+          <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-xl">
+            <div className="flex items-start space-x-3">
+              <Shield className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
               <div>
-                <p className="font-medium text-gray-900">Aspirin</p>
-                <p className="text-sm text-gray-600">Sử dụng từ ngày 20/7/2023</p>
+                <h4 className="font-medium text-blue-900 mb-1">Lưu ý quan trọng</h4>
+                <p className="text-sm text-blue-700">
+                  Hồ sơ khám bệnh được lưu trữ an toàn và chỉ bạn cùng bác sĩ điều trị có quyền truy cập.
+                  Vui lòng tuân thủ đơn thuốc và lịch tái khám của bác sĩ.
+                </p>
               </div>
-            </div>
-            <div className="flex items-center space-x-2">
-              <span className="px-3 py-1 bg-orange-100 text-orange-800 text-xs rounded-full font-medium">
-                Cảnh báo
-              </span>
-              <button className="text-gray-400 hover:text-gray-600">
-                <X className="w-4 h-4" />
-              </button>
             </div>
           </div>
         </div>
       </div>
-
-      {/* Medical History */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-        <div className="flex items-center justify-between mb-6">
-          <h3 className="text-lg font-semibold text-gray-900 flex items-center">
-            <FileText className="w-5 h-5 mr-2 text-blue-500" />
-            Tiền sử bệnh án
-          </h3>
-          <button className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors">
-            <Plus className="w-4 h-4" />
-            <span>Thêm mới</span>
-          </button>
-        </div>
-        
-        <div className="space-y-4">
-          {medicalHistory.map((history, index) => <div key={history.id} className="flex items-start space-x-4 p-4 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors">
-              <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                <span className="text-sm font-medium text-blue-600">{index + 1}</span>
-              </div>
-              <div className="flex-1 min-w-0">
-                <h4 className="font-semibold text-gray-900 mb-1">
-                  {history.condition}
-                </h4>
-                <p className="text-sm text-gray-600 mb-2">
-                  Chẩn đoán: {new Date(history.diagnosedDate).toLocaleDateString('vi-VN')}
-                </p>
-                {history.notes && <p className="text-sm text-gray-600 mb-3">
-                    {history.notes}
-                  </p>}
-                <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(history.status)}`}>
-                  {history.status === 'active' ? 'Đang điều trị' : history.status === 'chronic' ? 'Mạn tính' : 'Đã khỏi'}
-                </span>
-              </div>
-            </div>)}
-        </div>
-      </div>
-
-      {/* Allergies */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6" style={{ display: "none" }}>
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-gray-900">Dị ứng</h3>
-          <button className="flex items-center space-x-2 px-4 py-2 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-colors">
-            <Plus className="w-4 h-4" />
-            <span>Thêm dị ứng</span>
-          </button>
-        </div>
-        
-        <div className="space-y-4">
-          {allergies.map((allergy, index) => <div key={allergy.id} className="flex items-center space-x-4 p-4 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors">
-              <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                <span className="text-sm font-medium text-blue-600">{index + 1}</span>
-              </div>
-              <div className="flex-1">
-                <h4 className="font-semibold text-gray-900">
-                  {allergy.allergen}
-                </h4>
-                <p className="text-sm text-gray-600 mt-1">
-                  {allergy.reaction}
-                </p>
-                <span className={`inline-block mt-2 px-2 py-1 rounded-full text-xs font-medium ${getSeverityColor(allergy.severity)}`}>
-                  {allergy.severity === 'mild' ? 'Nhẹ' : allergy.severity === 'moderate' ? 'Trung bình' : 'Nặng'}
-                </span>
-              </div>
-            </div>)}
-        </div>
-      </div>
-    </div>;
+    );
+  };
   const renderMedicalFiles = () => <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-semibold text-gray-900">Tệp y khoa</h2>
@@ -1286,7 +1353,226 @@ export function ProfileRecordsPage(_props: ProfileRecordsPageProps = {}) {
     );
   }
 
+  // Helper functions for medical records
+  const parseFrequency = (freq: string[] | string): string[] => {
+    try {
+      if (Array.isArray(freq)) {
+        return freq;
+      }
+      const cleaned = freq.replace(/[{}]/g, '');
+      return cleaned.split(',').map(f => f.trim());
+    } catch {
+      return [];
+    }
+  };
+
+  const formatDate = (dateString: string | null | undefined): string => {
+    if (!dateString) return '--';
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('vi-VN');
+    } catch {
+      return '--';
+    }
+  };
+
+  const frequencyMap: Record<string, string> = {
+    'MORNING': 'Sáng',
+    'AFTERNOON': 'Trưa',
+    'EVENING': 'Tối'
+  };
+
   return <div className="p-6 max-w-7xl mx-auto">
+      {/* Medical Record Detail Modal */}
+      <AnimatePresence>
+        {showRecordDetailModal && selectedRecord && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/60 flex items-center justify-center z-[9999] p-4"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) {
+                setShowRecordDetailModal(false);
+                setSelectedRecord(null);
+              }
+            }}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden relative z-[10000]"
+            >
+              {/* Appointment Info Header - Full width with rounded top corners */}
+              <div className="bg-gradient-to-r from-[#1E75FF] to-[#1659C9] p-6 text-white relative">
+                {/* Close button */}
+                <button
+                  onClick={() => {
+                    setShowRecordDetailModal(false);
+                    setSelectedRecord(null);
+                  }}
+                  className="absolute top-4 right-4 p-2 hover:bg-white/20 rounded-xl transition-colors"
+                >
+                  <X size={20} className="text-white" />
+                </button>
+
+                {/* Title */}
+                <h2 className="text-2xl font-semibold mb-6 pr-12">
+                  Chi tiết hồ sơ khám - {formatDate(selectedRecord.createdAt)}
+                </h2>
+
+                {/* Appointment Details */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-white/80 text-sm mb-1">Bác sĩ</p>
+                    <p className="font-medium">BS. {selectedRecord.doctorName}</p>
+                  </div>
+                  <div>
+                    <p className="text-white/80 text-sm mb-1">Dịch vụ</p>
+                    <p className="font-medium">{selectedRecord.serviceName}</p>
+                  </div>
+                  <div>
+                    <p className="text-white/80 text-sm mb-1">Ngày khám</p>
+                    <p className="font-medium">{formatDate(selectedRecord.createdAt)}</p>
+                  </div>
+                  {selectedRecord.followUpDate && (
+                    <div>
+                      <p className="text-white/80 text-sm mb-1">Ngày tái khám</p>
+                      <p className="font-medium">{formatDate(selectedRecord.followUpDate)}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Scrollable Content Area */}
+              <div className="p-8 overflow-y-auto max-h-[calc(90vh-280px)]">
+                {/* Medical Details */}
+                <div className="space-y-6">
+                {/* Diagnosis */}
+                <div className="bg-gray-50 p-6 rounded-2xl">
+                  <h4 className="font-semibold text-[#0F172A] mb-3 flex items-center gap-2">
+                    <ClipboardList className="w-5 h-5 text-blue-600" />
+                    Chẩn đoán
+                  </h4>
+                  <p className="text-gray-700">{selectedRecord.diagnosis}</p>
+                </div>
+
+                {/* Symptoms */}
+                <div className="bg-gray-50 p-6 rounded-2xl">
+                  <h4 className="font-semibold text-[#0F172A] mb-3 flex items-center gap-2">
+                    <AlertTriangle className="w-5 h-5 text-orange-600" />
+                    Triệu chứng
+                  </h4>
+                  <p className="text-gray-700 whitespace-pre-line">{selectedRecord.symptoms}</p>
+                </div>
+
+                {/* Treatment */}
+                <div className="bg-gray-50 p-6 rounded-2xl">
+                  <h4 className="font-semibold text-[#0F172A] mb-3 flex items-center gap-2">
+                    <Activity className="w-5 h-5 text-green-600" />
+                    Điều trị
+                  </h4>
+                  <p className="text-gray-700">{selectedRecord.treatment}</p>
+                </div>
+
+                {/* Doctor Notes */}
+                {selectedRecord.doctorNote && (
+                  <div className="bg-amber-50 border border-amber-200 p-6 rounded-2xl">
+                    <h4 className="font-semibold text-[#0F172A] mb-3 flex items-center gap-2">
+                      <FileText className="w-5 h-5 text-amber-600" />
+                      Ghi chú của bác sĩ
+                    </h4>
+                    <p className="text-gray-700">{selectedRecord.doctorNote}</p>
+                  </div>
+                )}
+
+                {/* Prescriptions */}
+                {selectedRecord.prescriptions.length > 0 && (
+                  <div className="bg-blue-50 p-6 rounded-2xl">
+                    <h4 className="font-semibold text-[#0F172A] mb-4 flex items-center gap-2">
+                      <Pill className="w-5 h-5 text-blue-600" />
+                      Đơn thuốc ({selectedRecord.prescriptions.length} loại thuốc)
+                    </h4>
+                    <div className="space-y-3">
+                      {selectedRecord.prescriptions.map((prescription, index) => {
+                        const frequencies = parseFrequency(prescription.frequency);
+                        return (
+                          <div
+                            key={prescription.prescriptionId}
+                            className="bg-white p-4 rounded-xl border border-blue-200"
+                          >
+                            <div className="flex items-start justify-between mb-3">
+                              <div className="flex items-start gap-3">
+                                <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                  <span className="text-sm font-medium text-blue-600">
+                                    {index + 1}
+                                  </span>
+                                </div>
+                                <div>
+                                  <h5 className="font-semibold text-gray-900 mb-1">
+                                    {prescription.medicalName}
+                                  </h5>
+                                  <p className="text-sm text-gray-600">
+                                    Liều lượng: <span className="font-medium">{prescription.dosage}</span>
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4 text-sm">
+                              <div>
+                                <p className="text-gray-600 mb-1">Tần suất:</p>
+                                <div className="flex flex-wrap gap-1">
+                                  {frequencies.map((freq, idx) => (
+                                    <span
+                                      key={idx}
+                                      className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full font-medium"
+                                    >
+                                      {frequencyMap[freq] || freq}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                              <div>
+                                <p className="text-gray-600 mb-1">Thời gian:</p>
+                                <p className="font-medium text-gray-900">
+                                  {formatDate(prescription.startDate)} - {formatDate(prescription.endDate)}
+                                </p>
+                              </div>
+                            </div>
+                            {prescription.notes && (
+                              <div className="mt-3 pt-3 border-t border-gray-200">
+                                <p className="text-sm text-gray-600">
+                                  <span className="font-medium">Ghi chú:</span> {prescription.notes}
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+                </div>
+
+                {/* Close Button */}
+                <div className="mt-6 flex justify-end">
+                  <button
+                    onClick={() => {
+                      setShowRecordDetailModal(false);
+                      setSelectedRecord(null);
+                    }}
+                    className="px-6 py-3 bg-gray-200 text-gray-700 rounded-2xl hover:bg-gray-300 transition-colors font-medium"
+                  >
+                    Đóng
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Success Notification */}
       <AnimatePresence>
         {showSuccessNotification && <motion.div initial={{

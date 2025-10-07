@@ -1,1 +1,5 @@
-export { useCreateMedicalRecord } from './useMedicalRecords';
+export {
+  useCreateMedicalRecord,
+  useGetMedicalRecords,
+  useGetMedicalRecordDetail
+} from './useMedicalRecords';
