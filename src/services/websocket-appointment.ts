@@ -56,10 +56,40 @@ class WebSocketAppointmentService {
    */
   private setupMessageHandler(): void {
     webSocketChatService.addMessageHandler((response: WebSocketResponse) => {
-      // Only process schedule_appointment_response actions
+      // Debug: log every incoming WS message to help diagnose action/type mismatches
+      try {
+        // Safe shallow preview (avoid logging huge payloads)
+        // eslint-disable-next-line no-console
+        console.log('[AppointmentSocket] Incoming WS message preview:', {
+          action: (response as any)?.action,
+          status: (response as any)?.status,
+          type: (response as any)?.type,
+          dataKeys: response?.data ? Object.keys(response.data) : []
+        });
+      } catch {}
+
+      // Primary path: expected action name from backend contract
       if (response.action === 'schedule_appointment_response') {
         const appointmentResponse = response as AppointmentSocketResponse;
         this.handleAppointmentEvent(appointmentResponse.data);
+        return;
+      }
+
+      // Fallbacks: some environments may send different action/type labels
+      // 1) Same payload but with action 'schedule_appointment'
+      if (response.action === 'schedule_appointment' && (response as any)?.data?.eventType) {
+        // eslint-disable-next-line no-console
+        console.log('[AppointmentSocket] Fallback: handling schedule_appointment as appointment event');
+        this.handleAppointmentEvent((response as any).data);
+        return;
+      }
+
+      // 2) Wrapped with a type field
+      if ((response as any)?.type === 'APPOINTMENT_SOCKET_LIST' && (response as any)?.data?.eventType) {
+        // eslint-disable-next-line no-console
+        console.log('[AppointmentSocket] Fallback: handling APPOINTMENT_SOCKET_LIST as appointment event');
+        this.handleAppointmentEvent((response as any).data);
+        return;
       }
     });
   }
@@ -152,8 +182,16 @@ class WebSocketAppointmentService {
     event: AppointmentSocketEvent;
     createAppointmentRequest?: any;
   }): void {
+    // 🔍 DEBUG: Check WebSocket status before sending
+    console.log('🔍 [AppointmentSocket] Checking WebSocket status:', {
+      isReady: webSocketChatService.isReady(),
+      isConnected: webSocketChatService.isConnected(),
+      isAuthenticated: webSocketChatService.isUserAuthenticated(),
+      status: webSocketChatService.getStatus()
+    });
+
     if (!webSocketChatService.isReady()) {
-      console.warn('[AppointmentSocket] WebSocket not ready, cannot send event');
+      console.warn('⚠️ [AppointmentSocket] WebSocket not ready, cannot send event');
       return;
     }
 
@@ -170,12 +208,15 @@ class WebSocketAppointmentService {
         }
       };
 
+      // 🔍 DEBUG: Log message before sending
+      console.log('📤 [AppointmentSocket] Sending message to backend:', JSON.stringify(message, null, 2));
+
       // Send via underlying WebSocket service
       (webSocketChatService as any).sendMessage('schedule_appointment', message.data);
 
-      console.log('[AppointmentSocket] Sent schedule event:', eventData.event);
+      console.log('✅ [AppointmentSocket] Successfully sent schedule event:', eventData.event);
     } catch (error) {
-      console.error('[AppointmentSocket] Failed to send schedule event:', error);
+      console.error('❌ [AppointmentSocket] Failed to send schedule event:', error);
     }
   }
 }

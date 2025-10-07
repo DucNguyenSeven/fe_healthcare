@@ -270,24 +270,37 @@ class WebSocketChatService {
    * Handle incoming WebSocket messages
    */
   private handleIncomingMessage(response: WebSocketResponse): void {
+    // 🔍 DEBUG: Log all incoming messages to see what backend sends
+    console.log('🔍 [WebSocket] Received message:', response);
+
     // Backend sends 'connection' action on successful connection - wait for authenticate
     if ((response.action === 'welcome' || response.action === 'hello' || response.action === 'connection') && this.connectionState === 'handshaking') {
       console.log('WebSocket handshake complete, waiting for authentication');
       // DO NOT set to 'ready' yet - wait for authenticate to be called by context
     }
 
-    // Handle authenticate response
+    // Handle authenticate response - với nhiều format khả thi
     if (response.action === 'authenticate' || response.action === 'authenticated') {
-      if (response.status === 'success' || response.status === 'ok') {
+      console.log('🔍 [WebSocket] Processing authenticate response:', response);
+      
+      // Kiểm tra nhiều format response từ backend
+      const isSuccess = 
+        response.status === 'success' || 
+        response.status === 'ok' || 
+        response.status === 'SUCCESS' ||
+        response.data?.includes('authenticated') ||
+        response.data?.includes('User authenticated');
+      
+      if (isSuccess) {
         this.isAuthenticated = true;
         this.connectionState = 'ready';
-        console.log('WebSocket authenticated, connection is ready');
+        console.log('✅ WebSocket authenticated, connection is ready');
 
         setTimeout(() => {
           this.flushMessageQueue();
         }, 50);
       } else {
-        console.error('WebSocket authentication failed:', response);
+        console.error('❌ WebSocket authentication failed:', response);
         this.isAuthenticated = false;
       }
     }
@@ -384,12 +397,32 @@ class WebSocketChatService {
   /**
    * Authenticate user with WebSocket server
    * Must be called after receiving welcome message
+   * This method BYPASSES the isReady() check to avoid deadlock
    */
   authenticate(userId: string): void {
-    console.log('Sending authenticate request for userId:', userId);
+    console.log('🔐 Sending authenticate request for userId:', userId);
     this.currentUserId = userId;
     this.connectionState = 'authenticating';
-    this.sendMessage('authenticate', { userId });
+    
+    // CRITICAL FIX: Send authenticate directly, bypassing isReady() check
+    // The authenticate message MUST be sent before isReady() can return true
+    const message = {
+      action: 'authenticate',
+      data: { userId }
+    };
+    
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      try {
+        this.ws.send(JSON.stringify(message));
+        console.log('✅ Authenticate message sent directly to backend');
+      } catch (error) {
+        console.error('❌ Failed to send authenticate message:', error);
+        this.connectionState = 'disconnected';
+      }
+    } else {
+      console.error('❌ WebSocket not open, cannot authenticate. State:', this.ws?.readyState);
+      this.connectionState = 'disconnected';
+    }
   }
 
   /**
