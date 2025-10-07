@@ -1,8 +1,10 @@
 "use client";
 
-import React, { useEffect } from 'react';
-import { X, User, Stethoscope, Calendar, FileText, Pill, AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { X, User, Stethoscope, Calendar, FileText, Pill, AlertCircle, CheckCircle, Loader2, ClipboardList, AlertTriangle, Activity, Phone, Mail } from 'lucide-react';
 import { useMedicalResultsByAppointment } from '@/hooks/medical-results';
+import { getMedicalRecordById } from '@/lib/api/medical-records';
+import type { MedicalRecordWithPrescriptions } from '@/types/medical-record';
 
 interface MedicalResultModalProps {
   isOpen: boolean;
@@ -26,13 +28,39 @@ interface MedicalResultModalProps {
 export function MedicalResultModal({ isOpen, onClose, appointmentId, patientInfo, doctorInfo }: MedicalResultModalProps) {
   // API hook
   const { fetchMedicalResults, loading, error, data, clearError } = useMedicalResultsByAppointment();
+  
+  // State for full medical record data (with signature)
+  const [fullRecord, setFullRecord] = useState<MedicalRecordWithPrescriptions | null>(null);
+  const [loadingFullRecord, setLoadingFullRecord] = useState(false);
 
-  // Fetch data when modal opens and appointmentId changes
+  // Fetch medical results when modal opens
   useEffect(() => {
     if (isOpen && appointmentId) {
       fetchMedicalResults(appointmentId);
+      setFullRecord(null); // Reset full record
     }
   }, [isOpen, appointmentId, fetchMedicalResults]);
+
+  // Fetch full medical record (with signature) after getting recordId
+  useEffect(() => {
+    const fetchFullRecord = async () => {
+      if (data?.medicalRecord?.recordId) {
+        setLoadingFullRecord(true);
+        try {
+          const response = await getMedicalRecordById(data.medicalRecord.recordId);
+          if (response.success && response.data) {
+            setFullRecord(response.data);
+          }
+        } catch (err) {
+          console.error('Error fetching full medical record:', err);
+        } finally {
+          setLoadingFullRecord(false);
+        }
+      }
+    };
+
+    fetchFullRecord();
+  }, [data?.medicalRecord?.recordId]);
 
   // Patient info for display
   const patient = {
@@ -75,29 +103,49 @@ export function MedicalResultModal({ isOpen, onClose, appointmentId, patientInfo
       ></div>
 
       {/* Modal */}
-      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[95vh] sm:max-h-[90vh] overflow-hidden animate-in fade-in-0 zoom-in-95 duration-300">
-        {/* Header */}
-        <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-4 sm:px-6 py-4 flex items-center justify-between text-white">
-          <div className="flex items-center space-x-3 sm:space-x-4 min-w-0">
-            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0">
-              <User className="w-5 h-5 sm:w-6 sm:h-6" />
-            </div>
-            <div className="min-w-0">
-              <h2 className="text-lg sm:text-xl font-semibold truncate">{patient.name}</h2>
-              <p className="text-blue-100 text-xs sm:text-sm truncate">ID: {patient.id}</p>
-            </div>
-          </div>
+      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden">
+        {/* Header - Full width with rounded top corners */}
+        <div className="bg-gradient-to-r from-[#1E75FF] to-[#1659C9] p-6 text-white relative">
+          {/* Close button */}
           <button
             onClick={onClose}
-            className="p-2 hover:bg-blue-800 rounded-lg transition-colors flex-shrink-0"
-            aria-label="Đóng"
+            className="absolute top-4 right-4 p-2 hover:bg-white/20 rounded-xl transition-colors"
           >
-            <X className="w-5 h-5 sm:w-6 sm:h-6" />
+            <X size={20} className="text-white" />
           </button>
+
+          {/* Title */}
+          <h2 className="text-2xl font-semibold mb-6 pr-12">
+            Chi tiết hồ sơ khám - {data ? new Date(data.medicalRecord.createdAt).toLocaleDateString('vi-VN') : ''}
+          </h2>
+
+          {/* Appointment Details */}
+          {data && (
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-white/80 text-sm mb-1">Bác sĩ</p>
+                <p className="font-medium">BS. {doctorInfo?.name || 'Chưa có thông tin'}</p>
+              </div>
+              <div>
+                <p className="text-white/80 text-sm mb-1">Dịch vụ</p>
+                <p className="font-medium">{data.medicalRecord.serviceName || 'Khám tổng quát'}</p>
+              </div>
+              <div>
+                <p className="text-white/80 text-sm mb-1">Ngày khám</p>
+                <p className="font-medium">{new Date(data.medicalRecord.createdAt).toLocaleDateString('vi-VN')}</p>
+              </div>
+              {data.medicalRecord.followUpDate && (
+                <div>
+                  <p className="text-white/80 text-sm mb-1">Ngày tái khám</p>
+                  <p className="font-medium">{new Date(data.medicalRecord.followUpDate).toLocaleDateString('vi-VN')}</p>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
-        {/* Content */}
-        <div className="overflow-y-auto max-h-[calc(95vh-80px)] sm:max-h-[calc(90vh-80px)] p-4 sm:p-6">
+        {/* Scrollable Content Area */}
+        <div className="p-8 overflow-y-auto max-h-[calc(90vh-280px)]">
           {/* Loading State */}
           {loading && (
             <div className="flex items-center justify-center py-12">
@@ -130,219 +178,187 @@ export function MedicalResultModal({ isOpen, onClose, appointmentId, patientInfo
 
           {/* Content - Only show when data is loaded */}
           {data && !loading && !error && (
-          <div className="space-y-4 sm:space-y-6">
-            {/* Appointment Info */}
-            <div className="bg-gray-50 rounded-xl p-4">
-              <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center">
-                <Calendar className="w-5 h-5 mr-2 text-blue-600" />
-                Thông tin cuộc hẹn
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                <div>
-                  <span className="text-gray-600">Mã cuộc hẹn:</span>
-                  <p className="font-medium">{data.medicalRecord.appointmentId}</p>
-                </div>
-                <div>
-                  <span className="text-gray-600">Dịch vụ:</span>
-                  <p className="font-medium">{data.medicalRecord.serviceName || 'Khám tổng quát'}</p>
-                </div>
-                <div>
-                  <span className="text-gray-600">Ngày tạo:</span>
-                  <p className="font-medium">{new Date(data.medicalRecord.createdAt).toLocaleDateString('vi-VN')}</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Doctor Info */}
-            {doctorInfo && (
-              <div className="bg-white border border-gray-200 rounded-xl p-4 sm:p-5">
-                <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4 flex items-center">
-                  <Stethoscope className="w-4 h-4 sm:w-5 sm:h-5 mr-2 text-blue-600" />
-                  Bác sĩ khám
-                </h3>
-                <div className="space-y-3 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Tên bác sĩ:</span>
-                    <span className="font-medium">{doctorInfo.name}</span>
+          <div className="space-y-6">
+            {/* Patient Information */}
+            {(fullRecord?.patient || patientInfo) && (
+              <div className="bg-blue-50 border border-blue-200 p-6 rounded-2xl">
+                <h4 className="font-semibold text-[#0F172A] mb-4 flex items-center gap-2">
+                  <User className="w-5 h-5 text-blue-600" />
+                  Thông tin bệnh nhân
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <p className="text-sm text-gray-600 mb-1">Họ và tên</p>
+                    <p className="font-semibold text-gray-900">
+                      {fullRecord?.patient?.fullName || patient.name}
+                    </p>
                   </div>
-                  {doctorInfo.specialty && (
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Chuyên khoa:</span>
-                      <span className="font-medium">{doctorInfo.specialty}</span>
+                  
+                  {(fullRecord?.patient?.email || patient.email) && (
+                    <div>
+                      <p className="text-sm text-gray-600 mb-1 flex items-center gap-1">
+                        <Mail className="w-4 h-4" />
+                        Email
+                      </p>
+                      <p className="font-medium text-gray-900">
+                        {fullRecord?.patient?.email || patient.email}
+                      </p>
                     </div>
                   )}
-                  {doctorInfo.id && (
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Mã bác sĩ:</span>
-                      <span className="font-medium">{doctorInfo.id}</span>
+                  
+                  {(fullRecord?.patient?.phone || patient.phone) && (
+                    <div>
+                      <p className="text-sm text-gray-600 mb-1 flex items-center gap-1">
+                        <Phone className="w-4 h-4" />
+                        Số điện thoại
+                      </p>
+                      <p className="font-medium text-gray-900">
+                        {fullRecord?.patient?.phone || patient.phone}
+                      </p>
                     </div>
                   )}
                 </div>
               </div>
             )}
 
-            {/* Patient Info */}
-            <div className="bg-white border border-gray-200 rounded-xl p-4 sm:p-5">
-              <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4 flex items-center">
-                <User className="w-4 h-4 sm:w-5 sm:h-5 mr-2 text-green-600" />
-                Thông tin bệnh nhân
-              </h3>
-              <div className="space-y-3 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Họ tên:</span>
-                  <span className="font-medium">{patient.name}</span>
-                </div>
-                {patient.age > 0 && (
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Tuổi:</span>
-                    <span className="font-medium">{patient.age} tuổi</span>
-                  </div>
-                )}
-                {patient.gender && (
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Giới tính:</span>
-                    <span className="font-medium">{patient.gender}</span>
-                  </div>
-                )}
-                {patient.phone && (
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Điện thoại:</span>
-                    <span className="font-medium">{patient.phone}</span>
-                  </div>
-                )}
-                {patient.email && (
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Email:</span>
-                    <span className="font-medium">{patient.email}</span>
-                  </div>
-                )}
-              </div>
+            {/* Diagnosis */}
+            <div className="bg-gray-50 p-6 rounded-2xl">
+              <h4 className="font-semibold text-[#0F172A] mb-3 flex items-center gap-2">
+                <ClipboardList className="w-5 h-5 text-blue-600" />
+                Chẩn đoán
+              </h4>
+              <p className="text-gray-700">{data.medicalRecord.diagnosis}</p>
             </div>
 
-            {/* Diagnosis */}
-            <div className="bg-white border border-gray-200 rounded-xl p-4 sm:p-5">
-              <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4 flex items-center">
-                <FileText className="w-4 h-4 sm:w-5 sm:h-5 mr-2 text-purple-600" />
-                Kết quả khám và chẩn đoán
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
-                <div className="space-y-4">
-                  {data.medicalRecord.diagnosis && (
-                    <div>
-                      <span className="text-gray-600 font-medium">Chẩn đoán:</span>
-                      <p className="mt-1 p-3 bg-purple-50 border border-purple-200 rounded-lg font-medium text-purple-800">
-                        {data.medicalRecord.diagnosis}
-                      </p>
-                    </div>
-                  )}
-                  {data.medicalRecord.symptoms && (
-                    <div>
-                      <span className="text-gray-600 font-medium">Triệu chứng:</span>
-                      <p className="mt-1 text-gray-800">{data.medicalRecord.symptoms}</p>
-                    </div>
-                  )}
-                  {data.medicalRecord.statusHealth && (
-                    <div>
-                      <span className="text-gray-600 font-medium">Tình trạng sức khỏe:</span>
-                      <div className="mt-1 flex items-center">
-                        <CheckCircle className="w-4 h-4 text-green-500 mr-2" />
-                        <span className="text-green-700 font-medium">{data.medicalRecord.statusHealth}</span>
-                      </div>
-                    </div>
-                  )}
-                </div>
-                <div className="space-y-4">
-                  {data.medicalRecord.treatment && (
-                    <div>
-                      <span className="text-gray-600 font-medium">Phương pháp điều trị:</span>
-                      <p className="mt-1 text-gray-800">{data.medicalRecord.treatment}</p>
-                    </div>
-                  )}
-                  {data.medicalRecord.followUpDate && (
-                    <div>
-                      <span className="text-gray-600 font-medium">Ngày tái khám:</span>
-                      <div className="mt-1 flex items-center">
-                        <Calendar className="w-4 h-4 text-blue-500 mr-2" />
-                        <span className="font-medium">{new Date(data.medicalRecord.followUpDate).toLocaleDateString('vi-VN')}</span>
-                      </div>
-                    </div>
-                  )}
-                  {data.medicalRecord.serviceName && (
-                    <div>
-                      <span className="text-gray-600 font-medium">Dịch vụ khám:</span>
-                      <p className="mt-1 text-gray-800">{data.medicalRecord.serviceName}</p>
-                    </div>
-                  )}
-                </div>
+            {/* Symptoms */}
+            {data.medicalRecord.symptoms && (
+              <div className="bg-gray-50 p-6 rounded-2xl">
+                <h4 className="font-semibold text-[#0F172A] mb-3 flex items-center gap-2">
+                  <AlertTriangle className="w-5 h-5 text-orange-600" />
+                  Triệu chứng
+                </h4>
+                <p className="text-gray-700 whitespace-pre-line">{data.medicalRecord.symptoms}</p>
               </div>
-              {data.medicalRecord.doctorNote && (
-                <div className="mt-4">
-                  <span className="text-gray-600 font-medium">Ghi chú của bác sĩ:</span>
-                  <p className="mt-1 p-3 bg-gray-50 border border-gray-200 rounded-lg text-gray-800">
-                    {data.medicalRecord.doctorNote}
-                  </p>
-                </div>
-              )}
-            </div>
+            )}
+
+            {/* Treatment */}
+            {data.medicalRecord.treatment && (
+              <div className="bg-gray-50 p-6 rounded-2xl">
+                <h4 className="font-semibold text-[#0F172A] mb-3 flex items-center gap-2">
+                  <Activity className="w-5 h-5 text-green-600" />
+                  Điều trị
+                </h4>
+                <p className="text-gray-700">{data.medicalRecord.treatment}</p>
+              </div>
+            )}
+
+            {/* Doctor Notes */}
+            {data.medicalRecord.doctorNote && (
+              <div className="bg-amber-50 border border-amber-200 p-6 rounded-2xl">
+                <h4 className="font-semibold text-[#0F172A] mb-3 flex items-center gap-2">
+                  <FileText className="w-5 h-5 text-amber-600" />
+                  Ghi chú của bác sĩ
+                </h4>
+                <p className="text-gray-700">{data.medicalRecord.doctorNote}</p>
+              </div>
+            )}
 
             {/* Prescriptions */}
-            <div className="bg-white border border-gray-200 rounded-xl p-4 sm:p-5">
-              <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4 flex items-center">
-                <Pill className="w-4 h-4 sm:w-5 sm:h-5 mr-2 text-orange-600" />
-                Đơn thuốc
-              </h3>
-              <div className="space-y-4">
-                {data.prescriptions && data.prescriptions.length > 0 ? (
-                  data.prescriptions.map((prescription, index) => (
-                    <div key={prescription.prescriptionId} className="border border-gray-200 rounded-lg p-3 sm:p-4 hover:bg-gray-50 transition-colors">
-                      <div className="flex flex-col sm:flex-row sm:items-start justify-between mb-2 gap-1 sm:gap-0">
-                        <h4 className="font-semibold text-gray-900 text-sm sm:text-base">{index + 1}. {prescription.medicalName}</h4>
-                        <span className="text-xs sm:text-sm text-gray-500">
-                          {new Date(prescription.startDate).toLocaleDateString('vi-VN')} - {new Date(prescription.endDate).toLocaleDateString('vi-VN')}
-                        </span>
-                      </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 text-sm">
-                        <div>
-                          <span className="text-gray-600">Liều lượng:</span>
-                          <p className="font-medium">{prescription.dosage}</p>
-                        </div>
-                        <div>
-                          <span className="text-gray-600">Tần suất:</span>
-                          <div className="flex flex-wrap gap-1 mt-1">
-                            {prescription.frequency.map((freq, i) => (
-                              <span key={i} className="px-2 py-1 bg-orange-100 text-orange-800 rounded text-xs">
-                                {freq === 'MORNING' ? 'Sáng' : freq === 'EVENING' ? 'Tối' : freq === 'AFTERNOON' ? 'Chiều' : freq}
+            {data.prescriptions.length > 0 && (
+              <div className="bg-blue-50 p-6 rounded-2xl">
+                <h4 className="font-semibold text-[#0F172A] mb-4 flex items-center gap-2">
+                  <Pill className="w-5 h-5 text-blue-600" />
+                  Đơn thuốc ({data.prescriptions.length} loại thuốc)
+                </h4>
+                <div className="space-y-3">
+                  {data.prescriptions.map((prescription, index) => {
+                    const frequencies = Array.isArray(prescription.frequency) ? prescription.frequency : [prescription.frequency];
+                    return (
+                      <div
+                        key={prescription.prescriptionId}
+                        className="bg-white p-4 rounded-xl border border-blue-200"
+                      >
+                        <div className="flex items-start justify-between mb-3">
+                          <div className="flex items-start gap-3">
+                            <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                              <span className="text-sm font-medium text-blue-600">
+                                {index + 1}
                               </span>
-                            ))}
+                            </div>
+                            <div>
+                              <h5 className="font-semibold text-gray-900 mb-1">
+                                {prescription.medicalName}
+                              </h5>
+                              <p className="text-sm text-gray-600">
+                                Liều lượng: <span className="font-medium">{prescription.dosage}</span>
+                              </p>
+                            </div>
                           </div>
                         </div>
-                        <div>
-                          <span className="text-gray-600">Ghi chú:</span>
-                          <p className="text-gray-800">{prescription.notes || 'Không có ghi chú'}</p>
+                        <div className="grid grid-cols-2 gap-4 text-sm">
+                          <div>
+                            <p className="text-gray-600 mb-1">Tần suất:</p>
+                            <div className="flex flex-wrap gap-1">
+                              {frequencies.map((freq, idx) => (
+                                <span
+                                  key={idx}
+                                  className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full font-medium"
+                                >
+                                  {freq === 'MORNING' ? 'Sáng' : freq === 'EVENING' ? 'Tối' : freq === 'AFTERNOON' ? 'Chiều' : freq}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                          <div>
+                            <p className="text-gray-600 mb-1">Thời gian:</p>
+                            <p className="font-medium text-gray-900">
+                              {new Date(prescription.startDate).toLocaleDateString('vi-VN')} - {new Date(prescription.endDate).toLocaleDateString('vi-VN')}
+                            </p>
+                          </div>
                         </div>
+                        {prescription.notes && (
+                          <div className="mt-3 pt-3 border-t border-gray-200">
+                            <p className="text-sm text-gray-600">
+                              <span className="font-medium">Ghi chú:</span> {prescription.notes}
+                            </p>
+                          </div>
+                        )}
                       </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="text-center py-8 text-gray-500">
-                    <Pill className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-                    <p>Không có đơn thuốc nào được kê</p>
-                  </div>
-                )}
-              </div>
-              <div className="mt-4 p-3 bg-orange-50 border border-orange-200 rounded-lg">
-                <div className="flex items-start">
-                  <AlertCircle className="w-5 h-5 text-orange-600 mr-2 mt-0.5" />
-                  <div>
-                    <p className="text-orange-800 font-medium">Lưu ý quan trọng:</p>
-                    <p className="text-orange-700 text-sm mt-1">
-                      Dùng thuốc đúng liều lượng và thời gian. Nếu có tác dụng phụ, hãy liên hệ bác sĩ ngay lập tức.
-                    </p>
-                  </div>
+                    );
+                  })}
                 </div>
               </div>
-            </div>
+            )}
+
+            {/* Doctor Signature */}
+            {fullRecord?.signatureUrl && (
+              <div className="bg-indigo-50 border border-indigo-200 p-6 rounded-2xl">
+                <h4 className="font-semibold text-[#0F172A] mb-4 flex items-center gap-2">
+                  <FileText className="w-5 h-5 text-indigo-600" />
+                  Chữ ký bác sĩ
+                </h4>
+                <div className="flex justify-center">
+                  <img
+                    src={fullRecord.signatureUrl}
+                    alt="Chữ ký bác sĩ"
+                    className="max-w-[300px] h-auto border border-indigo-300 rounded-xl bg-white p-4"
+                  />
+                </div>
+              </div>
+            )}
           </div>
+          )}
+
+          {/* Close Button */}
+          {data && !loading && !error && (
+            <div className="mt-6 flex justify-end">
+              <button
+                onClick={onClose}
+                className="px-6 py-3 bg-gray-200 text-gray-700 rounded-2xl hover:bg-gray-300 transition-colors font-medium"
+              >
+                Đóng
+              </button>
+            </div>
           )}
         </div>
       </div>

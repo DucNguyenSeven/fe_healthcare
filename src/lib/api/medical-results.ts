@@ -11,6 +11,7 @@ export interface MedicalRecord {
   followUpDate?: string;
   serviceName?: string;
   statusHealth?: string;
+  signatureUrl?: string;
   createdAt: string;
   updatedAt: string;
 }

@@ -13,6 +13,7 @@ export interface MedicalRecord {
   doctorNote?: string;
   followUpDate?: string | null;
   imageAttachments?: string[];
+  signatureUrl?: string | null;
   stage?: number;
   statusHealth?: string;
   createdAt: string;
@@ -32,8 +33,16 @@ export interface Prescription {
   updatedAt: string;
 }
 
+export interface PatientInfo {
+  userId: string;
+  fullName: string;
+  email?: string;
+  phone?: string;
+}
+
 export interface MedicalRecordWithPrescriptions extends MedicalRecord {
   prescriptions: Prescription[];
+  patient?: PatientInfo;
 }
 
 // API Response Types

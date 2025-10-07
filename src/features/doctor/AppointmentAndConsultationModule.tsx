@@ -15,6 +15,7 @@ import { useUpdateAppointmentStatus } from '@/hooks/appointments/useUpdateAppoin
 import { useAppointmentSocket } from '@/hooks/appointments/useAppointmentSocket';
 import { toast } from 'sonner';
 import { MedicalResultModal } from '@/components/MedicalResultModal';
+import { SignaturePad } from '@/components/SignaturePad';
 import type { MedicalRecordWithPrescriptions } from '@/types/medical-record';
 // Dữ liệu sẽ được lấy từ API, bỏ mock
 
@@ -355,6 +356,7 @@ export const AppointmentAndConsultationModule = ({
 • Liên hệ ngay nếu có triệu chứng bất thường...`);
   const [followUpDate, setFollowUpDate] = useState('');
   const [followUpType, setFollowUpType] = useState('Khám định kỳ');
+  const [signatureUrl, setSignatureUrl] = useState<string | null>(null);
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'confirmed':
@@ -582,6 +584,15 @@ export const AppointmentAndConsultationModule = ({
       return;
     }
 
+    // Validate signature
+    if (!signatureUrl) {
+      toast.error('Vui lòng ký xác nhận trước khi hoàn thành khám', {
+        description: 'Chữ ký bác sĩ là bắt buộc',
+        duration: 4000,
+      });
+      return;
+    }
+
     try {
       // LẤY THÔNG TIN CHI TIẾT APPOINTMENT để có patientId
 
@@ -635,6 +646,7 @@ export const AppointmentAndConsultationModule = ({
         doctorNote: prescriptionNotes || '', // Map từ tab Kê đơn thuốc
         followUpDate: followUpDate || '',
         imageAttachments: imageAttachments || [],
+        signatureUrl: signatureUrl || '',
         stage: stage ? parseInt(stage) : 0,
         statusHealth: statusHealth || 'stable'
       };
@@ -1375,6 +1387,12 @@ export const AppointmentAndConsultationModule = ({
                         </div>
                       </div>
                     </div>
+
+                    {/* Doctor Signature */}
+                    <SignaturePad
+                      onSignatureSaved={(url) => setSignatureUrl(url)}
+                      disabled={medicalRecordLoading || prescriptionsLoading}
+                    />
                   </div>}
               </motion.div>
             </AnimatePresence>

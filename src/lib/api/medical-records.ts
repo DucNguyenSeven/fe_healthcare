@@ -19,6 +19,7 @@ export interface CreateMedicalRecordRequest {
   doctorNote?: string;
   followUpDate?: string;
   imageAttachments?: string[];
+  signatureUrl?: string;
   stage?: number;
   statusHealth?: string;
 }
@@ -35,6 +36,7 @@ export interface CreateMedicalRecordResponse {
   doctorNote?: string;
   followUpDate?: string;
   imageAttachments?: string[];
+  signatureUrl?: string;
   stage?: number;
   statusHealth?: string;
   createdAt: string;

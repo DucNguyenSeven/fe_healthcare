@@ -1447,6 +1447,42 @@ export function ProfileRecordsPage(_props: ProfileRecordsPageProps = {}) {
 
               {/* Scrollable Content Area */}
               <div className="p-8 overflow-y-auto max-h-[calc(90vh-280px)]">
+                {/* Patient Information */}
+                {selectedRecord.patient && (
+                  <div className="bg-blue-50 border border-blue-200 p-6 rounded-2xl mb-6">
+                    <h4 className="font-semibold text-[#0F172A] mb-4 flex items-center gap-2">
+                      <UserIcon className="w-5 h-5 text-blue-600" />
+                      Thông tin bệnh nhân
+                    </h4>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div>
+                        <p className="text-sm text-gray-600 mb-1">Họ và tên</p>
+                        <p className="font-semibold text-gray-900">{selectedRecord.patient.fullName}</p>
+                      </div>
+                      
+                      {selectedRecord.patient.email && (
+                        <div>
+                          <p className="text-sm text-gray-600 mb-1 flex items-center gap-1">
+                            <Mail className="w-4 h-4" />
+                            Email
+                          </p>
+                          <p className="font-medium text-gray-900">{selectedRecord.patient.email}</p>
+                        </div>
+                      )}
+                      
+                      {selectedRecord.patient.phone && (
+                        <div>
+                          <p className="text-sm text-gray-600 mb-1 flex items-center gap-1">
+                            <Phone className="w-4 h-4" />
+                            Số điện thoại
+                          </p>
+                          <p className="font-medium text-gray-900">{selectedRecord.patient.phone}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
                 {/* Medical Details */}
                 <div className="space-y-6">
                 {/* Diagnosis */}
@@ -1550,6 +1586,23 @@ export function ProfileRecordsPage(_props: ProfileRecordsPageProps = {}) {
                           </div>
                         );
                       })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Doctor Signature */}
+                {selectedRecord.signatureUrl && (
+                  <div className="bg-indigo-50 border border-indigo-200 p-6 rounded-2xl">
+                    <h4 className="font-semibold text-[#0F172A] mb-4 flex items-center gap-2">
+                      <FileText className="w-5 h-5 text-indigo-600" />
+                      Chữ ký bác sĩ
+                    </h4>
+                    <div className="flex justify-center">
+                      <img
+                        src={selectedRecord.signatureUrl}
+                        alt="Chữ ký bác sĩ"
+                        className="max-w-[300px] h-auto border border-indigo-300 rounded-xl bg-white p-4"
+                      />
                     </div>
                   </div>
                 )}
