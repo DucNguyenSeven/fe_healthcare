@@ -1,15 +1,17 @@
 'use client'
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Calendar, Clock, Video, User, Phone, MessageSquare, FileText, Check, X, RotateCcw, ChevronLeft, ChevronRight, Plus, Send, Download, Mic, MicOff, VideoIcon, VideoOff, Search, Filter, CalendarDays, Repeat, Stethoscope, History, Brain, Activity, AlertTriangle, TrendingUp, TrendingDown, Minus, Eye, Save, UserCheck, Pill, ClipboardList, Heart, Thermometer, Weight, Zap } from 'lucide-react';
 import DoctorScheduleRegistrationModal from './DoctorScheduleRegistrationModal';
 import type { AppointmentWeekFilterResponse } from '@/lib/api/appointments';
 import { useDoctorAppointments } from '@/hooks/appointments';
 import { useAppointmentFilter } from '@/hooks/appointments/useAppointmentFilter';
+import { useBookingAppointment } from '@/hooks/appointments/useBookingAppointment';
 import { useGetMe } from '@/hooks/auth/useGetMe';
 import { useCreateMedicalRecord, useGetMedicalRecords } from '@/hooks/medical-records';
 import { useCreateMultiplePrescriptions } from '@/hooks/prescriptions';
+import { useDoctorSchedule } from '@/hooks/doctor-schedules';
 import { updateAppointmentStatus, getAppointmentDetail } from '@/lib/api/appointments';
 import { useUpdateAppointmentStatus } from '@/hooks/appointments/useUpdateAppointmentStatus';
 import { useAppointmentSocket } from '@/hooks/appointments/useAppointmentSocket';
@@ -147,6 +149,19 @@ export const AppointmentAndConsultationModule = ({
   // Hook for updating appointment status (confirm/reject)
   const { updateStatus, loading: updateStatusLoading } = useUpdateAppointmentStatus();
 
+  // Hooks cho đặt lịch tái khám
+  const { bookingAppointment: createFollowUpAppointment } = useBookingAppointment();
+  const { timeSlots, scheduleId, timeSlotMapping, fetchDoctorSchedule } = useDoctorSchedule();
+
+  // States cho follow-up appointment
+  const [followUpDate, setFollowUpDate] = useState('');
+  const [followUpType, setFollowUpType] = useState('Tái khám');
+  const [followUpTimeSlot, setFollowUpTimeSlot] = useState<number | null>(null);
+  const [followUpScheduleId, setFollowUpScheduleId] = useState<string | null>(null);
+  const [followUpTimeSlots, setFollowUpTimeSlots] = useState<any[]>([]);
+  const [loadingFollowUpSlots, setLoadingFollowUpSlots] = useState(false);
+  const [openScheduleModalForFollowUp, setOpenScheduleModalForFollowUp] = useState(false);
+
   // States for confirm/reject modals
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);
@@ -172,6 +187,48 @@ export const AppointmentAndConsultationModule = ({
       }
     }
   });
+
+  // Auto-fetch time slots khi chọn ngày tái khám
+  useEffect(() => {
+    const fetchFollowUpTimeSlots = async () => {
+      if (followUpDate && me?.userId) {
+        setLoadingFollowUpSlots(true);
+        try {
+          await fetchDoctorSchedule(me.userId, followUpDate);
+        } catch (error) {
+          console.error('Error fetching follow-up time slots:', error);
+          toast.error('Không thể tải lịch làm việc');
+        } finally {
+          setLoadingFollowUpSlots(false);
+        }
+      } else {
+        setFollowUpTimeSlots([]);
+        setFollowUpScheduleId(null);
+        setFollowUpTimeSlot(null);
+      }
+    };
+
+    fetchFollowUpTimeSlots();
+  }, [followUpDate, me?.userId, fetchDoctorSchedule]);
+
+  // Sync data từ hook vào local state
+  useEffect(() => {
+    if (timeSlots && timeSlots.length > 0) {
+      // Convert string[] to object[] format
+      const slotsWithId = timeSlots.map(time => ({
+        slotId: timeSlotMapping[time],
+        startTime: time + ':00', // "08:00" -> "08:00:00"
+        endTime: '' // Không cần thiết cho UI
+      }));
+      setFollowUpTimeSlots(slotsWithId);
+    } else {
+      setFollowUpTimeSlots([]);
+    }
+    
+    if (scheduleId) {
+      setFollowUpScheduleId(scheduleId);
+    }
+  }, [timeSlots, scheduleId, timeSlotMapping]);
 
   // Handlers for confirm/reject appointments
   const handleOpenConfirmModal = (appointment: any) => {
@@ -354,8 +411,6 @@ export const AppointmentAndConsultationModule = ({
 • Hạn chế muối trong thức ăn
 • Tái khám sau 4 tuần
 • Liên hệ ngay nếu có triệu chứng bất thường...`);
-  const [followUpDate, setFollowUpDate] = useState('');
-  const [followUpType, setFollowUpType] = useState('Khám định kỳ');
   const [signatureUrl, setSignatureUrl] = useState<string | null>(null);
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -593,6 +648,15 @@ export const AppointmentAndConsultationModule = ({
       return;
     }
 
+    // Validate follow-up appointment nếu có chọn ngày
+    if (followUpDate && !followUpTimeSlot) {
+      toast.error('Vui lòng chọn giờ khám tái khám', {
+        description: 'Giờ khám là bắt buộc khi đặt lịch tái khám',
+        duration: 4000,
+      });
+      return;
+    }
+
     try {
       // LẤY THÔNG TIN CHI TIẾT APPOINTMENT để có patientId
 
@@ -685,12 +749,66 @@ export const AppointmentAndConsultationModule = ({
         }
       }
 
-      // BƯỚC 3: Cập nhật appointment status
+      // BƯỚC 3: Đặt lịch tái khám (NẾU CÓ)
+      if (followUpDate && followUpTimeSlot && followUpScheduleId) {
+        try {
+          // Map loại khám to consultationType (chuẩn backend)
+          const consultationTypeMap: { 
+            [key: string]: 'FOLLOW_UP' | 'DIRECT_CONSULTATION' | 'ONLINE_CONSULTATION' 
+          } = {
+            'Tái khám': 'FOLLOW_UP',
+            'Xét nghiệm': 'DIRECT_CONSULTATION',
+            'Khám trực tiếp': 'DIRECT_CONSULTATION',
+            'Tư vấn online': 'ONLINE_CONSULTATION'
+          };
+
+          const selectedSlot = followUpTimeSlots.find(s => s.slotId === followUpTimeSlot);
+          const addressDetail =
+            (selectedPatient?.appointment?.addressDetail as string | undefined) ||
+            (selectedPatient?.appointment?.clinicAddress as string | undefined) ||
+            (selectedPatient?.appointment?.doctorInfo?.clinicAddress as string | undefined) ||
+            '';
+
+          const followUpAppointmentData = {
+            patientId: patientId,
+            scheduleId: followUpScheduleId,
+            doctorId: me.userId,
+            slotId: followUpTimeSlot,
+            consultationType: consultationTypeMap[followUpType] || 'FOLLOW_UP',
+            status: 'CONFIRMED' as const, // CONFIRMED vì bác sĩ trực tiếp đặt
+            note: `Tái khám theo chỉ định của bác sĩ - ${followUpType}`,
+            // Bổ sung các field như bên bệnh nhân
+            appointmentDate: followUpDate,
+            appointmentTime: selectedSlot?.startTime || '',
+            addressDetail
+          };
+
+          const followUpResult = await createFollowUpAppointment(followUpAppointmentData);
+          
+          if (followUpResult) {
+            const selectedSlot = followUpTimeSlots.find(s => s.slotId === followUpTimeSlot);
+            toast.success('Đã đặt lịch tái khám thành công!', {
+              description: `${new Date(followUpDate).toLocaleDateString('vi-VN')} - ${selectedSlot?.startTime.substring(0, 5)}`,
+              duration: 4000,
+            });
+          }
+        } catch (followUpError) {
+          console.error('Error creating follow-up appointment:', followUpError);
+          toast.warning('Đã lưu hồ sơ khám nhưng không thể đặt lịch tái khám', {
+            description: 'Vui lòng đặt lịch tái khám thủ công',
+            duration: 5000,
+          });
+        }
+      }
+
+      // BƯỚC 4: Cập nhật appointment status
       await updateAppointmentStatus(selectedPatient.appointment.id || selectedPatient.appointment.appointmentId, 'COMPLETED');
 
       // SUCCESS: Đóng modal, reset form và refresh data
-      toast.success('Đã hoàn thành khám bệnh và lưu hồ sơ thành công!', {
-        description: 'Hồ sơ khám bệnh và đơn thuốc đã được lưu',
+      toast.success('Đã hoàn thành khám bệnh!', {
+        description: followUpDate 
+          ? 'Hồ sơ khám, đơn thuốc và lịch tái khám đã được lưu' 
+          : 'Hồ sơ khám và đơn thuốc đã được lưu',
         duration: 3000,
       });
       setShowExaminationModal(false);
@@ -748,7 +866,14 @@ export const AppointmentAndConsultationModule = ({
       startDate: today,
       endDate: nextWeek
     }]);
+    
+    // Reset follow-up fields
     setFollowUpDate('');
+    setFollowUpType('Tái khám');
+    setFollowUpTimeSlot(null);
+    setFollowUpScheduleId(null);
+    setFollowUpTimeSlots([]);
+    setSignatureUrl(null);
   };
   // Chuyển dữ liệu API thành format cũ của UI
   const normalizedAppointments = React.useMemo(() => {
@@ -1373,19 +1498,87 @@ export const AppointmentAndConsultationModule = ({
                           <label className="block text-sm font-medium text-[#334155] mb-2">
                             Ngày tái khám
                           </label>
-                          <input type="date" value={followUpDate} onChange={e => setFollowUpDate(e.target.value)} className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent" />
+                          <input 
+                            type="date" 
+                            value={followUpDate} 
+                            onChange={e => {
+                              setFollowUpDate(e.target.value);
+                              setFollowUpTimeSlot(null);
+                            }} 
+                            min={new Date(Date.now() + 86400000).toISOString().split('T')[0]}
+                            className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent" 
+                          />
                         </div>
                         <div>
                           <label className="block text-sm font-medium text-[#334155] mb-2">
                             Loại khám
                           </label>
-                          <select value={followUpType} onChange={e => setFollowUpType(e.target.value)} className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent">
-                            <option value="Khám định kỳ">Khám định kỳ</option>
-                            <option value="Xét nghiệm kiểm tra">Xét nghiệm kiểm tra</option>
-                            <option value="Khám cấp cứu nếu cần">Khám cấp cứu nếu cần</option>
+                          <select 
+                            value={followUpType} 
+                            onChange={e => setFollowUpType(e.target.value)} 
+                            className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent"
+                          >
+                            <option value="Tái khám">Tái khám</option>
+                            <option value="Xét nghiệm">Xét nghiệm</option>
+                            <option value="Khám trực tiếp">Khám trực tiếp</option>
+                            <option value="Tư vấn online">Tư vấn online</option>
                           </select>
                         </div>
                       </div>
+
+                      {/* Time Slots - Hiển thị khi có ngày */}
+                      {followUpDate && (
+                        <div className="mt-4">
+                          <label className="block text-sm font-medium text-[#334155] mb-2">
+                            Chọn giờ <span className="text-red-500">*</span>
+                          </label>
+                          
+                          {loadingFollowUpSlots ? (
+                            <div className="text-sm text-gray-500 py-4 text-center">
+                              Đang tải lịch làm việc...
+                            </div>
+                          ) : followUpTimeSlots && followUpTimeSlots.length > 0 ? (
+                            <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 gap-2">
+                              {followUpTimeSlots.map((slot) => (
+                                <button
+                                  key={slot.slotId}
+                                  type="button"
+                                  onClick={() => setFollowUpTimeSlot(slot.slotId)}
+                                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                                    followUpTimeSlot === slot.slotId
+                                      ? 'bg-[#1E75FF] text-white shadow-md'
+                                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                  }`}
+                                >
+                                  {slot.startTime.substring(0, 5)}
+                                </button>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="text-sm text-gray-600 py-4 px-4 bg-gray-50 rounded-lg border border-gray-200">
+                              <p className="font-medium">⚠️ Không có lịch làm việc trong ngày này.</p>
+                              <p className="mt-1 text-xs">Bạn có thể đăng ký lịch làm việc cho ngày này để đặt lịch tái khám.</p>
+                              <button
+                                type="button"
+                                onClick={() => setOpenScheduleModalForFollowUp(true)}
+                                className="mt-3 inline-flex items-center px-3 py-2 rounded-lg bg-[#1E75FF] text-white hover:bg-[#175dcc]"
+                              >
+                                Đăng ký lịch làm việc cho ngày này
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Confirm message khi đã chọn đủ */}
+                      {followUpDate && followUpTimeSlot && (
+                        <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg flex items-start gap-2">
+                          <Check className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                          <p className="text-sm text-blue-700">
+                            Lịch tái khám sẽ được đặt tự động với trạng thái <strong>Đã xác nhận</strong>
+                          </p>
+                        </div>
+                      )}
                     </div>
 
                     {/* Doctor Signature */}
@@ -1394,6 +1587,20 @@ export const AppointmentAndConsultationModule = ({
                       disabled={medicalRecordLoading || prescriptionsLoading}
                     />
                   </div>}
+                  {/* Schedule Registration Modal for Follow-up convenience */}
+                  {openScheduleModalForFollowUp && (
+                    <DoctorScheduleRegistrationModal
+                      isOpen={openScheduleModalForFollowUp}
+                      onClose={() => setOpenScheduleModalForFollowUp(false)}
+                      onSave={async () => {
+                        // Sau khi đăng ký xong -> refetch lịch cho followUpDate
+                        if (followUpDate && me?.userId) {
+                          await fetchDoctorSchedule(me.userId, followUpDate);
+                        }
+                        setOpenScheduleModalForFollowUp(false);
+                      }}
+                    />
+                  )}
               </motion.div>
             </AnimatePresence>
           </div>
