@@ -8,13 +8,14 @@ import type { AppointmentWeekFilterResponse } from '@/lib/api/appointments';
 import { useDoctorAppointments } from '@/hooks/appointments';
 import { useAppointmentFilter } from '@/hooks/appointments/useAppointmentFilter';
 import { useGetMe } from '@/hooks/auth/useGetMe';
-import { useCreateMedicalRecord } from '@/hooks/medical-records';
+import { useCreateMedicalRecord, useGetMedicalRecords } from '@/hooks/medical-records';
 import { useCreateMultiplePrescriptions } from '@/hooks/prescriptions';
 import { updateAppointmentStatus, getAppointmentDetail } from '@/lib/api/appointments';
 import { useUpdateAppointmentStatus } from '@/hooks/appointments/useUpdateAppointmentStatus';
 import { useAppointmentSocket } from '@/hooks/appointments/useAppointmentSocket';
 import { toast } from 'sonner';
 import { MedicalResultModal } from '@/components/MedicalResultModal';
+import type { MedicalRecordWithPrescriptions } from '@/types/medical-record';
 // Dữ liệu sẽ được lấy từ API, bỏ mock
 
 // Sample patient data for examination modal
@@ -298,7 +299,19 @@ export const AppointmentAndConsultationModule = ({
   // Examination modal states
   const [showExaminationModal, setShowExaminationModal] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState<any>(null);
-  const [examinationTab, setExaminationTab] = useState('ai-result');
+  const [examinationTab, setExaminationTab] = useState('examination');
+
+  // State for current patient medical records
+  const [currentPatientId, setCurrentPatientId] = useState<string | undefined>(undefined);
+
+  // Fetch medical records for current patient
+  const {
+    records: patientMedicalRecords,
+    loading: medicalRecordsLoading,
+    error: medicalRecordsError,
+    refetch: refetchMedicalRecords
+  } = useGetMedicalRecords(currentPatientId);
+
   const [labResults, setLabResults] = useState({
     creatinine: '',
     eGFR: '',
@@ -412,13 +425,14 @@ export const AppointmentAndConsultationModule = ({
     }
   };
   const openPatientExamination = (patientId: string, appointment: any) => {
-
-    // Ưu tiên dữ liệu có sẵn trong mock nếu khớp id
-    const patientFromMock = patientData[patientId as keyof typeof patientData];
-
     // Xác định patientId thực tế từ appointment data
     const actualPatientId = appointment.patientId || appointment.patientInfo?.id || patientId;
 
+    // Fetch medical records from API for this patient
+    setCurrentPatientId(actualPatientId);
+
+    // Ưu tiên dữ liệu có sẵn trong mock nếu khớp id
+    const patientFromMock = patientData[patientId as keyof typeof patientData];
 
     // Tạo fallback patient từ dữ liệu cuộc hẹn nhận từ API
     const fallbackPatient = {
@@ -435,15 +449,48 @@ export const AppointmentAndConsultationModule = ({
       appointment
     });
     setShowExaminationModal(true);
-    setExaminationTab('ai-result');
+    setExaminationTab('examination');
   };
   const viewPatientHistory = (patientId: string) => {
+    // Fetch medical records from API instead of mock data
+    setCurrentPatientId(patientId);
+    setShowExaminationModal(true);
+    setExaminationTab('history');
+
+    // Keep mock patient data for other info (will be replaced gradually)
     const patient = patientData[patientId as keyof typeof patientData];
     if (patient) {
       setSelectedPatient(patient);
-      setShowExaminationModal(true);
-      setExaminationTab('history');
     }
+  };
+
+  // Helper functions for medical records
+  const formatDate = (dateString: string | null | undefined): string => {
+    if (!dateString) return '--';
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('vi-VN');
+    } catch {
+      return '--';
+    }
+  };
+
+  const parseFrequency = (freq: string[] | string): string[] => {
+    try {
+      if (Array.isArray(freq)) {
+        return freq;
+      }
+      const cleaned = freq.replace(/[{}]/g, '');
+      return cleaned.split(',').map(f => f.trim());
+    } catch {
+      return [];
+    }
+  };
+
+  const frequencyMap: Record<string, string> = {
+    'MORNING': 'Sáng',
+    'AFTERNOON': 'Trưa',
+    'EVENING': 'Tối'
   };
 
   // Handler cho Medical Result Modal
@@ -770,14 +817,6 @@ export const AppointmentAndConsultationModule = ({
           <div className="border-b border-gray-200 px-6">
             <div className="flex">
               {[{
-              id: 'ai-result',
-              label: 'Kết quả AI',
-              icon: Brain
-            }, {
-              id: 'history',
-              label: 'Lịch sử khám',
-              icon: History
-            }, {
               id: 'examination',
               label: 'Khám bệnh',
               icon: Stethoscope
@@ -785,6 +824,14 @@ export const AppointmentAndConsultationModule = ({
               id: 'prescription',
               label: 'Kê đơn thuốc',
               icon: Pill
+            }, {
+              id: 'history',
+              label: 'Lịch sử khám',
+              icon: History
+            }, {
+              id: 'ai-result',
+              label: 'Dự đoán AI',
+              icon: Brain
             }].map(tab => {
               const Icon = tab.icon;
               return <button key={tab.id} onClick={() => setExaminationTab(tab.id)} className={`flex items-center gap-2 px-6 py-4 font-medium transition-colors border-b-2 ${examinationTab === tab.id ? 'text-[#1E75FF] border-[#1E75FF]' : 'text-[#334155] border-transparent hover:text-[#1E75FF]'}`}>
@@ -878,51 +925,129 @@ export const AppointmentAndConsultationModule = ({
                       <History className="w-5 h-5 text-[#1E75FF]" />
                       <span>Lịch sử khám bệnh</span>
                     </h4>
-                    <div className="space-y-4">
-                      {selectedPatient.medicalHistory && selectedPatient.medicalHistory.length > 0 ? (
-                        selectedPatient.medicalHistory.map((record: any, index: number) => <div key={index} className="bg-white border border-gray-200 rounded-2xl p-6">
-                            <div className="flex items-start justify-between mb-4">
-                              <div>
-                                <h5 className="font-semibold text-[#0F172A]">
-                                  {record.diagnosis ? `Khám định kỳ - ${record.doctor}` : `Khám tổng quát - ${record.doctor}`}
-                                </h5>
-                                <p className="text-sm text-[#334155]">{record.date}</p>
+
+                    {/* Loading State */}
+                    {medicalRecordsLoading && (
+                      <div className="text-center py-12">
+                        <div className="w-8 h-8 border-4 border-[#1E75FF] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                        <p className="text-[#334155]">Đang tải lịch sử khám...</p>
+                      </div>
+                    )}
+
+                    {/* Error State */}
+                    {medicalRecordsError && !medicalRecordsLoading && (
+                      <div className="text-center py-12">
+                        <AlertTriangle size={48} className="text-red-500 mx-auto mb-4" />
+                        <p className="text-red-600 mb-4">{medicalRecordsError}</p>
+                        <button
+                          onClick={() => refetchMedicalRecords()}
+                          className="px-4 py-2 bg-[#1E75FF] text-white rounded-xl hover:bg-[#1659C9] transition-colors"
+                        >
+                          Thử lại
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Records List */}
+                    {!medicalRecordsLoading && !medicalRecordsError && (
+                      <div className="space-y-4">
+                        {patientMedicalRecords && patientMedicalRecords.length > 0 ? (
+                          patientMedicalRecords.map((record: MedicalRecordWithPrescriptions, index: number) => (
+                            <div key={record.recordId} className="bg-white border border-gray-200 rounded-2xl p-6">
+                              <div className="flex items-start justify-between mb-4">
+                                <div>
+                                  <h5 className="font-semibold text-[#0F172A]">
+                                    Cuộc khám ngày {formatDate(record.createdAt)}
+                                  </h5>
+                                  <p className="text-sm text-[#334155]">BS. {record.doctorName} - {record.serviceName}</p>
+                                </div>
                               </div>
-                            </div>
-                            <div className="space-y-3">
-                              {record.diagnosis && <div>
+                              <div className="space-y-3">
+                                <div>
                                   <p className="text-sm font-medium text-[#334155]">Chẩn đoán:</p>
                                   <p className="text-[#0F172A]">{record.diagnosis}</p>
-                                </div>}
-                              {record.treatment && <div>
-                                  <p className="text-sm font-medium text-[#334155]">Điều trị:</p>
-                                  <p className="text-[#0F172A]">{record.treatment}</p>
-                                </div>}
-                              {record.symptoms && <div>
-                                  <p className="text-sm font-medium text-[#334155]">Triệu chứng:</p>
-                                  <p className="text-[#0F172A]">{record.symptoms}</p>
-                                </div>}
-                              {record.findings && <div>
-                                  <p className="text-sm font-medium text-[#334155]">Kết quả:</p>
-                                  <p className="text-[#0F172A]">{record.findings}</p>
-                                </div>}
-                              {record.labResults && <div className="flex gap-4 mt-3">
-                                  <span className="px-3 py-1 bg-gray-100 rounded-lg text-sm">
-                                    eGFR: {record.labResults.eGFR}
-                                  </span>
-                                  <span className="px-3 py-1 bg-gray-100 rounded-lg text-sm">
-                                    Creatinine: {record.labResults.creatinine}
-                                  </span>
-                                </div>}
+                                </div>
+                                {record.symptoms && (
+                                  <div>
+                                    <p className="text-sm font-medium text-[#334155]">Triệu chứng:</p>
+                                    <p className="text-[#0F172A]">{record.symptoms}</p>
+                                  </div>
+                                )}
+                                {record.treatment && (
+                                  <div>
+                                    <p className="text-sm font-medium text-[#334155]">Điều trị:</p>
+                                    <p className="text-[#0F172A]">{record.treatment}</p>
+                                  </div>
+                                )}
+                                {record.doctorNote && (
+                                  <div>
+                                    <p className="text-sm font-medium text-[#334155]">Ghi chú của bác sĩ:</p>
+                                    <p className="text-[#0F172A]">{record.doctorNote}</p>
+                                  </div>
+                                )}
+                                {record.followUpDate && (
+                                  <div className="flex items-center gap-2 text-orange-600">
+                                    <CalendarDays size={16} />
+                                    <span className="text-sm font-medium">
+                                      Tái khám: {formatDate(record.followUpDate)}
+                                    </span>
+                                  </div>
+                                )}
+                                {/* Prescriptions */}
+                                {record.prescriptions && record.prescriptions.length > 0 && (
+                                  <div className="mt-4 pt-4 border-t border-gray-200">
+                                    <div className="flex items-center gap-2 mb-3">
+                                      <Pill className="w-4 h-4 text-[#1E75FF]" />
+                                      <p className="text-sm font-medium text-[#334155]">
+                                        Đơn thuốc ({record.prescriptions.length} loại)
+                                      </p>
+                                    </div>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                      {record.prescriptions.slice(0, 4).map((prescription) => {
+                                        const frequencies = parseFrequency(prescription.frequency);
+                                        return (
+                                          <div
+                                            key={prescription.prescriptionId}
+                                            className="bg-blue-50 p-3 rounded-xl border border-blue-200"
+                                          >
+                                            <p className="font-medium text-[#0F172A] text-sm mb-1">
+                                              {prescription.medicalName}
+                                            </p>
+                                            <p className="text-xs text-[#334155] mb-2">
+                                              Liều: {prescription.dosage}
+                                            </p>
+                                            <div className="flex flex-wrap gap-1">
+                                              {frequencies.map((freq, idx) => (
+                                                <span
+                                                  key={idx}
+                                                  className="px-2 py-0.5 bg-white rounded-full text-xs text-[#334155]"
+                                                >
+                                                  {frequencyMap[freq] || freq}
+                                                </span>
+                                              ))}
+                                            </div>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                    {record.prescriptions.length > 4 && (
+                                      <p className="text-sm text-[#1E75FF] mt-2">
+                                        +{record.prescriptions.length - 4} thuốc khác
+                                      </p>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
                             </div>
-                          </div>)
-                      ) : (
-                        <div className="text-center py-12">
-                          <History size={48} className="text-gray-400 mx-auto mb-4" />
-                          <p className="text-[#334155]">Chưa có lịch sử khám</p>
-                        </div>
-                      )}
-                    </div>
+                          ))
+                        ) : (
+                          <div className="text-center py-12">
+                            <History size={48} className="text-gray-400 mx-auto mb-4" />
+                            <p className="text-[#334155]">Chưa có lịch sử khám</p>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 )}
 
