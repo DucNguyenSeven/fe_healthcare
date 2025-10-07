@@ -102,6 +102,40 @@ export async function getUserGroups(userId: string, page: number = 0, size: numb
 }
 
 /**
+ * Create a new group via WebSocket
+ */
+export async function createGroupViaWebSocket(
+  members: ChatMember[],
+  appointmentId?: string,
+  customGroupName?: string
+): Promise<Group> {
+  await ensureConnection();
+
+  // Get existing groups to generate name if not provided
+  let groupName = customGroupName;
+  if (!groupName) {
+    try {
+      const existingGroups = await getUserGroups(members[0]?.userId);
+      groupName = generateGroupName(existingGroups);
+    } catch (error) {
+      // Fallback if we can't get existing groups
+      groupName = `Cuộc trò chuyện ${Date.now()}`;
+    }
+  }
+
+  const createData: CreateGroupData = {
+    groupName,
+    members,
+    ...(appointmentId && { appointmentId })
+  };
+
+  const responsePromise = waitForResponse<Group>('group_created', 15000);
+  webSocketChatService.createGroup(createData);
+
+  return responsePromise;
+}
+
+/**
  * Create a new group using REST API fallback
  */
 export async function createGroupViaREST(
@@ -163,7 +197,7 @@ export async function createGroupViaREST(
 }
 
 /**
- * Create a new group using REST API only (optimized for speed)
+ * Create a new group - prioritizes WebSocket, falls back to REST API
  */
 export async function createGroup(
   members: ChatMember[],
@@ -183,7 +217,19 @@ export async function createGroup(
     }
   }
 
-  return await createGroupViaREST(members, appointmentId, groupName);
+  // Strategy: WebSocket first (receives targeted events), fallback to REST
+  if (webSocketChatService.isReady()) {
+    try {
+      console.log('[createGroup] Using WebSocket (receives targeted group_created event)');
+      return await createGroupViaWebSocket(members, appointmentId, groupName);
+    } catch (error) {
+      console.warn('[createGroup] WebSocket failed, falling back to REST API:', error);
+      return await createGroupViaREST(members, appointmentId, groupName);
+    }
+  } else {
+    console.log('[createGroup] WebSocket not ready, using REST API');
+    return await createGroupViaREST(members, appointmentId, groupName);
+  }
 }
 
 

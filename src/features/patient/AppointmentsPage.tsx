@@ -11,6 +11,7 @@ import { useGetMe } from '@/hooks/auth/useGetMe';
 import { usePatientAppointments, transformAppointmentToTimelineFormat } from '@/hooks/appointments/usePatientAppointments';
 import { MedicalResultModal } from '@/components/MedicalResultModal';
 import { useWebSocketChat } from '@/contexts/WebSocketChatContext';
+import { useAppointmentSocket } from '@/hooks/appointments/useAppointmentSocket';
 
 
 
@@ -79,6 +80,26 @@ export function AppointmentsPage() {
     isLoading: chatLoading,
     error: chatError
   } = useWebSocketChat();
+
+  // Hook để lắng nghe appointment socket events và auto-refetch
+  useAppointmentSocket(() => {
+    // Refetch appointments when socket event occurs
+    if (currentUser?.userId) {
+      const today = new Date();
+      const endDate = new Date(today);
+      endDate.setFullYear(today.getFullYear() + 1);
+
+      fetchAppointments({
+        patientId: currentUser.userId,
+        startTime: '2020-01-01',
+        endTime: endDate.toISOString().split('T')[0],
+        page: 0,
+        size: 50,
+        sortBy: 'appointmentDate',
+        sortDir: 'DESC'
+      });
+    }
+  });
 
   // State để lưu thông tin cần thiết cho booking
   const [selectedSlotId, setSelectedSlotId] = useState<number | null>(null);
@@ -256,29 +277,57 @@ export function AppointmentsPage() {
     }
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'upcoming':
-        return 'bg-blue-100 text-blue-800 border-blue-200';
-      case 'completed':
-        return 'bg-green-100 text-green-800 border-green-200';
-      case 'cancelled':
-        return 'bg-red-100 text-red-800 border-red-200';
+  // Get status color based on backend status
+  const getStatusColor = (backendStatus: string) => {
+    switch (backendStatus) {
+      case 'PENDING':
+        return 'bg-yellow-100 text-yellow-800 border-yellow-300';
+      case 'CONFIRMED':
+        return 'bg-green-100 text-green-800 border-green-300';
+      case 'COMPLETED':
+        return 'bg-blue-100 text-blue-800 border-blue-300';
+      case 'REJECTED':
+        return 'bg-red-100 text-red-800 border-red-300';
+      case 'CANCELED':
+        return 'bg-gray-100 text-gray-800 border-gray-300';
       default:
         return 'bg-gray-100 text-gray-800 border-gray-200';
     }
   };
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'upcoming':
+  // Get status icon based on backend status
+  const getStatusIcon = (backendStatus: string) => {
+    switch (backendStatus) {
+      case 'PENDING':
         return Clock;
-      case 'completed':
+      case 'CONFIRMED':
         return CheckCircle;
-      case 'cancelled':
+      case 'COMPLETED':
+        return CheckCircle;
+      case 'REJECTED':
+        return XCircle;
+      case 'CANCELED':
         return XCircle;
       default:
         return AlertCircle;
+    }
+  };
+
+  // Get status text based on backend status
+  const getStatusText = (backendStatus: string) => {
+    switch (backendStatus) {
+      case 'PENDING':
+        return 'Chờ xác nhận';
+      case 'CONFIRMED':
+        return 'Đã xác nhận';
+      case 'COMPLETED':
+        return 'Đã hoàn thành';
+      case 'REJECTED':
+        return 'Đã từ chối';
+      case 'CANCELED':
+        return 'Đã hủy';
+      default:
+        return 'Không rõ';
     }
   };
 
@@ -390,8 +439,9 @@ export function AppointmentsPage() {
         } với ${selectedDoctor.name}`, // Sử dụng dữ liệu từ form
         slotId: selectedSlotId, // Sử dụng slotId thực tế từ timeSlotMapping
         consultationType: consultationTypeMap[appointmentType] || 'DIRECT_CONSULTATION',
-        status: 'CONFIRMED',
+        status: 'PENDING', // Changed from CONFIRMED to PENDING - waiting for doctor approval
         addressDetail: appointmentType === 'online' ? 'Tại nhà' : (addressDetail || selectedDoctor.clinicAddress || branches[0].address), // Tư vấn online = Tại nhà, còn lại dùng chi nhánh đã chọn
+        hasPredict: false, // Patient does not have AI prediction by default
         // Thêm các field có thể thiếu
         appointmentDate: selectedDate,
         appointmentTime: selectedTime,
@@ -414,10 +464,10 @@ export function AppointmentsPage() {
         setAddressDetail('');
         resetBooking();
 
-        // Hiển thị thông báo thành công
+        // Hiển thị thông báo thành công - updated message for PENDING status
         toast.success('Đặt lịch thành công!', {
-          description: 'Bạn sẽ nhận được thông báo xác nhận qua email',
-          duration: 4000,
+          description: 'Chờ bác sĩ xác nhận. Bạn sẽ nhận thông báo khi được chấp nhận.',
+          duration: 6000,
         });
 
         // Refresh appointments list after successful booking
@@ -443,14 +493,23 @@ export function AppointmentsPage() {
   };
 
   const renderTimelineEntry = (appointment: TimelineAppointment, isLast: boolean) => {
-    const StatusIcon = getStatusIcon(appointment.status);
+    // Use backendStatus for all UI logic
+    const backendStatus = (appointment as any).backendStatus || appointment.status;
+    const StatusIcon = getStatusIcon(backendStatus);
     const isExpanded = appointment.expanded;
+
     return <div key={appointment.id} className="relative">
         {/* Timeline line */}
         {!isLast && <div className="absolute left-6 top-16 w-0.5 h-full bg-gradient-to-b from-gray-300 to-transparent"></div>}
 
-        {/* Timeline dot */}
-        <div className={`absolute left-4 top-6 w-4 h-4 rounded-full border-2 ${appointment.isToday ? 'bg-blue-500 border-blue-500 shadow-lg shadow-blue-200' : appointment.isPast ? 'bg-gray-300 border-gray-400' : 'bg-white border-blue-400'}`}></div>
+        {/* Timeline dot with status-based color */}
+        <div className={`absolute left-4 top-6 w-4 h-4 rounded-full border-2 ${
+          backendStatus === 'PENDING' ? 'bg-yellow-400 border-yellow-500 animate-pulse' :
+          backendStatus === 'CONFIRMED' ? 'bg-green-500 border-green-600' :
+          backendStatus === 'COMPLETED' ? 'bg-blue-500 border-blue-600' :
+          backendStatus === 'REJECTED' ? 'bg-red-500 border-red-600' :
+          'bg-gray-300 border-gray-400'
+        }`}></div>
 
         {/* Appointment card */}
         <div className="ml-12 mb-8">
@@ -469,9 +528,9 @@ export function AppointmentsPage() {
                     <p className="text-gray-600">{appointment.doctor}</p>
                   </div>
                 </div>
-                <span className={`px-3 py-1 rounded-full text-sm font-medium border ${getStatusColor(appointment.status)}`}>
+                <span className={`px-3 py-1 rounded-full text-sm font-medium border ${getStatusColor(backendStatus)}`}>
                   <StatusIcon className="w-4 h-4 inline mr-1" />
-                  {appointment.status === 'upcoming' ? 'Sắp tới' : appointment.status === 'completed' ? 'Đã hoàn thành' : 'Đã hủy'}
+                  {getStatusText(backendStatus)}
                 </span>
               </div>
 
@@ -486,10 +545,47 @@ export function AppointmentsPage() {
                 </div>
               </div>
 
-              {/* Action buttons */}
+              {/* Status description message */}
+              {backendStatus === 'PENDING' && (
+                <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                  <p className="text-sm text-yellow-800 flex items-center">
+                    <Clock className="w-4 h-4 mr-2" />
+                    Đang chờ bác sĩ xác nhận lịch hẹn...
+                  </p>
+                </div>
+              )}
+              {backendStatus === 'CONFIRMED' && (
+                <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+                  <p className="text-sm text-green-800 flex items-center">
+                    <CheckCircle className="w-4 h-4 mr-2" />
+                    Bác sĩ đã xác nhận lịch hẹn
+                  </p>
+                </div>
+              )}
+              {backendStatus === 'REJECTED' && (
+                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                  <p className="text-sm text-red-800 flex items-center">
+                    <XCircle className="w-4 h-4 mr-2" />
+                    Bác sĩ không thể nhận lịch này. Vui lòng đặt lại.
+                  </p>
+                </div>
+              )}
+
+              {/* Action buttons based on backend status */}
               <div className="flex items-center justify-between">
                 <div className="flex space-x-2">
-                  {appointment.status === 'upcoming' && <>
+                  {/* PENDING: Allow reschedule and cancel */}
+                  {backendStatus === 'PENDING' && <>
+                      <button className="px-4 py-2 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors text-sm">
+                        Đổi lịch
+                      </button>
+                      <button className="px-4 py-2 border border-red-300 text-red-700 rounded-xl hover:bg-red-50 transition-colors text-sm">
+                        Hủy lịch
+                      </button>
+                    </>}
+
+                  {/* CONFIRMED: Allow join (if online), reschedule, cancel */}
+                  {backendStatus === 'CONFIRMED' && <>
                       {appointment.canJoin && appointment.type === 'online' && <button className="px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors text-sm">
                           Vào phòng tư vấn
                         </button>}
@@ -500,7 +596,19 @@ export function AppointmentsPage() {
                         Hủy lịch
                       </button>
                     </>}
-                  {appointment.status === 'completed' && <>
+
+                  {/* REJECTED: Allow re-booking */}
+                  {backendStatus === 'REJECTED' && <>
+                      <button
+                        onClick={() => setShowBookingForm(true)}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors text-sm"
+                      >
+                        Đặt lại lịch khác
+                      </button>
+                    </>}
+
+                  {/* COMPLETED: View result and chat */}
+                  {backendStatus === 'COMPLETED' && <>
                       <button
                         onClick={() => handleViewResult(appointment)}
                         className="px-4 py-2 bg-[#1E75FF] hover:bg-[#1659C9] text-white rounded-xl text-sm font-medium flex items-center justify-center gap-1 transition-colors"

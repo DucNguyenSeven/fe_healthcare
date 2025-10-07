@@ -290,6 +290,7 @@ export const transformAppointmentToTimelineFormat = (appointment: AppointmentRes
     date: appointment.appointmentDate,
     time: appointment.timeSlot.startTime,
     status: (statusMapping[appointment.status] || 'upcoming') as 'upcoming' | 'completed' | 'cancelled',
+    backendStatus: appointment.status, // Keep original backend status for PENDING/CONFIRMED/REJECTED distinction
     type: getAppointmentType(appointment.consultationType, appointment.note),
     canJoin: appointment.status === 'CONFIRMED' && appointment.consultationType === 'ONLINE_CONSULTATION',
     // Thêm thông tin bổ sung để hiển thị trong phần chi tiết

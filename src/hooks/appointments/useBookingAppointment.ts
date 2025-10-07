@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { bookingAppointment, BookingAppointmentRequest, BookingAppointmentResponse } from '@/lib/api/appointments';
+import { webSocketAppointmentService } from '@/services/websocket-appointment';
 
 export interface UseBookingAppointmentReturn {
   bookingAppointment: (data: BookingAppointmentRequest) => Promise<BookingAppointmentResponse | null>;
@@ -25,10 +26,25 @@ export const useBookingAppointment = (): UseBookingAppointmentReturn => {
       setSuccess(false);
 
       const response = await bookingAppointment(data);
-      
+
       // Kiểm tra cả success và status để tương thích với cả hai format
       if ((response.success === true || response.status === 'success') && response.data) {
         setSuccess(true);
+
+        // Send WebSocket event after successful booking
+        try {
+          webSocketAppointmentService.sendScheduleEvent({
+            appointmentId: response.data.appointmentId || null,
+            patientId: data.patientId,
+            doctorId: data.doctorId,
+            event: 'BOOKING_APPOINTMENT',
+            createAppointmentRequest: data
+          });
+        } catch (wsError) {
+          console.error('[useBookingAppointment] Failed to send WebSocket event:', wsError);
+          // Don't fail the booking if WebSocket fails
+        }
+
         return response.data;
       } else {
         throw new Error(response.message || 'Không thể đặt lịch khám');

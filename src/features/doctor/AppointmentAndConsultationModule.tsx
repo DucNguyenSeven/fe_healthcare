@@ -11,6 +11,8 @@ import { useGetMe } from '@/hooks/auth/useGetMe';
 import { useCreateMedicalRecord } from '@/hooks/medical-records';
 import { useCreateMultiplePrescriptions } from '@/hooks/prescriptions';
 import { updateAppointmentStatus, getAppointmentDetail } from '@/lib/api/appointments';
+import { useUpdateAppointmentStatus } from '@/hooks/appointments/useUpdateAppointmentStatus';
+import { useAppointmentSocket } from '@/hooks/appointments/useAppointmentSocket';
 import { toast } from 'sonner';
 import { MedicalResultModal } from '@/components/MedicalResultModal';
 // Dữ liệu sẽ được lấy từ API, bỏ mock
@@ -139,6 +141,89 @@ export const AppointmentAndConsultationModule = ({
   // Hooks for API calls
   const { create: createMedicalRecord, loading: medicalRecordLoading, error: medicalRecordError } = useCreateMedicalRecord();
   const { createMultiple: createPrescriptions, loading: prescriptionsLoading, error: prescriptionsError } = useCreateMultiplePrescriptions();
+
+  // Hook for updating appointment status (confirm/reject)
+  const { updateStatus, loading: updateStatusLoading } = useUpdateAppointmentStatus();
+
+  // States for confirm/reject modals
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [selectedAppointmentForAction, setSelectedAppointmentForAction] = useState<any>(null);
+  const [rejectReason, setRejectReason] = useState('');
+
+  // Hook to listen to appointment socket events and auto-refetch
+  useAppointmentSocket(() => {
+    // Refetch appointments when socket event occurs
+    if (me?.userId) {
+      const { start, end } = getWeekStartEnd(currentWeek);
+      fetchDoctorAppointments({ doctorId: me.userId, startTime: start, endTime: end });
+
+      // Also refetch completed if we're on that tab
+      if (appointmentTab === 'completed') {
+        fetchCompletedAppointments({
+          status: 'COMPLETED',
+          page: 0,
+          size: 50,
+          sortBy: 'appointmentDate',
+          sortDir: 'DESC'
+        });
+      }
+    }
+  });
+
+  // Handlers for confirm/reject appointments
+  const handleOpenConfirmModal = (appointment: any) => {
+    setSelectedAppointmentForAction(appointment);
+    setShowConfirmModal(true);
+  };
+
+  const handleOpenRejectModal = (appointment: any) => {
+    setSelectedAppointmentForAction(appointment);
+    setRejectReason('');
+    setShowRejectModal(true);
+  };
+
+  const handleConfirmAppointment = async () => {
+    if (!selectedAppointmentForAction) return;
+
+    const success = await updateStatus(
+      selectedAppointmentForAction.appointmentId || selectedAppointmentForAction.id,
+      'CONFIRMED'
+    );
+
+    if (success) {
+      setShowConfirmModal(false);
+      setSelectedAppointmentForAction(null);
+
+      // Refetch appointments
+      if (me?.userId) {
+        const { start, end } = getWeekStartEnd(currentWeek);
+        fetchDoctorAppointments({ doctorId: me.userId, startTime: start, endTime: end });
+      }
+    }
+  };
+
+  const handleRejectAppointment = async () => {
+    if (!selectedAppointmentForAction) return;
+
+    const success = await updateStatus(
+      selectedAppointmentForAction.appointmentId || selectedAppointmentForAction.id,
+      'REJECTED',
+      rejectReason || 'Lịch đầy, vui lòng chọn khung giờ khác'
+    );
+
+    if (success) {
+      setShowRejectModal(false);
+      setSelectedAppointmentForAction(null);
+      setRejectReason('');
+
+      // Refetch appointments
+      if (me?.userId) {
+        const { start, end } = getWeekStartEnd(currentWeek);
+        fetchDoctorAppointments({ doctorId: me.userId, startTime: start, endTime: end });
+      }
+    }
+  };
 
   // Utility functions for week calculation
   const getWeekStartEnd = (date: Date) => {
@@ -1333,11 +1418,19 @@ export const AppointmentAndConsultationModule = ({
                       </div>}
 
                     {appointmentTab === 'upcoming' && appointment.status === 'pending' && <div className="flex gap-2">
-                        <button className="flex-1 bg-[#10B981] hover:bg-[#059669] text-white py-2 px-3 rounded-xl text-sm font-medium flex items-center justify-center gap-1 transition-colors">
+                        <button
+                          onClick={() => handleOpenConfirmModal(appointment)}
+                          disabled={updateStatusLoading}
+                          className="flex-1 bg-[#10B981] hover:bg-[#059669] text-white py-2 px-3 rounded-xl text-sm font-medium flex items-center justify-center gap-1 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
                           <Check size={16} />
                           <span>Chấp nhận</span>
                         </button>
-                        <button className="flex-1 bg-[#EF4444] hover:bg-[#DC2626] text-white py-2 px-3 rounded-xl text-sm font-medium flex items-center justify-center gap-1 transition-colors">
+                        <button
+                          onClick={() => handleOpenRejectModal(appointment)}
+                          disabled={updateStatusLoading}
+                          className="flex-1 bg-[#EF4444] hover:bg-[#DC2626] text-white py-2 px-3 rounded-xl text-sm font-medium flex items-center justify-center gap-1 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
                           <X size={16} />
                           <span>Từ chối</span>
                         </button>
@@ -1866,5 +1959,98 @@ export const AppointmentAndConsultationModule = ({
         patientInfo={selectedPatientInfo ?? undefined}
         doctorInfo={selectedDoctorInfo ?? undefined}
       />
+
+      {/* Confirm Appointment Modal */}
+      {showConfirmModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            className="bg-white rounded-2xl p-6 max-w-md w-full mx-4"
+          >
+            <h3 className="text-xl font-bold text-gray-900 mb-6">Xác nhận lịch hẹn?</h3>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowConfirmModal(false)}
+                disabled={updateStatusLoading}
+                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors disabled:opacity-50"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={handleConfirmAppointment}
+                disabled={updateStatusLoading}
+                className="flex-1 px-4 py-2 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {updateStatusLoading ? 'Đang xử lý...' : 'Xác nhận'}
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Reject Appointment Modal */}
+      {showRejectModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            className="bg-white rounded-2xl p-6 max-w-md w-full mx-4"
+          >
+            <h3 className="text-xl font-bold text-gray-900 mb-4">Từ chối lịch hẹn</h3>
+            {selectedAppointmentForAction && (
+              <div className="space-y-3 mb-4">
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Bệnh nhân:</span>
+                  <span className="font-medium text-gray-900">{selectedAppointmentForAction.patientName}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Thời gian:</span>
+                  <span className="font-medium text-gray-900">
+                    {new Date(selectedAppointmentForAction.date).toLocaleDateString('vi-VN')} - {selectedAppointmentForAction.timeSlot?.startTime}
+                  </span>
+                </div>
+              </div>
+            )}
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Lý do từ chối <span className="text-gray-400">(Tùy chọn)</span>
+              </label>
+              <textarea
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+                placeholder="Ví dụ: Lịch đầy, vui lòng chọn khung giờ khác..."
+                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent resize-none"
+                rows={3}
+                maxLength={200}
+              />
+              <div className="text-right text-xs text-gray-400 mt-1">
+                {rejectReason.length}/200 ký tự
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setShowRejectModal(false);
+                  setRejectReason('');
+                }}
+                disabled={updateStatusLoading}
+                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors disabled:opacity-50"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={handleRejectAppointment}
+                disabled={updateStatusLoading}
+                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {updateStatusLoading ? 'Đang xử lý...' : 'Xác nhận từ chối'}
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </div>;
 };

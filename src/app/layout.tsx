@@ -3,6 +3,7 @@ import './globals.css'
 import { QueryProvider } from '@/providers/QueryProvider'
 import { AuthProvider } from '@/contexts/AuthContext'
 import { ChatProvider } from '@/features/chat/ChatProvider'
+import { WebSocketAppointmentProvider } from '@/contexts/WebSocketAppointmentContext'
 import { Toaster } from 'sonner'
 
 export const metadata: Metadata = {
@@ -21,9 +22,11 @@ export default function RootLayout({
         <QueryProvider>
           <AuthProvider>
             <ChatProvider>
-              <div id="root" className="h-full w-full">
-                {children}
-              </div>
+              <WebSocketAppointmentProvider>
+                <div id="root" className="h-full w-full">
+                  {children}
+                </div>
+              </WebSocketAppointmentProvider>
             </ChatProvider>
             <Toaster
               position="top-right"

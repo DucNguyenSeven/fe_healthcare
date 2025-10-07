@@ -31,6 +31,7 @@ export interface BookingAppointmentRequest {
   consultationType: 'ONLINE_CONSULTATION' | 'DIRECT_CONSULTATION' | 'FOLLOW_UP';
   addressDetail?: string;
   status?: 'PENDING' | 'CONFIRMED' | 'CANCELED' | 'REJECTED' | 'COMPLETED' | 'NO_SHOW' | 'RESCHEDULED';
+  hasPredict?: boolean; // Indicates if patient has AI prediction
   // Thêm các field có thể thiếu
   appointmentDate?: string;
   appointmentTime?: string;

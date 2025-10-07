@@ -438,6 +438,11 @@ export function WebSocketChatProvider({ children }: WebSocketChatProviderProps) 
         }
         break;
 
+      case 'schedule_appointment_response':
+        // Forward appointment events - handled by WebSocketAppointmentContext
+        // No action needed here, just pass through
+        break;
+
       case 'join_group':
       case 'messages':
       case 'groups':
