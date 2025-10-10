@@ -43,6 +43,7 @@ interface WebSocketChatState {
   // UI State
   unreadCounts: Record<string, number>; // groupId -> count
   typingUsers: Record<string, string[]>; // groupId -> userIds
+  isJoiningGroup: boolean; // Track if currently joining a group to prevent race conditions
 }
 
 type WebSocketChatAction =
@@ -55,7 +56,8 @@ type WebSocketChatAction =
   | { type: 'ADD_MESSAGE'; payload: Message & { currentUserId?: string } }
   | { type: 'SET_ACTIVE_CONVERSATION'; payload: string | null }
   | { type: 'UPDATE_UNREAD_COUNT'; payload: { groupId: string; count: number } }
-  | { type: 'SET_TYPING_USERS'; payload: { groupId: string; userIds: string[] } };
+  | { type: 'SET_TYPING_USERS'; payload: { groupId: string; userIds: string[] } }
+  | { type: 'SET_JOINING_GROUP'; payload: boolean };
 
 // ============ Helper Functions ============
 
@@ -270,6 +272,9 @@ function webSocketChatReducer(state: WebSocketChatState, action: WebSocketChatAc
         }
       };
 
+    case 'SET_JOINING_GROUP':
+      return { ...state, isJoiningGroup: action.payload };
+
     default:
       return state;
   }
@@ -311,7 +316,8 @@ export function WebSocketChatProvider({ children }: WebSocketChatProviderProps) 
     messages: {},
     activeConversationId: null,
     unreadCounts: {},
-    typingUsers: {}
+    typingUsers: {},
+    isJoiningGroup: false
   });
 
   // Ref to avoid circular dependency
@@ -401,8 +407,14 @@ export function WebSocketChatProvider({ children }: WebSocketChatProviderProps) 
           }
 
           // Join group via WebSocket to receive real-time messages
+          // Wait a bit to ensure backend processing completes
           if (webSocketChatService.isReady()) {
             webSocketChatService.joinGroup(newGroup.groupId);
+
+            // Small delay to ensure join completes before allowing messages
+            setTimeout(() => {
+              // Join delay completed
+            }, 200);
           }
 
           // Show notification only for doctors (patients don't need this notification)
@@ -578,9 +590,16 @@ export function WebSocketChatProvider({ children }: WebSocketChatProviderProps) 
         dispatch({ type: 'SET_MESSAGES', payload: { groupId: actualGroup.groupId, messages: [] } });
       }
 
-      // Join group via WebSocket for real-time updates (non-blocking)
+      // Join group via WebSocket for real-time updates with joining state
       if (webSocketChatService.isReady()) {
+        dispatch({ type: 'SET_JOINING_GROUP', payload: true });
+
         webSocketChatService.joinGroup(actualGroup.groupId);
+
+        // Wait for join to complete (small delay to ensure backend processing)
+        await new Promise(resolve => setTimeout(resolve, 300));
+
+        dispatch({ type: 'SET_JOINING_GROUP', payload: false });
       }
 
       // Mark as read
@@ -599,6 +618,7 @@ export function WebSocketChatProvider({ children }: WebSocketChatProviderProps) 
       throw error;
     } finally {
       dispatch({ type: 'SET_LOADING', payload: false });
+      dispatch({ type: 'SET_JOINING_GROUP', payload: false });
     }
   }, [user, loadConversations]);
 
