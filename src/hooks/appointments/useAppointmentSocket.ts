@@ -20,14 +20,30 @@ export const useAppointmentSocket = (
 
   // Subscribe to appointment updates
   useEffect(() => {
-    if (!enabled) return;
+    if (!enabled) {
+      console.log('🔍 [useAppointmentSocket] Hook disabled, not subscribing');
+      return;
+    }
+
+    console.log('🔍 [useAppointmentSocket] Subscribing to appointment updates');
 
     const unsubscribe = onAppointmentUpdate(() => {
+      console.log('🔍 [useAppointmentSocket] Appointment update event received, calling refetch function');
       // Call the refetch function when any appointment event occurs
-      refetchFnRef.current();
+      try {
+        refetchFnRef.current();
+        console.log('✅ [useAppointmentSocket] Refetch function executed successfully');
+      } catch (error) {
+        console.error('❌ [useAppointmentSocket] Error executing refetch function:', error);
+      }
     });
 
-    return unsubscribe;
+    console.log('✅ [useAppointmentSocket] Successfully subscribed to appointment updates');
+
+    return () => {
+      console.log('🔍 [useAppointmentSocket] Unsubscribing from appointment updates');
+      unsubscribe();
+    };
   }, [enabled, onAppointmentUpdate]);
 
   return {

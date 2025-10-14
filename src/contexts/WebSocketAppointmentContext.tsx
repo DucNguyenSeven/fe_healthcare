@@ -41,13 +41,29 @@ export function WebSocketAppointmentProvider({ children }: WebSocketAppointmentP
    * Handle BOOKING_APPOINTMENT event
    */
   const handleBookingAppointment = useCallback((data: AppointmentSocketData) => {
+    console.log('🔍 [AppointmentContext] handleBookingAppointment called:', {
+      data,
+      user: user ? { userId: user.userId, role: user.role } : null
+    });
+
     const { appointmentId, patientId, doctorId, success } = data;
 
-    if (!success || !user) return;
+    if (!success) {
+      console.warn('⚠️ [AppointmentContext] Appointment booking not successful, skipping');
+      return;
+    }
+
+    if (!user) {
+      console.warn('⚠️ [AppointmentContext] User not available, skipping');
+      return;
+    }
 
     // Prevent duplicate toasts
     const toastKey = `booking-${appointmentId}`;
-    if (shownToastAppointmentsRef.current.has(toastKey)) return;
+    if (shownToastAppointmentsRef.current.has(toastKey)) {
+      console.log('🔍 [AppointmentContext] Toast already shown for this appointment, skipping');
+      return;
+    }
     shownToastAppointmentsRef.current.add(toastKey);
 
     // Auto cleanup after 1 minute
@@ -56,10 +72,19 @@ export function WebSocketAppointmentProvider({ children }: WebSocketAppointmentP
     }, 60000);
 
     // Trigger callbacks to refetch appointments
-    updateCallbacksRef.current.forEach(callback => callback());
+    console.log(`🔍 [AppointmentContext] Triggering ${updateCallbacksRef.current.size} refetch callback(s)`);
+    updateCallbacksRef.current.forEach(callback => {
+      try {
+        callback();
+        console.log('✅ [AppointmentContext] Refetch callback executed successfully');
+      } catch (error) {
+        console.error('❌ [AppointmentContext] Error in refetch callback:', error);
+      }
+    });
 
     // Show notification based on user role
     if (user.role === 'DOCTOR' && doctorId === user.userId) {
+      console.log('✅ [AppointmentContext] Showing notification for DOCTOR');
       // Doctor receives notification about new booking
       toast.info('Lịch hẹn mới', {
         description: 'Bệnh nhân vừa đặt lịch khám. Vui lòng xác nhận.',
@@ -73,10 +98,18 @@ export function WebSocketAppointmentProvider({ children }: WebSocketAppointmentP
         }
       });
     } else if (user.role === 'PATIENT' && patientId === user.userId) {
+      console.log('✅ [AppointmentContext] Showing notification for PATIENT');
       // Patient receives confirmation after booking
       toast.success('Đặt lịch thành công!', {
         description: 'Chờ bác sĩ xác nhận. Bạn sẽ nhận thông báo khi được chấp nhận.',
         duration: 6000
+      });
+    } else {
+      console.log('⚠️ [AppointmentContext] User role/ID does not match, no notification shown:', {
+        userRole: user.role,
+        userId: user.userId,
+        doctorId,
+        patientId
       });
     }
   }, [user]);
@@ -214,6 +247,148 @@ export function WebSocketAppointmentProvider({ children }: WebSocketAppointmentP
     }
   }, [user]);
 
+  // ============ FAILED Event Handlers ============
+
+  /**
+   * Handle BOOKING_APPOINTMENT_FAILED event
+   */
+  const handleBookingAppointmentFailed = useCallback((data: AppointmentSocketData) => {
+    console.log('🔍 [AppointmentContext] handleBookingAppointmentFailed called:', data);
+
+    const { appointmentId, patientId, doctorId, message } = data;
+
+    if (!user) {
+      console.warn('⚠️ [AppointmentContext] User not available, skipping');
+      return;
+    }
+
+    // Prevent duplicate toasts
+    const toastKey = `booking-failed-${appointmentId || Date.now()}`;
+    if (shownToastAppointmentsRef.current.has(toastKey)) {
+      console.log('🔍 [AppointmentContext] Toast already shown for this failed booking');
+      return;
+    }
+    shownToastAppointmentsRef.current.add(toastKey);
+
+    setTimeout(() => {
+      shownToastAppointmentsRef.current.delete(toastKey);
+    }, 60000);
+
+    // Trigger callbacks to refetch (to show updated available slots)
+    console.log(`🔍 [AppointmentContext] Triggering ${updateCallbacksRef.current.size} refetch callback(s) for failed booking`);
+    updateCallbacksRef.current.forEach(callback => {
+      try {
+        callback();
+      } catch (error) {
+        console.error('❌ [AppointmentContext] Error in refetch callback:', error);
+      }
+    });
+
+    // Show error notification
+    if (user.role === 'PATIENT' && patientId === user.userId) {
+      console.log('❌ [AppointmentContext] Showing error notification for PATIENT');
+      toast.error('Đặt lịch thất bại!', {
+        description: message || 'Time slot đã hết, vui lòng chọn slot khác.',
+        duration: 8000,
+        action: {
+          label: 'Chọn lại',
+          onClick: () => {
+            // User can re-select available slot
+            window.location.reload();
+          }
+        }
+      });
+    } else if (user.role === 'DOCTOR' && doctorId === user.userId) {
+      console.log('❌ [AppointmentContext] Showing error notification for DOCTOR');
+      toast.error('Lỗi đặt lịch', {
+        description: message || 'Có lỗi xảy ra khi xử lý yêu cầu đặt lịch.',
+        duration: 6000
+      });
+    }
+  }, [user]);
+
+  /**
+   * Handle UPDATE_APPOINTMENT_STATUS_FAILED event
+   */
+  const handleUpdateStatusFailed = useCallback((data: AppointmentSocketData) => {
+    console.log('🔍 [AppointmentContext] handleUpdateStatusFailed called:', data);
+
+    const { appointmentId, patientId, doctorId, message } = data;
+
+    if (!user) return;
+
+    const toastKey = `update-failed-${appointmentId}`;
+    if (shownToastAppointmentsRef.current.has(toastKey)) return;
+    shownToastAppointmentsRef.current.add(toastKey);
+
+    setTimeout(() => {
+      shownToastAppointmentsRef.current.delete(toastKey);
+    }, 60000);
+
+    // Trigger callbacks
+    updateCallbacksRef.current.forEach(callback => callback());
+
+    // Show error notification
+    toast.error('Không thể cập nhật trạng thái', {
+      description: message || 'Có lỗi xảy ra khi cập nhật trạng thái lịch hẹn.',
+      duration: 6000
+    });
+  }, [user]);
+
+  /**
+   * Handle RESCHEDULE_APPOINTMENT_FAILED event
+   */
+  const handleRescheduleFailed = useCallback((data: AppointmentSocketData) => {
+    console.log('🔍 [AppointmentContext] handleRescheduleFailed called:', data);
+
+    const { appointmentId, message } = data;
+
+    if (!user) return;
+
+    const toastKey = `reschedule-failed-${appointmentId}`;
+    if (shownToastAppointmentsRef.current.has(toastKey)) return;
+    shownToastAppointmentsRef.current.add(toastKey);
+
+    setTimeout(() => {
+      shownToastAppointmentsRef.current.delete(toastKey);
+    }, 60000);
+
+    // Trigger callbacks
+    updateCallbacksRef.current.forEach(callback => callback());
+
+    toast.error('Không thể đổi lịch', {
+      description: message || 'Có lỗi xảy ra khi đổi lịch hẹn.',
+      duration: 6000
+    });
+  }, [user]);
+
+  /**
+   * Handle CANCEL_APPOINTMENT_FAILED event
+   */
+  const handleCancelFailed = useCallback((data: AppointmentSocketData) => {
+    console.log('🔍 [AppointmentContext] handleCancelFailed called:', data);
+
+    const { appointmentId, message } = data;
+
+    if (!user) return;
+
+    const toastKey = `cancel-failed-${appointmentId}`;
+    if (shownToastAppointmentsRef.current.has(toastKey)) return;
+    shownToastAppointmentsRef.current.add(toastKey);
+
+    setTimeout(() => {
+      shownToastAppointmentsRef.current.delete(toastKey);
+    }, 60000);
+
+    // Trigger callbacks
+    updateCallbacksRef.current.forEach(callback => callback());
+
+    toast.error('Không thể hủy lịch', {
+      description: message || 'Có lỗi xảy ra khi hủy lịch hẹn.',
+      duration: 6000
+    });
+  }, [user]);
+
   // ============ Effects ============
 
   /**
@@ -221,10 +396,16 @@ export function WebSocketAppointmentProvider({ children }: WebSocketAppointmentP
    */
   useEffect(() => {
     if (!isAuthenticated || !user) {
+      console.log('🔍 [AppointmentContext] Not subscribing - user not authenticated');
       return;
     }
 
-    // Subscribe to all appointment events
+    console.log('🔍 [AppointmentContext] Setting up appointment event subscriptions for user:', {
+      userId: user.userId,
+      role: user.role
+    });
+
+    // Subscribe to SUCCESS events
     const unsubscribeBooking = webSocketAppointmentService.subscribe(
       'BOOKING_APPOINTMENT',
       handleBookingAppointment
@@ -245,14 +426,55 @@ export function WebSocketAppointmentProvider({ children }: WebSocketAppointmentP
       handleCancel
     );
 
+    // Subscribe to FAILED events
+    const unsubscribeBookingFailed = webSocketAppointmentService.subscribe(
+      'BOOKING_APPOINTMENT_FAILED',
+      handleBookingAppointmentFailed
+    );
+
+    const unsubscribeStatusFailed = webSocketAppointmentService.subscribe(
+      'UPDATE_APPOINTMENT_STATUS_FAILED',
+      handleUpdateStatusFailed
+    );
+
+    const unsubscribeRescheduleFailed = webSocketAppointmentService.subscribe(
+      'RESCHEDULE_APPOINTMENT_FAILED',
+      handleRescheduleFailed
+    );
+
+    const unsubscribeCancelFailed = webSocketAppointmentService.subscribe(
+      'CANCEL_APPOINTMENT_FAILED',
+      handleCancelFailed
+    );
+
+    console.log('✅ [AppointmentContext] All appointment event handlers registered (success + failed)');
+
     // Cleanup subscriptions on unmount
     return () => {
+      console.log('🔍 [AppointmentContext] Cleaning up appointment event subscriptions');
+      // Unsubscribe success events
       unsubscribeBooking();
       unsubscribeStatus();
       unsubscribeReschedule();
       unsubscribeCancel();
+      // Unsubscribe failed events
+      unsubscribeBookingFailed();
+      unsubscribeStatusFailed();
+      unsubscribeRescheduleFailed();
+      unsubscribeCancelFailed();
     };
-  }, [isAuthenticated, user, handleBookingAppointment, handleUpdateStatus, handleReschedule, handleCancel]);
+  }, [
+    isAuthenticated,
+    user,
+    handleBookingAppointment,
+    handleUpdateStatus,
+    handleReschedule,
+    handleCancel,
+    handleBookingAppointmentFailed,
+    handleUpdateStatusFailed,
+    handleRescheduleFailed,
+    handleCancelFailed
+  ]);
 
   // ============ Public Methods ============
 

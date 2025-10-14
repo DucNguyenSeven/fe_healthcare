@@ -21,27 +21,33 @@ export const useBookingAppointment = (): UseBookingAppointmentReturn => {
 
   const handleBookingAppointment = useCallback(async (data: BookingAppointmentRequest): Promise<BookingAppointmentResponse | null> => {
     try {
+      console.log('🔍 [useBookingAppointment] Starting appointment booking:', data);
       setLoading(true);
       setError(null);
       setSuccess(false);
 
       const response = await bookingAppointment(data);
+      console.log('🔍 [useBookingAppointment] Received response from API:', response);
 
       // Kiểm tra cả success và status để tương thích với cả hai format
       if ((response.success === true || response.status === 'success') && response.data) {
+        console.log('✅ [useBookingAppointment] Booking successful, preparing to send WebSocket event');
         setSuccess(true);
 
         // Send WebSocket event after successful booking
         try {
-          webSocketAppointmentService.sendScheduleEvent({
+          const wsEvent = {
             appointmentId: response.data.appointmentId || null,
             patientId: data.patientId,
             doctorId: data.doctorId,
-            event: 'BOOKING_APPOINTMENT',
+            event: 'BOOKING_APPOINTMENT' as const,
             createAppointmentRequest: data
-          });
+          };
+          console.log('🔍 [useBookingAppointment] Sending WebSocket event:', wsEvent);
+          webSocketAppointmentService.sendScheduleEvent(wsEvent);
+          console.log('✅ [useBookingAppointment] WebSocket event sent successfully');
         } catch (wsError) {
-          console.error('[useBookingAppointment] Failed to send WebSocket event:', wsError);
+          console.error('❌ [useBookingAppointment] Failed to send WebSocket event:', wsError);
           // Don't fail the booking if WebSocket fails
         }
 
@@ -51,6 +57,7 @@ export const useBookingAppointment = (): UseBookingAppointmentReturn => {
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Có lỗi xảy ra khi đặt lịch khám';
+      console.error('❌ [useBookingAppointment] Booking failed:', errorMessage);
       setError(errorMessage);
       return null;
     } finally {

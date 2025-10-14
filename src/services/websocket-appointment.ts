@@ -7,10 +7,16 @@
 import webSocketChatService, { WebSocketResponse } from './websocket-chat';
 
 export type AppointmentSocketEvent =
+  // Success events
   | 'BOOKING_APPOINTMENT'
   | 'UPDATE_APPOINTMENT_STATUS'
   | 'RESCHEDULE_APPOINTMENT'
-  | 'CANCEL_APPOINTMENT';
+  | 'CANCEL_APPOINTMENT'
+  // Failed events (from backend error handling)
+  | 'BOOKING_APPOINTMENT_FAILED'
+  | 'UPDATE_APPOINTMENT_STATUS_FAILED'
+  | 'RESCHEDULE_APPOINTMENT_FAILED'
+  | 'CANCEL_APPOINTMENT_FAILED';
 
 export interface AppointmentSocketData {
   eventType: AppointmentSocketEvent;
@@ -35,12 +41,18 @@ class WebSocketAppointmentService {
   private eventHandlers: Map<AppointmentSocketEvent, Set<AppointmentEventHandler>> = new Map();
 
   constructor() {
-    // Initialize handler sets for each event type
+    // Initialize handler sets for each event type (both success and failed)
     const eventTypes: AppointmentSocketEvent[] = [
+      // Success events
       'BOOKING_APPOINTMENT',
       'UPDATE_APPOINTMENT_STATUS',
       'RESCHEDULE_APPOINTMENT',
-      'CANCEL_APPOINTMENT'
+      'CANCEL_APPOINTMENT',
+      // Failed events
+      'BOOKING_APPOINTMENT_FAILED',
+      'UPDATE_APPOINTMENT_STATUS_FAILED',
+      'RESCHEDULE_APPOINTMENT_FAILED',
+      'CANCEL_APPOINTMENT_FAILED'
     ];
 
     eventTypes.forEach(type => {
@@ -56,20 +68,20 @@ class WebSocketAppointmentService {
    */
   private setupMessageHandler(): void {
     webSocketChatService.addMessageHandler((response: WebSocketResponse) => {
-      // Debug: log every incoming WS message to help diagnose action/type mismatches
-      try {
-        // Safe shallow preview (avoid logging huge payloads)
-        // eslint-disable-next-line no-console
-        console.log('[AppointmentSocket] Incoming WS message preview:', {
-          action: (response as any)?.action,
-          status: (response as any)?.status,
-          type: (response as any)?.type,
-          dataKeys: response?.data ? Object.keys(response.data) : []
-        });
-      } catch {}
+      // 🔍 ENHANCED DEBUG: Log every incoming WS message with full details
+      console.log('🔍 [AppointmentSocket] Received WebSocket message:', {
+        action: (response as any)?.action,
+        status: (response as any)?.status,
+        type: (response as any)?.type,
+        dataType: typeof response?.data,
+        dataKeys: response?.data ? Object.keys(response.data) : [],
+        hasEventType: !!(response as any)?.data?.eventType,
+        fullData: response?.data
+      });
 
       // Primary path: expected action name from backend contract
       if (response.action === 'schedule_appointment_response') {
+        console.log('✅ [AppointmentSocket] MATCHED schedule_appointment_response!', response.data);
         const appointmentResponse = response as AppointmentSocketResponse;
         this.handleAppointmentEvent(appointmentResponse.data);
         return;
@@ -78,18 +90,24 @@ class WebSocketAppointmentService {
       // Fallbacks: some environments may send different action/type labels
       // 1) Same payload but with action 'schedule_appointment'
       if (response.action === 'schedule_appointment' && (response as any)?.data?.eventType) {
-        // eslint-disable-next-line no-console
-        console.log('[AppointmentSocket] Fallback: handling schedule_appointment as appointment event');
+        console.log('✅ [AppointmentSocket] FALLBACK 1: Matched schedule_appointment with eventType');
         this.handleAppointmentEvent((response as any).data);
         return;
       }
 
       // 2) Wrapped with a type field
       if ((response as any)?.type === 'APPOINTMENT_SOCKET_LIST' && (response as any)?.data?.eventType) {
-        // eslint-disable-next-line no-console
-        console.log('[AppointmentSocket] Fallback: handling APPOINTMENT_SOCKET_LIST as appointment event');
+        console.log('✅ [AppointmentSocket] FALLBACK 2: Matched APPOINTMENT_SOCKET_LIST');
         this.handleAppointmentEvent((response as any).data);
         return;
+      }
+
+      // 🔍 DEBUG: Log when message doesn't match any pattern
+      if (response.action && response.action.includes('appointment') || response.action === 'schedule_appointment') {
+        console.warn('⚠️ [AppointmentSocket] Message contains "appointment" but did not match any handler:', {
+          action: response.action,
+          data: response.data
+        });
       }
     });
   }
@@ -98,26 +116,32 @@ class WebSocketAppointmentService {
    * Handle incoming appointment event and notify subscribers
    */
   private handleAppointmentEvent(data: AppointmentSocketData): void {
+    console.log('🔍 [AppointmentSocket] handleAppointmentEvent called with:', data);
+
     const { eventType } = data;
 
     if (!eventType) {
-      console.error('[AppointmentSocket] Missing eventType in appointment data:', data);
+      console.error('❌ [AppointmentSocket] Missing eventType in appointment data:', data);
       return;
     }
 
     // Get all handlers for this event type
     const handlers = this.eventHandlers.get(eventType);
 
+    console.log(`🔍 [AppointmentSocket] Found ${handlers?.size || 0} handler(s) for eventType: ${eventType}`);
+
     if (handlers && handlers.size > 0) {
+      console.log(`✅ [AppointmentSocket] Notifying ${handlers.size} handler(s) for ${eventType}`);
       handlers.forEach(handler => {
         try {
           handler(data);
+          console.log(`✅ [AppointmentSocket] Handler executed successfully for ${eventType}`);
         } catch (error) {
-          console.error(`[AppointmentSocket] Error in handler for ${eventType}:`, error);
+          console.error(`❌ [AppointmentSocket] Error in handler for ${eventType}:`, error);
         }
       });
     } else {
-      console.warn(`[AppointmentSocket] No handlers registered for event: ${eventType}`);
+      console.warn(`⚠️ [AppointmentSocket] No handlers registered for event: ${eventType}`);
     }
   }
 

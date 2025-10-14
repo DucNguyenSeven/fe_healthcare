@@ -131,6 +131,14 @@ export const AppointmentAndConsultationModule = ({
 
   // Fetch appointments theo tuần cho bác sĩ hiện tại
   const { data: me } = useGetMe();
+
+  // 🔍 DEBUG: Log component mount and user info
+  useEffect(() => {
+    console.log('🔍 [AppointmentModule] Component mounted', {
+      activeView,
+      user: me ? { userId: me.userId, role: me.role, fullName: me.fullName } : null
+    });
+  }, [me, activeView]);
   const { appointments: doctorWeekAppointments, loading: doctorAptLoading, error: doctorAptError, fetchDoctorAppointments, clearError: clearDoctorAptError } = useDoctorAppointments();
 
   // Hook cho filter appointments (tab Đã Hoàn Thành)
@@ -170,13 +178,16 @@ export const AppointmentAndConsultationModule = ({
 
   // Hook to listen to appointment socket events and auto-refetch
   useAppointmentSocket(() => {
+    console.log('🔍 [AppointmentModule] Socket event received, refetching appointments...');
     // Refetch appointments when socket event occurs
     if (me?.userId) {
       const { start, end } = getWeekStartEnd(currentWeek);
+      console.log('🔍 [AppointmentModule] Fetching appointments for week:', { start, end, doctorId: me.userId });
       fetchDoctorAppointments({ doctorId: me.userId, startTime: start, endTime: end });
 
       // Also refetch completed if we're on that tab
       if (appointmentTab === 'completed') {
+        console.log('🔍 [AppointmentModule] Also fetching completed appointments');
         fetchCompletedAppointments({
           status: 'COMPLETED',
           page: 0,
@@ -185,6 +196,8 @@ export const AppointmentAndConsultationModule = ({
           sortDir: 'DESC'
         });
       }
+    } else {
+      console.warn('⚠️ [AppointmentModule] Cannot refetch - user ID not available');
     }
   });
 

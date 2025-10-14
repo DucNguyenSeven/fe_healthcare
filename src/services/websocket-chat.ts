@@ -271,7 +271,13 @@ class WebSocketChatService {
    */
   private handleIncomingMessage(response: WebSocketResponse): void {
     // 🔍 DEBUG: Log all incoming messages to see what backend sends
-    console.log('🔍 [WebSocket] Received message:', response);
+    console.log('🔍 [WebSocketChat] RAW MESSAGE RECEIVED:', {
+      action: response.action,
+      status: response.status,
+      dataType: typeof response.data,
+      data: response.data,
+      fullResponse: response
+    });
 
     // Backend sends 'connection' action on successful connection - wait for authenticate
     if ((response.action === 'welcome' || response.action === 'hello' || response.action === 'connection') && this.connectionState === 'handshaking') {
@@ -309,11 +315,17 @@ class WebSocketChatService {
       return;
     }
 
+    // 🔍 DEBUG: Log before forwarding to handlers
+    console.log(`🔍 [WebSocketChat] Forwarding message to ${this.messageHandlers.size} handler(s)`, {
+      action: response.action,
+      handlerCount: this.messageHandlers.size
+    });
+
     this.messageHandlers.forEach(handler => {
       try {
         handler(response);
       } catch (error) {
-        // Silent error handling
+        console.error('🔍 [WebSocketChat] Handler error:', error);
       }
     });
   }
