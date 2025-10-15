@@ -4,7 +4,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Send, Bot, User, Upload, FileText, Clock, Trash2, MessageCircle, AlertTriangle, Activity, Droplets, Heart, Calculator, TrendingUp, Shield, AlertCircle, ChevronRight, ChevronLeft, BarChart3, Calendar, ChevronDown } from 'lucide-react';
 import { User as UserType } from './HealthcarePlusApp';
 import { getAccessToken } from '@/utils/auth/token';
-import { useChatService } from '@/hooks/useChatService';
+import { useWebSocketChat } from '@/contexts/WebSocketChatContext';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 interface AIAssistantPageProps {
@@ -176,16 +176,33 @@ export function AIAssistantPage({
   } | null>(null);
 
   const [isCalculatingPrediction, setIsCalculatingPrediction] = useState(false);
-  const [messages, setMessages] = useState<ChatMessage[]>([{
-    id: '1',
-    sender: 'assistant',
-    content: 'Xin chào! Tôi là trợ lý AI của HealthCare+. Tôi có thể giúp bạn hiểu về bệnh thận mạn, giải thích các chỉ số xét nghiệm, và đưa ra lời khuyên về chế độ sinh hoạt. Bạn có câu hỏi gì không?',
-    timestamp: new Date().toISOString(),
-    type: 'text'
-  }]);
+  // Get WebSocket chat context for AI messaging
+  const {
+    messages: allMessages,
+    currentAIGroupId,
+    isAIResponding,
+    sendAIMessage
+  } = useWebSocketChat();
+
+  // Convert WebSocket messages to local ChatMessage format
+  const messages: ChatMessage[] = currentAIGroupId
+    ? (allMessages[currentAIGroupId] || []).map(msg => ({
+        id: msg.id,
+        sender: msg.senderId === 'AI' ? 'assistant' : 'user',
+        content: msg.content,
+        timestamp: msg.timestamp,
+        type: 'text' as const
+      }))
+    : [{
+        id: 'welcome',
+        sender: 'assistant',
+        content: 'Xin chào! Tôi là trợ lý AI của HealthCare+. Tôi có thể giúp bạn hiểu về bệnh thận mạn, giải thích các chỉ số xét nghiệm, và đưa ra lời khuyên về chế độ sinh hoạt. Bạn có câu hỏi gì không?',
+        timestamp: new Date().toISOString(),
+        type: 'text' as const
+      }];
+
   const [inputMessage, setInputMessage] = useState('');
-  const [isTyping, setIsTyping] = useState(false);
-  const { ask: askChat, loading: chatLoading } = useChatService();
+  const isTyping = isAIResponding;
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -424,94 +441,20 @@ export function AIAssistantPage({
     });
   };
   const handleSendMessage = async () => {
-    if (!inputMessage.trim()) return;
-    const userMessage: ChatMessage = {
-      id: Date.now().toString(),
-      sender: 'user',
-      content: inputMessage,
-      timestamp: new Date().toISOString(),
-      type: 'text'
-    };
-    setMessages(prev => [...prev, userMessage]);
+    if (!inputMessage.trim() || isAIResponding) return;
+
+    const message = inputMessage.trim();
     setInputMessage('');
-    setIsTyping(true);
 
     try {
-      const data = await askChat(userMessage.content);
-      const aiResponse: ChatMessage = {
-        id: (Date.now() + 1).toString(),
-        sender: 'assistant',
-        content: (data as any)?.text || 'Xin lỗi, tôi chưa có câu trả lời phù hợp.',
-        timestamp: new Date().toISOString(),
-        type: 'text'
-      };
-      setMessages(prev => [...prev, aiResponse]);
-    } catch (e) {
-      const fallback: ChatMessage = {
-        id: (Date.now() + 1).toString(),
-        sender: 'assistant',
-        content: 'Không thể kết nối tới AI. Vui lòng thử lại sau.',
-        timestamp: new Date().toISOString(),
-        type: 'text'
-      };
-      setMessages(prev => [...prev, fallback]);
-    } finally {
-      setIsTyping(false);
+      // Send message via WebSocket + AI API (lazy initialization handled inside)
+      await sendAIMessage(message);
+    } catch (error) {
+      console.error('Failed to send message:', error);
+      // Error already handled in context with toast
     }
   };
-  const generateAIResponse = (question: string): string => {
-    const lowerQuestion = question.toLowerCase();
-    if (lowerQuestion.includes('giai đoạn') || lowerQuestion.includes('ckd')) {
-      return `Dựa trên chỉ số eGFR hiện tại của bạn là ${user.lastEgfr} mL/min/1.73m², bạn đang ở giai đoạn 3b của bệnh thận mạn (CKD). Đây là giai đoạn chức năng thận giảm trung bình đến nặng.
 
-Giai đoạn 3b có nghĩa là:
-• eGFR từ 30-44 mL/min/1.73m²
-• Cần theo dõi chặt chẽ và điều trị tích cực
-• Có thể cần chuẩn bị cho liệu pháp thay thế thận
-
-Bạn nên tuân thủ nghiêm ngặt chế độ điều trị và tái khám định kỳ.`;
-    }
-    if (lowerQuestion.includes('thực đơn') || lowerQuestion.includes('ăn')) {
-      return `Với CKD giai đoạn 3b, bạn nên tuân thủ chế độ ăn sau:
-
-**Hạn chế:**
-• Muối: ít hơn 2g/ngày
-• Protein: 0.8g/kg cân nặng/ngày
-• Phospho: tránh thực phẩm chế biến
-• Kali: hạn chế nếu xét nghiệm cao
-
-**Nên ăn:**
-• Rau xanh (luộc để giảm kali)
-• Trái cây ít kali: táo, lê, nho
-• Carbohydrate phức hợp
-• Dầu olive, dầu canola
-
-**Lưu ý:** Nên tham khảo chuyên gia dinh dưỡng để có thực đơn cụ thể phù hợp với tình trạng của bạn.`;
-    }
-    if (lowerQuestion.includes('nguy hiểm') || lowerQuestion.includes('chỉ số')) {
-      return `Dựa trên hồ sơ của bạn, các chỉ số cần quan tâm:
-
-**🔴 Nguy hiểm:**
-• eGFR: ${user.lastEgfr} (bình thường lớn hơn 60)
-• Creatinine: ${user.lastCreatinine} mg/dL (bình thường 0.6-1.2)
-
-**🟡 Cần theo dõi:**
-• Huyết áp: ${user.lastBp} mmHg (mục tiêu nhỏ hơn 130/80)
-
-**Khuyến nghị:**
-• Đo huyết áp hàng ngày
-• Xét nghiệm máu mỗi 3 tháng
-• Tuân thủ thuốc điều trị
-• Liên hệ bác sĩ nếu có triệu chứng bất thường`;
-    }
-    return `Cảm ơn bạn đã đặt câu hỏi. Đây là một chủ đề quan trọng về sức khỏe thận. Tôi khuyên bạn nên:
-
-1. Tham khảo ý kiến bác sĩ chuyên khoa để được tư vấn cụ thể
-2. Theo dõi chặt chẽ các chỉ số sức khỏe
-3. Tuân thủ chế độ điều trị được chỉ định
-
-Bạn có thể đặt thêm câu hỏi cụ thể hoặc sử dụng các gợi ý bên dưới để tôi có thể hỗ trợ tốt hơn.`;
-  };
   // Rich rendering for assistant message with markdown support
   const renderAssistantMessage = (text: string) => {
     return (

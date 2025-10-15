@@ -44,6 +44,10 @@ interface WebSocketChatState {
   unreadCounts: Record<string, number>; // groupId -> count
   typingUsers: Record<string, string[]>; // groupId -> userIds
   isJoiningGroup: boolean; // Track if currently joining a group to prevent race conditions
+
+  // AI Chat
+  currentAIGroupId: string | null; // Track AI group for chatbot
+  isAIResponding: boolean; // Track if AI is processing request
 }
 
 type WebSocketChatAction =
@@ -57,7 +61,9 @@ type WebSocketChatAction =
   | { type: 'SET_ACTIVE_CONVERSATION'; payload: string | null }
   | { type: 'UPDATE_UNREAD_COUNT'; payload: { groupId: string; count: number } }
   | { type: 'SET_TYPING_USERS'; payload: { groupId: string; userIds: string[] } }
-  | { type: 'SET_JOINING_GROUP'; payload: boolean };
+  | { type: 'SET_JOINING_GROUP'; payload: boolean }
+  | { type: 'SET_AI_GROUP'; payload: string | null }
+  | { type: 'SET_AI_RESPONDING'; payload: boolean };
 
 // ============ Helper Functions ============
 
@@ -275,6 +281,12 @@ function webSocketChatReducer(state: WebSocketChatState, action: WebSocketChatAc
     case 'SET_JOINING_GROUP':
       return { ...state, isJoiningGroup: action.payload };
 
+    case 'SET_AI_GROUP':
+      return { ...state, currentAIGroupId: action.payload };
+
+    case 'SET_AI_RESPONDING':
+      return { ...state, isAIResponding: action.payload };
+
     default:
       return state;
   }
@@ -291,6 +303,10 @@ interface WebSocketChatContextType extends WebSocketChatState {
   setActiveConversation: (conversationId: string | null) => void;
   markAsRead: (groupId: string) => void;
   joinConversation: (groupId: string) => Promise<void>;
+
+  // AI Chat Actions
+  initializeAIGroup: () => Promise<string>;
+  sendAIMessage: (content: string) => Promise<void>;
 
   // Utilities
   reconnect: () => Promise<void>;
@@ -317,7 +333,9 @@ export function WebSocketChatProvider({ children }: WebSocketChatProviderProps) 
     activeConversationId: null,
     unreadCounts: {},
     typingUsers: {},
-    isJoiningGroup: false
+    isJoiningGroup: false,
+    currentAIGroupId: null,
+    isAIResponding: false
   });
 
   // Ref to avoid circular dependency
@@ -345,7 +363,7 @@ export function WebSocketChatProvider({ children }: WebSocketChatProviderProps) 
         }
         break;
 
-      case 'message_received':
+      case 'message_received': {
         const message = response.data;
         dispatch({ type: 'ADD_MESSAGE', payload: { ...message, currentUserId: user?.userId } });
 
@@ -393,8 +411,9 @@ export function WebSocketChatProvider({ children }: WebSocketChatProviderProps) 
           }
         }
         break;
+      }
 
-      case 'group_created':
+      case 'group_created': {
         const newGroup = response.data;
 
         // Check if current user is a member of this new group
@@ -439,6 +458,7 @@ export function WebSocketChatProvider({ children }: WebSocketChatProviderProps) 
           }
         }
         break;
+      }
 
       case 'connection':
       case 'welcome':
@@ -672,6 +692,130 @@ export function WebSocketChatProvider({ children }: WebSocketChatProviderProps) 
     dispatch({ type: 'SET_ERROR', payload: null });
   }, []);
 
+  // ============ AI Chat Methods ============
+
+  // Storage key for AI group
+  const AI_GROUP_STORAGE_KEY = 'healthcare_ai_group_id';
+
+  /**
+   * Initialize AI Group (tự động tạo hoặc load từ storage)
+   * Lazy initialization - chỉ gọi khi user gửi message đầu tiên
+   */
+  const initializeAIGroup = useCallback(async (): Promise<string> => {
+    if (!user?.userId) {
+      throw new Error('User not authenticated');
+    }
+
+    // 1. Check localStorage first
+    const storedGroupId = localStorage.getItem(AI_GROUP_STORAGE_KEY);
+
+    if (storedGroupId) {
+      // Verify group exists by loading conversations
+      await loadConversations();
+      const groupExists = state.conversations.some(conv => conv.id === storedGroupId);
+
+      if (groupExists) {
+        dispatch({ type: 'SET_AI_GROUP', payload: storedGroupId });
+
+        // Load messages for this group
+        try {
+          await loadMessages(storedGroupId);
+        } catch (error) {
+          console.error('Failed to load AI group messages:', error);
+        }
+
+        return storedGroupId;
+      }
+    }
+
+    // 2. Create new AI group
+    const aiGroupName = `AI Chat - ${Date.now()}`;
+    const members: ChatMember[] = [
+      {
+        userId: user.userId,
+        fullName: user.fullName || user.name || user.email,
+        avatarUrl: user.avatarUrl || user.avatar || ''
+      },
+      {
+        userId: 'AI',
+        fullName: 'Trợ lý AI',
+        avatarUrl: ''
+      }
+    ];
+
+    const { groupId } = await createNewConversation(members, undefined, aiGroupName);
+
+    // 3. Save to localStorage and state
+    localStorage.setItem(AI_GROUP_STORAGE_KEY, groupId);
+    dispatch({ type: 'SET_AI_GROUP', payload: groupId });
+
+    return groupId;
+  }, [user, state.conversations, loadConversations, loadMessages, createNewConversation]);
+
+  /**
+   * Send message to AI and handle response
+   * Flow: User message → WebSocket → AI API → AI response → WebSocket
+   */
+  const sendAIMessage = useCallback(async (content: string) => {
+    if (!user?.userId || !content.trim()) {
+      return;
+    }
+
+    try {
+      // 1. Ensure AI group exists (lazy initialization)
+      let aiGroupId = state.currentAIGroupId;
+      if (!aiGroupId) {
+        aiGroupId = await initializeAIGroup();
+      }
+
+      // 2. Send user message via WebSocket (optimistic update already handled in sendChatMessage)
+      await sendChatMessage(aiGroupId, content.trim());
+
+      // 3. Set AI responding state
+      dispatch({ type: 'SET_AI_RESPONDING', payload: true });
+
+      // 4. Import and call AI API to get response
+      const { askAI } = await import('@/lib/api/ai');
+      const aiResponse = await askAI({
+        group_id: aiGroupId,
+        message: content.trim(),
+        user_id: user.userId
+      });
+
+      // 5. Generate tempMessageId for AI response
+      const aiTempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+
+      // 6. Send AI response via WebSocket
+      if (webSocketChatService.isReady()) {
+        webSocketChatService.sendChatMessage({
+          groupId: aiGroupId,
+          senderId: 'AI',
+          content: aiResponse.response,
+          messageType: 'TEXT',
+          tempMessageId: aiTempId
+        });
+      } else {
+        // Fallback: Add directly to state if WebSocket not ready
+        const aiMessage: Message = {
+          messageId: aiTempId,
+          groupId: aiGroupId,
+          senderId: 'AI',
+          content: aiResponse.response,
+          sendAt: new Date().toISOString(),
+          createdAt: new Date().toISOString()
+        };
+        dispatch({ type: 'ADD_MESSAGE', payload: { ...aiMessage, currentUserId: user.userId } });
+      }
+
+    } catch (error) {
+      console.error('Failed to send AI message:', error);
+      dispatch({ type: 'SET_ERROR', payload: 'Không thể gửi tin nhắn đến AI' });
+      toast.error('Không thể kết nối đến AI. Vui lòng thử lại.');
+    } finally {
+      dispatch({ type: 'SET_AI_RESPONDING', payload: false });
+    }
+  }, [user, state.currentAIGroupId, initializeAIGroup, sendChatMessage]);
+
   // Update ref when loadConversations changes
   useEffect(() => {
     loadConversationsRef.current = loadConversations;
@@ -761,6 +905,8 @@ export function WebSocketChatProvider({ children }: WebSocketChatProviderProps) 
     setActiveConversation,
     markAsRead,
     joinConversation,
+    initializeAIGroup,
+    sendAIMessage,
     reconnect,
     clearError
   };
