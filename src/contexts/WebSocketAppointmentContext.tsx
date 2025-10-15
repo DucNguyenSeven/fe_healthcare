@@ -71,20 +71,21 @@ export function WebSocketAppointmentProvider({ children }: WebSocketAppointmentP
       shownToastAppointmentsRef.current.delete(toastKey);
     }, 60000);
 
-    // Trigger callbacks to refetch appointments
-    console.log(`🔍 [AppointmentContext] Triggering ${updateCallbacksRef.current.size} refetch callback(s)`);
-    updateCallbacksRef.current.forEach(callback => {
-      try {
-        callback();
-        console.log('✅ [AppointmentContext] Refetch callback executed successfully');
-      } catch (error) {
-        console.error('❌ [AppointmentContext] Error in refetch callback:', error);
-      }
-    });
-
-    // Show notification based on user role
+    // Show notification and refetch ONLY for relevant user
     if (user.role === 'DOCTOR' && doctorId === user.userId) {
       console.log('✅ [AppointmentContext] Showing notification for DOCTOR');
+
+      // Trigger refetch callbacks for doctor
+      console.log(`🔍 [AppointmentContext] Triggering ${updateCallbacksRef.current.size} refetch callback(s) for DOCTOR`);
+      updateCallbacksRef.current.forEach(callback => {
+        try {
+          callback();
+          console.log('✅ [AppointmentContext] Refetch callback executed successfully');
+        } catch (error) {
+          console.error('❌ [AppointmentContext] Error in refetch callback:', error);
+        }
+      });
+
       // Doctor receives notification about new booking
       toast.info('Lịch hẹn mới', {
         description: 'Bệnh nhân vừa đặt lịch khám. Vui lòng xác nhận.',
@@ -99,13 +100,25 @@ export function WebSocketAppointmentProvider({ children }: WebSocketAppointmentP
       });
     } else if (user.role === 'PATIENT' && patientId === user.userId) {
       console.log('✅ [AppointmentContext] Showing notification for PATIENT');
+
+      // Trigger refetch callbacks for patient
+      console.log(`🔍 [AppointmentContext] Triggering ${updateCallbacksRef.current.size} refetch callback(s) for PATIENT`);
+      updateCallbacksRef.current.forEach(callback => {
+        try {
+          callback();
+          console.log('✅ [AppointmentContext] Refetch callback executed successfully');
+        } catch (error) {
+          console.error('❌ [AppointmentContext] Error in refetch callback:', error);
+        }
+      });
+
       // Patient receives confirmation after booking
       toast.success('Đặt lịch thành công!', {
         description: 'Chờ bác sĩ xác nhận. Bạn sẽ nhận thông báo khi được chấp nhận.',
         duration: 6000
       });
     } else {
-      console.log('⚠️ [AppointmentContext] User role/ID does not match, no notification shown:', {
+      console.log('⚠️ [AppointmentContext] User role/ID does not match, skipping refetch and notification:', {
         userRole: user.role,
         userId: user.userId,
         doctorId,
@@ -132,11 +145,11 @@ export function WebSocketAppointmentProvider({ children }: WebSocketAppointmentP
       shownToastAppointmentsRef.current.delete(toastKey);
     }, 60000);
 
-    // Trigger callbacks to refetch appointments
-    updateCallbacksRef.current.forEach(callback => callback());
-
-    // Notifications based on status and role
+    // Notifications and refetch ONLY for relevant user
     if (user.role === 'PATIENT' && patientId === user.userId) {
+      // Trigger refetch callbacks for patient
+      updateCallbacksRef.current.forEach(callback => callback());
+
       // Patient receives status update
       if (status === 'CONFIRMED') {
         toast.success('Lịch hẹn được chấp nhận', {
@@ -173,6 +186,9 @@ export function WebSocketAppointmentProvider({ children }: WebSocketAppointmentP
         });
       }
     } else if (user.role === 'DOCTOR' && doctorId === user.userId) {
+      // Trigger refetch callbacks for doctor
+      updateCallbacksRef.current.forEach(callback => callback());
+
       // Doctor receives notification (for completed status from system)
       if (status === 'CANCELED') {
         toast.warning('Lịch hẹn bị hủy', {
@@ -199,15 +215,15 @@ export function WebSocketAppointmentProvider({ children }: WebSocketAppointmentP
       shownToastAppointmentsRef.current.delete(toastKey);
     }, 60000);
 
-    // Trigger callbacks
-    updateCallbacksRef.current.forEach(callback => callback());
-
+    // Trigger callbacks and show notification ONLY for relevant user
     if (user.role === 'PATIENT' && patientId === user.userId) {
+      updateCallbacksRef.current.forEach(callback => callback());
       toast.success('Đổi lịch thành công', {
         description: 'Lịch hẹn đã được cập nhật. Chờ bác sĩ xác nhận.',
         duration: 6000
       });
     } else if (user.role === 'DOCTOR' && doctorId === user.userId) {
+      updateCallbacksRef.current.forEach(callback => callback());
       toast.info('Lịch hẹn được đổi', {
         description: 'Bệnh nhân đã đổi lịch khám. Vui lòng xác nhận lại.',
         duration: 6000
@@ -231,15 +247,15 @@ export function WebSocketAppointmentProvider({ children }: WebSocketAppointmentP
       shownToastAppointmentsRef.current.delete(toastKey);
     }, 60000);
 
-    // Trigger callbacks
-    updateCallbacksRef.current.forEach(callback => callback());
-
+    // Trigger callbacks and show notification ONLY for relevant user
     if (user.role === 'PATIENT' && patientId === user.userId) {
+      updateCallbacksRef.current.forEach(callback => callback());
       toast.success('Hủy lịch thành công', {
         description: 'Lịch hẹn đã được hủy',
         duration: 5000
       });
     } else if (user.role === 'DOCTOR' && doctorId === user.userId) {
+      updateCallbacksRef.current.forEach(callback => callback());
       toast.warning('Lịch hẹn bị hủy', {
         description: 'Bệnh nhân đã hủy lịch khám',
         duration: 5000
@@ -274,19 +290,20 @@ export function WebSocketAppointmentProvider({ children }: WebSocketAppointmentP
       shownToastAppointmentsRef.current.delete(toastKey);
     }, 60000);
 
-    // Trigger callbacks to refetch (to show updated available slots)
-    console.log(`🔍 [AppointmentContext] Triggering ${updateCallbacksRef.current.size} refetch callback(s) for failed booking`);
-    updateCallbacksRef.current.forEach(callback => {
-      try {
-        callback();
-      } catch (error) {
-        console.error('❌ [AppointmentContext] Error in refetch callback:', error);
-      }
-    });
-
-    // Show error notification
+    // Show error notification and refetch ONLY for relevant user
     if (user.role === 'PATIENT' && patientId === user.userId) {
       console.log('❌ [AppointmentContext] Showing error notification for PATIENT');
+
+      // Trigger refetch callbacks for patient (to show updated available slots)
+      console.log(`🔍 [AppointmentContext] Triggering ${updateCallbacksRef.current.size} refetch callback(s) for PATIENT (failed booking)`);
+      updateCallbacksRef.current.forEach(callback => {
+        try {
+          callback();
+        } catch (error) {
+          console.error('❌ [AppointmentContext] Error in refetch callback:', error);
+        }
+      });
+
       toast.error('Đặt lịch thất bại!', {
         description: message || 'Time slot đã hết, vui lòng chọn slot khác.',
         duration: 8000,
@@ -300,9 +317,27 @@ export function WebSocketAppointmentProvider({ children }: WebSocketAppointmentP
       });
     } else if (user.role === 'DOCTOR' && doctorId === user.userId) {
       console.log('❌ [AppointmentContext] Showing error notification for DOCTOR');
+
+      // Trigger refetch callbacks for doctor
+      console.log(`🔍 [AppointmentContext] Triggering ${updateCallbacksRef.current.size} refetch callback(s) for DOCTOR (failed booking)`);
+      updateCallbacksRef.current.forEach(callback => {
+        try {
+          callback();
+        } catch (error) {
+          console.error('❌ [AppointmentContext] Error in refetch callback:', error);
+        }
+      });
+
       toast.error('Lỗi đặt lịch', {
         description: message || 'Có lỗi xảy ra khi xử lý yêu cầu đặt lịch.',
         duration: 6000
+      });
+    } else {
+      console.log('⚠️ [AppointmentContext] User role/ID does not match, skipping refetch and notification:', {
+        userRole: user.role,
+        userId: user.userId,
+        doctorId,
+        patientId
       });
     }
   }, [user]);
@@ -325,14 +360,18 @@ export function WebSocketAppointmentProvider({ children }: WebSocketAppointmentP
       shownToastAppointmentsRef.current.delete(toastKey);
     }, 60000);
 
-    // Trigger callbacks
-    updateCallbacksRef.current.forEach(callback => callback());
+    // Show error notification and refetch ONLY for relevant user
+    if ((user.role === 'PATIENT' && patientId === user.userId) ||
+        (user.role === 'DOCTOR' && doctorId === user.userId)) {
+      // Trigger callbacks
+      updateCallbacksRef.current.forEach(callback => callback());
 
-    // Show error notification
-    toast.error('Không thể cập nhật trạng thái', {
-      description: message || 'Có lỗi xảy ra khi cập nhật trạng thái lịch hẹn.',
-      duration: 6000
-    });
+      // Show error notification
+      toast.error('Không thể cập nhật trạng thái', {
+        description: message || 'Có lỗi xảy ra khi cập nhật trạng thái lịch hẹn.',
+        duration: 6000
+      });
+    }
   }, [user]);
 
   /**
@@ -341,7 +380,7 @@ export function WebSocketAppointmentProvider({ children }: WebSocketAppointmentP
   const handleRescheduleFailed = useCallback((data: AppointmentSocketData) => {
     console.log('🔍 [AppointmentContext] handleRescheduleFailed called:', data);
 
-    const { appointmentId, message } = data;
+    const { appointmentId, patientId, doctorId, message } = data;
 
     if (!user) return;
 
@@ -353,13 +392,17 @@ export function WebSocketAppointmentProvider({ children }: WebSocketAppointmentP
       shownToastAppointmentsRef.current.delete(toastKey);
     }, 60000);
 
-    // Trigger callbacks
-    updateCallbacksRef.current.forEach(callback => callback());
+    // Show error notification and refetch ONLY for relevant user
+    if ((user.role === 'PATIENT' && patientId === user.userId) ||
+        (user.role === 'DOCTOR' && doctorId === user.userId)) {
+      // Trigger callbacks
+      updateCallbacksRef.current.forEach(callback => callback());
 
-    toast.error('Không thể đổi lịch', {
-      description: message || 'Có lỗi xảy ra khi đổi lịch hẹn.',
-      duration: 6000
-    });
+      toast.error('Không thể đổi lịch', {
+        description: message || 'Có lỗi xảy ra khi đổi lịch hẹn.',
+        duration: 6000
+      });
+    }
   }, [user]);
 
   /**
@@ -368,7 +411,7 @@ export function WebSocketAppointmentProvider({ children }: WebSocketAppointmentP
   const handleCancelFailed = useCallback((data: AppointmentSocketData) => {
     console.log('🔍 [AppointmentContext] handleCancelFailed called:', data);
 
-    const { appointmentId, message } = data;
+    const { appointmentId, patientId, doctorId, message } = data;
 
     if (!user) return;
 
@@ -380,13 +423,17 @@ export function WebSocketAppointmentProvider({ children }: WebSocketAppointmentP
       shownToastAppointmentsRef.current.delete(toastKey);
     }, 60000);
 
-    // Trigger callbacks
-    updateCallbacksRef.current.forEach(callback => callback());
+    // Show error notification and refetch ONLY for relevant user
+    if ((user.role === 'PATIENT' && patientId === user.userId) ||
+        (user.role === 'DOCTOR' && doctorId === user.userId)) {
+      // Trigger callbacks
+      updateCallbacksRef.current.forEach(callback => callback());
 
-    toast.error('Không thể hủy lịch', {
-      description: message || 'Có lỗi xảy ra khi hủy lịch hẹn.',
-      duration: 6000
-    });
+      toast.error('Không thể hủy lịch', {
+        description: message || 'Có lỗi xảy ra khi hủy lịch hẹn.',
+        duration: 6000
+      });
+    }
   }, [user]);
 
   // ============ Effects ============

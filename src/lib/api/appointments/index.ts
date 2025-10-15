@@ -75,9 +75,19 @@ export const bookingAppointment = async (data: BookingAppointmentRequest): Promi
       '/api/v1/appointments/booking-appointment',
       data
     );
-    
+
     return response.data;
   } catch (error: any) {
+    // Enhanced error handling: extract meaningful info from axios error
+    console.error('🔍 [API] Booking appointment error:', {
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      message: error.response?.data?.message,
+      data: error.response?.data
+    });
+
+    // Re-throw with original error structure to preserve all information
+    // Caller will handle specific status codes (409, 400, 404, etc.)
     throw error;
   }
 };

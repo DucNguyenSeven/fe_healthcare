@@ -55,11 +55,25 @@ export const useBookingAppointment = (): UseBookingAppointmentReturn => {
       } else {
         throw new Error(response.message || 'Không thể đặt lịch khám');
       }
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Có lỗi xảy ra khi đặt lịch khám';
-      console.error('❌ [useBookingAppointment] Booking failed:', errorMessage);
+    } catch (err: any) {
+      // Extract detailed error information
+      const errorMessage = err.response?.data?.message || err.message || 'Có lỗi xảy ra khi đặt lịch khám';
+      const statusCode = err.response?.status;
+
+      console.error('❌ [useBookingAppointment] Booking failed:', {
+        message: errorMessage,
+        statusCode,
+        fullError: err
+      });
+
       setError(errorMessage);
-      return null;
+
+      // Re-throw error để caller (AppointmentsPage) có thể handle cụ thể
+      // Attach thêm status code để caller biết loại error
+      const enhancedError = new Error(errorMessage) as any;
+      enhancedError.response = err.response;
+      enhancedError.statusCode = statusCode;
+      throw enhancedError;
     } finally {
       setLoading(false);
     }

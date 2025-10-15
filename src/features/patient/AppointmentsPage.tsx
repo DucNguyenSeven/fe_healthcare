@@ -56,7 +56,7 @@ export function AppointmentsPage() {
   const { doctors: availableDoctors, loading: doctorsLoading, error: doctorsError, fetchDoctorsByDate, clearError } = useDoctorOfDate();
 
   // Hook để lấy lịch làm việc của bác sĩ
-  const { timeSlots: availableTimeSlots, scheduleId, timeSlotMapping, loading: timeSlotsLoading, error: timeSlotsError, fetchDoctorSchedule, clearError: clearTimeSlotsError } = useDoctorSchedule();
+  const { timeSlots: availableTimeSlots, scheduleId, timeSlotMapping, loading: timeSlotsLoading, error: timeSlotsError, fetchDoctorSchedule, refreshAvailableSlots, clearError: clearTimeSlotsError } = useDoctorSchedule();
 
   // Hook để đặt lịch khám
   const { bookingAppointment, loading: bookingLoading, error: bookingError, clearError: clearBookingError, reset: resetBooking } = useBookingAppointment();
@@ -114,6 +114,9 @@ export function AppointmentsPage() {
 
   // Ref để track xem đã fetch appointments chưa
   const hasInitialFetchRef = useRef(false);
+
+  // State để prevent duplicate submissions
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Danh sách chi nhánh
   const branches = [
@@ -384,6 +387,12 @@ export function AppointmentsPage() {
   };
 
   const handleBookAppointment = async () => {
+    // Prevent duplicate submissions
+    if (isSubmitting || bookingLoading) {
+      console.warn('⚠️ Booking already in progress, ignoring click');
+      return;
+    }
+
     // Validation đầy đủ
     if (!selectedDoctor || !selectedDate || !selectedTime) {
       toast.error('Thiếu thông tin', {
@@ -401,24 +410,73 @@ export function AppointmentsPage() {
       return;
     }
 
-    if (!scheduleId) {
-      toast.error('Lỗi lịch làm việc', {
-        description: 'Không thể lấy thông tin lịch làm việc của bác sĩ. Vui lòng thử lại.',
-        duration: 4000,
-      });
-      return;
-    }
-
-    if (!selectedSlotId) {
-      toast.error('Lỗi khung giờ', {
-        description: 'Không thể xác định khung giờ đã chọn. Vui lòng chọn lại giờ khám.',
-        duration: 4000,
-      });
-      return;
-    }
+    setIsSubmitting(true);
 
     try {
-      // Map appointment type to consultation type - sửa để match với backend enum
+      // BƯỚC 1: Refresh slots để lấy dữ liệu MỚI NHẤT (tránh race condition)
+      toast.loading('Đang kiểm tra khung giờ...', {
+        id: 'checking-slot',
+        duration: Infinity
+      });
+
+      let latestScheduleId: string;
+      let latestSlotId: number | undefined;
+
+      try {
+        console.log('🔄 [handleBookAppointment] Refreshing slots before booking...', {
+          doctorId: selectedDoctor.id,
+          date: selectedDate,
+          selectedTime: selectedTime
+        });
+
+        const refreshResult = await refreshAvailableSlots(selectedDoctor.id, selectedDate);
+
+        console.log('📥 [handleBookAppointment] Refresh result:', refreshResult);
+
+        latestScheduleId = refreshResult.scheduleId;
+        latestSlotId = refreshResult.mapping[selectedTime];
+
+        console.log('🎯 [handleBookAppointment] Using scheduleId:', latestScheduleId);
+        console.log('🎯 [handleBookAppointment] Using slotId:', latestSlotId);
+        console.log('🎯 [handleBookAppointment] Selected time:', selectedTime);
+        console.log('🎯 [handleBookAppointment] Available slots:', refreshResult.slots);
+
+        // Dismiss loading toast
+        toast.dismiss('checking-slot');
+
+        // BƯỚC 2: Kiểm tra slot còn available không
+        if (!latestSlotId) {
+          console.log('❌ [handleBookAppointment] Slot not found in mapping');
+          toast.error('Khung giờ không khả dụng', {
+            description: 'Khung giờ này đã được đặt bởi người khác. Vui lòng chọn khung giờ khác.',
+            duration: 5000,
+          });
+          // Reset selected time để user chọn lại
+          setSelectedTime('');
+          setSelectedSlotId(null);
+          return;
+        }
+
+        // BƯỚC 3: Validate scheduleId
+        if (!latestScheduleId) {
+          console.log('❌ [handleBookAppointment] scheduleId is empty or invalid');
+          toast.error('Lỗi lịch làm việc', {
+            description: 'Không thể lấy thông tin lịch làm việc của bác sĩ. Vui lòng thử lại.',
+            duration: 4000,
+          });
+          return;
+        }
+      } catch (refreshError) {
+        toast.dismiss('checking-slot');
+        console.error('❌ [handleBookAppointment] Error refreshing slots:', refreshError);
+        toast.error('Không thể kiểm tra khung giờ', {
+          description: 'Vui lòng thử lại sau',
+          duration: 4000,
+        });
+        return;
+      }
+
+      // BƯỚC 4: Map appointment type to consultation type
       const consultationTypeMap: { [key: string]: 'ONLINE_CONSULTATION' | 'DIRECT_CONSULTATION' | 'FOLLOW_UP' } = {
         'online': 'ONLINE_CONSULTATION',
         'direct': 'DIRECT_CONSULTATION',
@@ -426,33 +484,43 @@ export function AppointmentsPage() {
         'follow_up': 'FOLLOW_UP'
       };
 
+      // BƯỚC 5: Tạo booking request với dữ liệu MỚI NHẤT
       const bookingData: BookingAppointmentRequest = {
-        patientId: currentUser.userId, // Lấy từ user hiện tại
-        scheduleId: scheduleId, // Sử dụng scheduleId thực tế từ API
+        patientId: currentUser.userId,
+        scheduleId: latestScheduleId,    // ✅ Dùng scheduleId mới nhất
         doctorId: selectedDoctor.id,
-        symptoms: symptoms || 'Khám theo lịch hẹn', // Sử dụng dữ liệu từ form
+        symptoms: symptoms || 'Khám theo lịch hẹn',
         note: note || `Đặt lịch ${
           appointmentType === 'online' ? 'tư vấn online' :
           appointmentType === 'lab_test' ? 'xét nghiệm' :
           appointmentType === 'follow_up' ? 'tái khám' :
           'khám trực tiếp'
-        } với ${selectedDoctor.name}`, // Sử dụng dữ liệu từ form
-        slotId: selectedSlotId, // Sử dụng slotId thực tế từ timeSlotMapping
+        } với ${selectedDoctor.name}`,
+        slotId: latestSlotId,            // ✅ Dùng slotId mới nhất
         consultationType: consultationTypeMap[appointmentType] || 'DIRECT_CONSULTATION',
-        status: 'PENDING', // Changed from CONFIRMED to PENDING - waiting for doctor approval
-        addressDetail: appointmentType === 'online' ? 'Tại nhà' : (addressDetail || selectedDoctor.clinicAddress || branches[0].address), // Tư vấn online = Tại nhà, còn lại dùng chi nhánh đã chọn
-        hasPredict: false, // Patient does not have AI prediction by default
-        // Thêm các field có thể thiếu
+        status: 'PENDING',
+        addressDetail: appointmentType === 'online' ? 'Tại nhà' : (addressDetail || selectedDoctor.clinicAddress || branches[0].address),
+        hasPredict: false,
         appointmentDate: selectedDate,
         appointmentTime: selectedTime,
-        patientName: currentUser.fullName || 'Bệnh nhân', // Lấy từ user hiện tại
-        patientPhone: currentUser.phone || '', // Lấy từ user hiện tại
-        patientEmail: currentUser.email // Lấy từ user hiện tại
+        patientName: currentUser.fullName || 'Bệnh nhân',
+        patientPhone: currentUser.phone || '',
+        patientEmail: currentUser.email
       };
 
+      console.log('📤 [handleBookAppointment] Final booking data:', bookingData);
+      console.log('🔍 [handleBookAppointment] Verify scheduleId:', bookingData.scheduleId);
+      console.log('🔍 [handleBookAppointment] Verify slotId:', bookingData.slotId);
+      console.log('🔍 [handleBookAppointment] Verify appointmentDate:', bookingData.appointmentDate);
+      console.log('🔍 [handleBookAppointment] Verify appointmentTime:', bookingData.appointmentTime);
+
+      // BƯỚC 6: Gọi API booking
+      console.log('🚀 [handleBookAppointment] Sending booking request to API...');
       const result = await bookingAppointment(bookingData);
 
       if (result) {
+        console.log('✅ [handleBookAppointment] Booking successful!', result);
+
         // Reset form
         setShowBookingForm(false);
         setSelectedDoctor(null);
@@ -464,7 +532,7 @@ export function AppointmentsPage() {
         setAddressDetail('');
         resetBooking();
 
-        // Hiển thị thông báo thành công - updated message for PENDING status
+        // Hiển thị thông báo thành công
         toast.success('Đặt lịch thành công!', {
           description: 'Chờ bác sĩ xác nhận. Bạn sẽ nhận thông báo khi được chấp nhận.',
           duration: 6000,
@@ -474,11 +542,11 @@ export function AppointmentsPage() {
         if (currentUser?.userId) {
           const today = new Date();
           const endDate = new Date(today);
-          endDate.setFullYear(today.getFullYear() + 1); // Lấy appointments trong vòng 1 năm
+          endDate.setFullYear(today.getFullYear() + 1);
 
           fetchAppointments({
             patientId: currentUser.userId,
-            startTime: '2020-01-01', // Lấy từ quá khứ để có toàn bộ lịch sử
+            startTime: '2020-01-01',
             endTime: endDate.toISOString().split('T')[0],
             page: 0,
             size: 50,
@@ -487,8 +555,89 @@ export function AppointmentsPage() {
           });
         }
       }
-    } catch (error) {
-      // Error handling đã được xử lý trong hook
+    } catch (error: any) {
+      console.error('❌ [handleBookAppointment] Booking error:', {
+        message: error.message,
+        statusCode: error.response?.status || error.statusCode,
+        responseData: error.response?.data,
+        fullError: error
+      });
+
+      // BƯỚC 7: Xử lý error 409 (Time slot already booked - Race Condition)
+      if (error.response?.status === 409 || error.statusCode === 409) {
+        const errorData = error.response?.data;
+
+        toast.error('⚠️ Khung giờ đã có người đặt', {
+          description: errorData?.message || 'Có người khác vừa đặt slot này trước bạn. Đang làm mới danh sách...',
+          duration: 6000,
+          action: {
+            label: 'Chọn lại',
+            onClick: () => {
+              // Scroll to time slots
+              const timeSlotsSection = document.querySelector('.booking-form');
+              if (timeSlotsSection) {
+                timeSlotsSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              }
+            }
+          }
+        });
+
+        // Reset selected time to force user to re-select
+        setSelectedTime('');
+        setSelectedSlotId(null);
+
+        // Auto refresh UI để hiển thị slots còn lại
+        try {
+          console.log('🔄 [handleBookAppointment] Refreshing slots after 409 conflict...');
+          const refreshResult = await refreshAvailableSlots(selectedDoctor!.id, selectedDate);
+          console.log('✅ [handleBookAppointment] Refreshed available slots after conflict:', {
+            availableSlots: refreshResult.slots.length,
+            slots: refreshResult.slots,
+            newScheduleId: refreshResult.scheduleId
+          });
+
+          // Show success toast after refresh
+          toast.success('Đã cập nhật danh sách khung giờ', {
+            description: `Còn ${refreshResult.slots.length} khung giờ khả dụng. Vui lòng chọn lại.`,
+            duration: 4000,
+          });
+
+          // Scroll to time slots section
+          setTimeout(() => {
+            const timeSlotsSection = document.querySelector('.booking-form');
+            if (timeSlotsSection) {
+              timeSlotsSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+          }, 300);
+        } catch (refreshError) {
+          console.error('❌ Failed to refresh slots after conflict:', refreshError);
+          toast.error('Không thể làm mới danh sách', {
+            description: 'Vui lòng tải lại trang',
+            duration: 4000,
+          });
+        }
+      } else if (error.response?.status === 400) {
+        // Bad request
+        toast.error('Thông tin không hợp lệ', {
+          description: error.response.data?.message || 'Vui lòng kiểm tra lại thông tin đặt lịch',
+          duration: 4000,
+        });
+      } else if (error.response?.status === 404) {
+        // Not found (doctor/schedule/slot không tồn tại)
+        toast.error('Không tìm thấy thông tin', {
+          description: error.response.data?.message || 'Bác sĩ hoặc lịch làm việc không tồn tại',
+          duration: 4000,
+        });
+      } else {
+        // Các lỗi khác
+        toast.error('Đặt lịch thất bại', {
+          description: error.response?.data?.message || error.message || 'Có lỗi xảy ra. Vui lòng thử lại.',
+          duration: 4000,
+        });
+      }
+    } finally {
+      // Always reset submission flag
+      setIsSubmitting(false);
     }
   };
 
@@ -982,11 +1131,11 @@ export function AppointmentsPage() {
             </button>
             <button
               onClick={handleBookAppointment}
-              disabled={bookingLoading}
+              disabled={bookingLoading || isSubmitting}
               className="px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
             >
-              {bookingLoading && <Loader2 className="w-4 h-4 animate-spin" />}
-              <span>{bookingLoading ? 'Đang đặt lịch...' : 'Xác nhận đặt lịch'}</span>
+              {(bookingLoading || isSubmitting) && <Loader2 className="w-4 h-4 animate-spin" />}
+              <span>{(bookingLoading || isSubmitting) ? 'Đang đặt lịch...' : 'Xác nhận đặt lịch'}</span>
             </button>
           </div>}
       </div>
