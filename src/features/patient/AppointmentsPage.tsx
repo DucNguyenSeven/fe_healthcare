@@ -12,6 +12,7 @@ import { usePatientAppointments, transformAppointmentToTimelineFormat } from '@/
 import { MedicalResultModal } from '@/components/MedicalResultModal';
 import { useWebSocketChat } from '@/contexts/WebSocketChatContext';
 import { useAppointmentSocket } from '@/hooks/appointments/useAppointmentSocket';
+import { savePredictHistory, CreateHealthMetricRequest } from '@/lib/api/predict';
 
 
 
@@ -334,6 +335,75 @@ export function AppointmentsPage() {
     }
   };
 
+  // Transform flat health metrics object to array format for Backend
+  // ⚠️ ONLY save 9 LAB TEST fields (exclude lifestyle and medical history)
+  const transformHealthMetricsToArray = (
+    formData: any,
+    patientId: string
+  ): CreateHealthMetricRequest[] => {
+    const measuredAt = new Date().toISOString();
+    const metrics: CreateHealthMetricRequest[] = [];
+
+    // 🔬 ONLY 9 LAB TEST FIELDS (exclude lifestyle, health status, medical history)
+    const LAB_TEST_FIELDS = [
+      'serum_creatinine',  // mg/dL
+      'gfr',               // mL/min/1.73m²
+      'bun',               // mg/dL
+      'serum_calcium',     // mg/dL
+      'ana',               // boolean
+      'c3_c4',             // mg/dL
+      'hematuria',         // boolean
+      'oxalate_levels',    // mg/day
+      'urine_ph'           // pH
+    ];
+
+    // Define metric mappings ONLY for lab test fields
+    const metricMappings: Record<string, { unit: string }> = {
+      serum_creatinine: { unit: 'mg/dL' },
+      gfr: { unit: 'mL/min/1.73m²' },
+      bun: { unit: 'mg/dL' },
+      serum_calcium: { unit: 'mg/dL' },
+      ana: { unit: 'boolean' },
+      c3_c4: { unit: 'mg/dL' },
+      hematuria: { unit: 'boolean' },
+      oxalate_levels: { unit: 'mg/day' },
+      urine_ph: { unit: 'pH' }
+    };
+
+    // Transform ONLY lab test fields to metric objects
+    LAB_TEST_FIELDS.forEach((key) => {
+      const value = formData[key];
+      if (value != null) {
+        // Convert value to number
+        let numericValue: number;
+        if (typeof value === 'number') {
+          numericValue = value;
+        } else if (typeof value === 'boolean') {
+          numericValue = value ? 1 : 0;
+        } else if (typeof value === 'string') {
+          numericValue = parseFloat(value) || 0;
+        } else {
+          numericValue = 0;
+        }
+
+        metrics.push({
+          patientId: patientId,
+          metricName: key,
+          metricValue: numericValue,
+          unit: metricMappings[key].unit,
+          measuredAt: measuredAt
+        });
+      }
+    });
+
+    console.log(`✅ [transformHealthMetrics] Transformed ${metrics.length} lab test metrics (expected: 9)`);
+    if (metrics.length !== 9) {
+      console.warn(`⚠️ [transformHealthMetrics] Expected 9 lab test metrics but got ${metrics.length}`);
+    }
+
+    return metrics;
+  };
+
   const handleDateChange = async (date: string) => {
     setSelectedDate(date);
     // Reset dependent fields
@@ -484,7 +554,17 @@ export function AppointmentsPage() {
         'follow_up': 'FOLLOW_UP'
       };
 
+      // 🔍 DEBUG: Check localStorage BEFORE creating booking request
+      const pendingPredictionCheck = localStorage.getItem('pending_ckd_prediction');
+      console.log('🔍🔍🔍 [DEBUG - hasPredict] Checking localStorage BEFORE booking:', {
+        hasPendingPrediction: !!pendingPredictionCheck,
+        pendingPredictionData: pendingPredictionCheck ? JSON.parse(pendingPredictionCheck) : null,
+        willSetHasPredict: !!pendingPredictionCheck
+      });
+
       // BƯỚC 5: Tạo booking request với dữ liệu MỚI NHẤT
+      const hasPredictValue = !!localStorage.getItem('pending_ckd_prediction');
+
       const bookingData: BookingAppointmentRequest = {
         patientId: currentUser.userId,
         scheduleId: latestScheduleId,    // ✅ Dùng scheduleId mới nhất
@@ -500,13 +580,20 @@ export function AppointmentsPage() {
         consultationType: consultationTypeMap[appointmentType] || 'DIRECT_CONSULTATION',
         status: 'PENDING',
         addressDetail: appointmentType === 'online' ? 'Tại nhà' : (addressDetail || selectedDoctor.clinicAddress || branches[0].address),
-        hasPredict: false,
+        hasPredict: hasPredictValue, // ✅ Dynamic check: true if from CKD prediction
         appointmentDate: selectedDate,
         appointmentTime: selectedTime,
         patientName: currentUser.fullName || 'Bệnh nhân',
         patientPhone: currentUser.phone || '',
         patientEmail: currentUser.email
       };
+
+      // 🔍 DEBUG: Log hasPredict value explicitly
+      console.log('🔍🔍🔍 [DEBUG - hasPredict] Final value in bookingData:', {
+        hasPredict: bookingData.hasPredict,
+        hasPredictType: typeof bookingData.hasPredict,
+        hasPredictValue: hasPredictValue
+      });
 
       console.log('📤 [handleBookAppointment] Final booking data:', bookingData);
       console.log('🔍 [handleBookAppointment] Verify scheduleId:', bookingData.scheduleId);
@@ -537,6 +624,78 @@ export function AppointmentsPage() {
           description: 'Chờ bác sĩ xác nhận. Bạn sẽ nhận thông báo khi được chấp nhận.',
           duration: 6000,
         });
+
+        // 💾 Save prediction data if this booking came from CKD prediction
+        const pendingPrediction = localStorage.getItem('pending_ckd_prediction');
+        console.log('🔍🔍🔍 [DEBUG - After Booking Success] Checking localStorage for prediction:', {
+          hasPendingPrediction: !!pendingPrediction,
+          localStorageKey: 'pending_ckd_prediction',
+          localStorageValue: pendingPrediction
+        });
+
+        if (pendingPrediction) {
+          try {
+            console.log('💾 [handleBookAppointment] Booking successful with prediction, now saving prediction data...');
+            const predData = JSON.parse(pendingPrediction);
+
+            console.log('📊 [handleBookAppointment] Prediction data to save:', {
+              stage: predData.stage,
+              confidence: predData.confidence,
+              recommendationsCount: predData.recommendations?.length || 0,
+              healthMetricsFields: Object.keys(predData.healthMetrics || {}).length
+            });
+
+            // Transform only 9 lab test fields to array format
+            const healthMetrics = transformHealthMetricsToArray(
+              predData.healthMetrics,
+              currentUser.userId
+            );
+
+            console.log('📤 [handleBookAppointment] Sending save predict history request:', {
+              patientId: currentUser.userId,
+              stage: predData.stage,
+              confidence: predData.confidence,
+              healthMetricsCount: healthMetrics.length
+            });
+
+            // Save predict history to database
+            await savePredictHistory({
+              patientId: currentUser.userId,
+              stage: predData.stage,
+              confidence: predData.confidence,
+              recommendations: predData.recommendations || [],
+              healthMetrics: healthMetrics
+            });
+
+            console.log('✅ [handleBookAppointment] Successfully saved prediction + 9 lab metrics after booking');
+
+            // Clean up localStorage after successful save
+            console.log('🔍🔍🔍 [DEBUG - Before Cleanup] localStorage before removal:', {
+              pendingPrediction: localStorage.getItem('pending_ckd_prediction'),
+              oldFormat: localStorage.getItem('ckd_prediction_result')
+            });
+
+            localStorage.removeItem('pending_ckd_prediction');
+            localStorage.removeItem('ckd_prediction_result');
+
+            console.log('🧹 [handleBookAppointment] Cleaned up prediction from localStorage');
+            console.log('🔍🔍🔍 [DEBUG - After Cleanup] localStorage after removal:', {
+              pendingPrediction: localStorage.getItem('pending_ckd_prediction'),
+              oldFormat: localStorage.getItem('ckd_prediction_result')
+            });
+
+          } catch (saveError) {
+            console.error('❌ [handleBookAppointment] Failed to save prediction after booking:', {
+              error: saveError instanceof Error ? saveError.message : String(saveError),
+              details: saveError
+            });
+            console.error('💡 [handleBookAppointment] Booking was successful, but prediction save failed');
+            // Don't fail the booking if save fails, just log error
+            // User can still see their appointment
+          }
+        } else {
+          console.log('ℹ️ [handleBookAppointment] No pending prediction found - this is a normal booking (not from CKD prediction)');
+        }
 
         // Refresh appointments list after successful booking
         if (currentUser?.userId) {

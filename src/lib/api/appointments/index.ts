@@ -71,10 +71,25 @@ export interface BookingAppointmentApiResponse {
  */
 export const bookingAppointment = async (data: BookingAppointmentRequest): Promise<BookingAppointmentApiResponse> => {
   try {
+    // 🔍 DEBUG: Log request data BEFORE sending to backend
+    console.log('🔍🔍🔍 [API - bookingAppointment] Sending request to backend:', {
+      endpoint: '/api/v1/appointments/booking-appointment',
+      method: 'POST',
+      hasPredict: data.hasPredict,
+      hasPredictType: typeof data.hasPredict,
+      fullRequestData: data
+    });
+
     const response = await api.post<BookingAppointmentApiResponse>(
       '/api/v1/appointments/booking-appointment',
       data
     );
+
+    // 🔍 DEBUG: Log response from backend
+    console.log('🔍🔍🔍 [API - bookingAppointment] Received response from backend:', {
+      status: response.status,
+      data: response.data
+    });
 
     return response.data;
   } catch (error: any) {

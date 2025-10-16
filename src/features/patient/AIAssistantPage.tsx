@@ -7,6 +7,7 @@ import { getAccessToken } from '@/utils/auth/token';
 import { useWebSocketChat } from '@/contexts/WebSocketChatContext';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { predictCKD, savePredictHistory, CreateHealthMetricRequest } from '@/lib/api/predict';
 interface AIAssistantPageProps {
   user: UserType;
   onNavigate?: (page: 'appointments') => void;
@@ -172,7 +173,13 @@ export function AIAssistantPage({
     percentage: number;
     stage: string;
     recommendations: string[];
-    source?: 'ai' | 'local'; // Track which calculation was used
+  } | null>(null);
+
+  // Store raw AI result and form data for later saving (after appointment booking)
+  const [rawPredictionData, setRawPredictionData] = useState<{
+    aiResult: any;
+    formData: any;
+    timestamp: string;
   } | null>(null);
 
   const [isCalculatingPrediction, setIsCalculatingPrediction] = useState(false);
@@ -515,21 +522,119 @@ export function AIAssistantPage({
     );
   };
   const handleBookAppointment = () => {
-    // Lưu thông tin dự đoán vào localStorage để tham khảo
-    const predictionData = {
+    // Store FULL prediction data (raw AI result + form data) for saving after booking
+    if (rawPredictionData) {
+      const fullPredictionData = {
+        // Raw AI result for database save
+        stage: rawPredictionData.aiResult.predicted_stage,
+        confidence: rawPredictionData.aiResult.confidence,
+        recommendations: rawPredictionData.aiResult.recommendations || [],
+
+        // Form data (21 fields) for health metrics transformation
+        healthMetrics: rawPredictionData.formData,
+
+        // Metadata
+        timestamp: rawPredictionData.timestamp,
+        userId: user.id
+      };
+
+      localStorage.setItem('pending_ckd_prediction', JSON.stringify(fullPredictionData));
+
+      console.log('💾 Stored prediction data in localStorage for later save:', {
+        stage: fullPredictionData.stage,
+        confidence: fullPredictionData.confidence,
+        recommendationsCount: fullPredictionData.recommendations.length,
+        healthMetricsFields: Object.keys(fullPredictionData.healthMetrics).length
+      });
+    } else {
+      console.warn('⚠️ No raw prediction data available to store');
+    }
+
+    // Also keep the old format for UI reference (backward compatibility)
+    const uiPredictionData = {
       result: predictionResult?.risk === 'low' ? 'Nguy cơ Thấp' : predictionResult?.risk === 'moderate' ? 'Nguy cơ Trung bình' : 'Nguy cơ Cao',
       stage: predictionResult?.stage || '',
       confidence: `${predictionResult?.percentage || 0}%`,
       date: new Date().toISOString(),
       recommendations: predictionResult?.recommendations || []
     };
-    localStorage.setItem('ckd_prediction_result', JSON.stringify(predictionData));
+    localStorage.setItem('ckd_prediction_result', JSON.stringify(uiPredictionData));
 
-    // Chuyển đến trang đặt lịch
+    // Navigate to appointments page
     if (onNavigate) {
       onNavigate('appointments');
     }
   };
+
+  // Transform flat health metrics object to array format for Backend
+  // ⚠️ ONLY save 9 LAB TEST fields (exclude lifestyle and medical history)
+  const transformHealthMetricsToArray = (
+    formData: any,
+    patientId: string
+  ): CreateHealthMetricRequest[] => {
+    const measuredAt = new Date().toISOString();
+    const metrics: CreateHealthMetricRequest[] = [];
+
+    // 🔬 ONLY 9 LAB TEST FIELDS (exclude lifestyle, health status, medical history)
+    const LAB_TEST_FIELDS = [
+      'serum_creatinine',  // mg/dL
+      'gfr',               // mL/min/1.73m²
+      'bun',               // mg/dL
+      'serum_calcium',     // mg/dL
+      'ana',               // boolean
+      'c3_c4',             // mg/dL
+      'hematuria',         // boolean
+      'oxalate_levels',    // mg/day
+      'urine_ph'           // pH
+    ];
+
+    // Define metric mappings ONLY for lab test fields
+    const metricMappings: Record<string, { unit: string }> = {
+      serum_creatinine: { unit: 'mg/dL' },
+      gfr: { unit: 'mL/min/1.73m²' },
+      bun: { unit: 'mg/dL' },
+      serum_calcium: { unit: 'mg/dL' },
+      ana: { unit: 'boolean' },
+      c3_c4: { unit: 'mg/dL' },
+      hematuria: { unit: 'boolean' },
+      oxalate_levels: { unit: 'mg/day' },
+      urine_ph: { unit: 'pH' }
+    };
+
+    // Transform ONLY lab test fields to metric objects
+    LAB_TEST_FIELDS.forEach((key) => {
+      const value = formData[key];
+      if (value != null) {
+        // Convert value to number
+        let numericValue: number;
+        if (typeof value === 'number') {
+          numericValue = value;
+        } else if (typeof value === 'boolean') {
+          numericValue = value ? 1 : 0;
+        } else if (typeof value === 'string') {
+          numericValue = parseFloat(value) || 0;
+        } else {
+          numericValue = 0;
+        }
+
+        metrics.push({
+          patientId: patientId,
+          metricName: key,
+          metricValue: numericValue,
+          unit: metricMappings[key].unit,
+          measuredAt: measuredAt
+        });
+      }
+    });
+
+    console.log(`✅ Transformed ${metrics.length} lab test metrics (expected: 9)`);
+    if (metrics.length !== 9) {
+      console.warn(`⚠️ Expected 9 lab test metrics but got ${metrics.length}`);
+    }
+
+    return metrics;
+  };
+
   // Validate complete 21-field data structure for backend
   const validateCompleteFormData = (): { isValid: boolean; errors: string[] } => {
     const errors: string[] = [];
@@ -617,65 +722,53 @@ export function AIAssistantPage({
     setIsCalculatingPrediction(true);
 
     try {
-      // Format data for backend
+      // Format data for backend (21 fields matching API schema)
       const backendData = formatDataForBackend();
 
-      // Log the formatted data for debugging
-      console.log('🔬 Sending data to AI service:', backendData);
-      console.log('🌐 API Endpoint: http://localhost:8000/api/v1/analysis/ckd-prediction');
+      console.log('🔬 Sending data to AI service via Gateway:', backendData);
+      console.log('🌐 API Endpoint: Gateway:8080 -> /api/v1/analysis/ckd-prediction');
 
-      // Try correct endpoint from Swagger docs
-      const possibleEndpoints = [
-        'http://localhost:8000/api/v1/analysis/ckd-prediction'
-      ];
-
-      let response: Response | null = null;
-      let lastError = '';
-
-      for (const endpoint of possibleEndpoints) {
-        try {
-          response = await fetch(endpoint, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'accept': 'application/json'
-            },
-            body: JSON.stringify(backendData)
-          });
-
-          if (response.ok) {
-            break;
-          } else {
-            lastError = `HTTP ${response.status}`;
-          }
-        } catch (err: unknown) {
-          lastError = err instanceof Error ? err.message : String(err);
-          continue;
-        }
-      }
-
-      if (!response || !response.ok) {
-        throw new Error(`All endpoints failed. Last error: ${lastError}`);
-      }
-
-      const aiResult = await response.json();
+      // Step 1: Call prediction API through Gateway (port 8080)
+      const aiResult = await predictCKD(backendData);
+      console.log('Received AI prediction result:', aiResult);
 
       // Parse AI service response and format for UI
       const aiPredictionResult = parseAIServiceResponse(aiResult);
 
-      setPredictionResult({
-        ...aiPredictionResult,
-        source: 'ai'
+      // Store raw data for later saving (after appointment booking)
+      setRawPredictionData({
+        aiResult: aiResult,
+        formData: backendData,
+        timestamp: new Date().toISOString()
       });
+
+      // ⏸️ NOTE: Prediction data will be saved AFTER user books appointment
+      // This ensures we only save when user actually needs medical consultation
+      console.log('⏸️ Prediction ready, waiting for appointment booking to save');
+      console.log('📊 Prediction will be saved with:', {
+        stage: aiResult.predicted_stage,
+        confidence: aiResult.confidence,
+        recommendationsCount: aiResult.recommendations?.length || 0,
+        userId: user.id
+      });
+
+      // Display result to user
+      setPredictionResult(aiPredictionResult);
       setCurrentTab(5); // Move to results tab
 
     } catch (error: unknown) {
-      // Fallback to local calculation if API fails
+      // Show error message to user - NO local fallback calculation
       const message = error instanceof Error ? error.message : String(error);
-      alert(`Không thể kết nối đến dịch vụ AI (${message}). Sử dụng tính toán cục bộ.`);
+      console.error('❌ AI prediction service failed:', message);
 
-      // Keep existing local calculation as fallback
-      calculateLocalCKDRisk();
+      alert(
+        '❌ Dịch vụ dự đoán AI đang gặp vấn đề.\n\n' +
+        'Vui lòng thử lại sau hoặc liên hệ bộ phận hỗ trợ.\n\n' +
+        `Chi tiết lỗi: ${message}`
+      );
+
+      // Do NOT move to results tab, stay on current form tab
+      // User can retry or contact support
     } finally {
       setIsCalculatingPrediction(false);
     }
@@ -733,80 +826,6 @@ export function AIAssistantPage({
     };
   };
 
-  // Fallback local calculation (renamed from original calculateCKDRisk)
-  const calculateLocalCKDRisk = () => {
-    // Advanced CKD risk calculation based on the 21 features
-    let riskScore = 0;
-
-    // Numerical features scoring
-    if (ckdFormData.serum_creatinine > 1.5) riskScore += 4;else if (ckdFormData.serum_creatinine > 1.2) riskScore += 2;
-    if (ckdFormData.gfr < 30) riskScore += 5;else if (ckdFormData.gfr < 45) riskScore += 4;else if (ckdFormData.gfr < 60) riskScore += 2;
-    if (ckdFormData.bun > 40) riskScore += 3;else if (ckdFormData.bun > 25) riskScore += 1;
-    if (ckdFormData.blood_pressure_systolic > 140) riskScore += 3;else if (ckdFormData.blood_pressure_systolic > 130) riskScore += 1;
-
-    // Binary features
-    if (ckdFormData.ana) riskScore += 2;
-    if (ckdFormData.hematuria) riskScore += 3;
-    if (ckdFormData.smoking) riskScore += 2;
-    if (ckdFormData.family_history) riskScore += 2;
-
-    // Categorical features
-    if (ckdFormData.physical_activity === 'rarely') riskScore += 1;
-    if (ckdFormData.diet === 'high protein') riskScore += 1;
-    if (ckdFormData.alcohol === 'daily') riskScore += 1;
-    if (ckdFormData.stress_level === 3) riskScore += 1;
-
-    // Determine risk level and stage
-    let risk: 'low' | 'moderate' | 'high';
-    let percentage: number;
-    let stage: string;
-    if (riskScore <= 4) {
-      risk = 'low';
-      percentage = Math.min(30, riskScore * 7);
-      stage = 'Chức năng thận bình thường hoặc giảm nhẹ';
-    } else if (riskScore <= 10) {
-      risk = 'moderate';
-      percentage = 30 + (riskScore - 4) * 8;
-      stage = 'Chức năng thận giảm trung bình - cần theo dõi';
-    } else {
-      risk = 'high';
-      percentage = Math.min(95, 78 + (riskScore - 10) * 3);
-      stage = 'Nguy cơ cao - cần can thiệp tích cực';
-    }
-
-    // Generate specific recommendations
-    const recommendations: string[] = [];
-    if (ckdFormData.serum_creatinine > 1.2) {
-      recommendations.push('Theo dõi chức năng thận định kỳ mỗi 3 tháng');
-    }
-    if (ckdFormData.blood_pressure_systolic > 130) {
-      recommendations.push('Kiểm soát huyết áp dưới 130/80 mmHg');
-    }
-    if (ckdFormData.smoking) {
-      recommendations.push('Bỏ thuốc lá để bảo vệ chức năng thận');
-    }
-    if (ckdFormData.diet === 'high protein') {
-      recommendations.push('Giảm lượng protein xuống 0.8g/kg cân nặng/ngày');
-    }
-    if (ckdFormData.water_intake < 1.5) {
-      recommendations.push('Tăng lượng nước uống lên 2-3L/ngày');
-    }
-    if (ckdFormData.physical_activity === 'rarely') {
-      recommendations.push('Tập thể dục đều đặn 30 phút/ngày, 5 ngày/tuần');
-    }
-    recommendations.push('Hạn chế muối dưới 5g/ngày');
-    recommendations.push('Kiểm tra định kỳ với bác sĩ chuyên khoa thận');
-    setPredictionResult({
-      risk,
-      percentage,
-      stage,
-      recommendations: recommendations.slice(0, 8),
-      source: 'local'
-    });
-
-    // Move to Step 5 (Results)
-    setCurrentTab(5);
-  };
   const handleSuggestionClick = (suggestion: string) => {
     setInputMessage(suggestion);
   };
@@ -1597,16 +1616,9 @@ export function AIAssistantPage({
 
           {/* Tab 5: Results */}
           {currentTab === 5 && predictionResult && <div className="space-y-6">
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center space-x-2">
-                  <span className="text-2xl">📊</span>
-                  <h3 className="text-xl font-semibold text-gray-900">Kết quả dự đoán CKD</h3>
-                </div>
-
-                {/* Source indicator */}
-                <div className={`px-3 py-1 rounded-full text-xs font-medium ${predictionResult.source === 'ai' ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-600'}`}>
-                  {predictionResult.source === 'ai' ? '🤖 AI Service' : '🔧 Local Calculation'}
-                </div>
+              <div className="flex items-center space-x-2 mb-6">
+                <span className="text-2xl">📊</span>
+                <h3 className="text-xl font-semibold text-gray-900">Kết quả dự đoán CKD</h3>
               </div>
 
               <div className="grid lg:grid-cols-2 gap-6">

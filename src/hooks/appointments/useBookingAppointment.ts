@@ -41,9 +41,15 @@ export const useBookingAppointment = (): UseBookingAppointmentReturn => {
             patientId: data.patientId,
             doctorId: data.doctorId,
             event: 'BOOKING_APPOINTMENT' as const,
+            hasPredict: data.hasPredict || false, // ✅ Add hasPredict at top level for backend to parse easily
             createAppointmentRequest: data
           };
           console.log('🔍 [useBookingAppointment] Sending WebSocket event:', wsEvent);
+          console.log('🔍🔍🔍 [DEBUG - WebSocket] hasPredict value:', {
+            hasPredict: wsEvent.hasPredict,
+            hasPredictType: typeof wsEvent.hasPredict,
+            fromRequestData: data.hasPredict
+          });
           webSocketAppointmentService.sendScheduleEvent(wsEvent);
           console.log('✅ [useBookingAppointment] WebSocket event sent successfully');
         } catch (wsError) {
