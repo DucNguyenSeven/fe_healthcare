@@ -337,12 +337,13 @@ export function MedicalResultModal({ isOpen, onClose, appointmentId, patientInfo
                   <FileText className="w-5 h-5 text-indigo-600" />
                   Chữ ký bác sĩ
                 </h4>
-                <div className="flex justify-center">
-                  <img
-                    src={fullRecord.signatureUrl}
-                    alt="Chữ ký bác sĩ"
-                    className="max-w-[300px] h-auto border border-indigo-300 rounded-xl bg-white p-4"
-                  />
+                <div className="flex justify-center items-center py-4">
+                  <div className="text-center">
+                    <p className="text-sm text-gray-600 mb-2">Bác sĩ điều trị</p>
+                    <p className="text-3xl font-semibold text-indigo-900 italic">
+                      {fullRecord.signatureUrl}
+                    </p>
+                  </div>
                 </div>
               </div>
             )}

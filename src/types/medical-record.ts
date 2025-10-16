@@ -13,7 +13,7 @@ export interface MedicalRecord {
   doctorNote?: string;
   followUpDate?: string | null;
   imageAttachments?: string[];
-  signatureUrl?: string | null;
+  signatureUrl?: string | null; // Contains doctor's full name (not an image URL)
   stage?: number;
   statusHealth?: string;
   createdAt: string;
