@@ -34,6 +34,7 @@ export interface AppointmentResponse {
   addressDetail?: string;
   createdAt?: string;
   updatedAt?: string;
+  hasPredict?: boolean; // Indicates if appointment has AI prediction
 }
 
 export interface PagedAppointmentResponse {

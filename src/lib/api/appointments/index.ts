@@ -13,6 +13,8 @@ export interface AppointmentWeekFilterResponse {
     endTime: string;
   } | null;
   note?: string | null;
+  symptoms?: string | null; // Patient symptoms
+  hasPredict?: boolean; // Indicates if appointment has AI prediction
 }
 
 export interface DoctorAppointmentsWeekApiResponse {

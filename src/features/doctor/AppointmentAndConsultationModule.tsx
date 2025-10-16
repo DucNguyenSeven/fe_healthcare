@@ -15,6 +15,8 @@ import { useDoctorSchedule } from '@/hooks/doctor-schedules';
 import { updateAppointmentStatus, getAppointmentDetail } from '@/lib/api/appointments';
 import { useUpdateAppointmentStatus } from '@/hooks/appointments/useUpdateAppointmentStatus';
 import { useAppointmentSocket } from '@/hooks/appointments/useAppointmentSocket';
+import { useGetPredict } from '@/hooks/predict';
+import type { PredictData } from '@/lib/api/predict';
 import { toast } from 'sonner';
 import { MedicalResultModal } from '@/components/MedicalResultModal';
 import { SignaturePad } from '@/components/SignaturePad';
@@ -156,6 +158,9 @@ export const AppointmentAndConsultationModule = ({
 
   // Hook for updating appointment status (confirm/reject)
   const { updateStatus, loading: updateStatusLoading } = useUpdateAppointmentStatus();
+
+  // Hook for getting predict data
+  const { data: predictData, loading: predictLoading, error: predictError, fetchPredict } = useGetPredict();
 
   // Hooks cho đặt lịch tái khám
   const { bookingAppointment: createFollowUpAppointment } = useBookingAppointment();
@@ -383,17 +388,6 @@ export const AppointmentAndConsultationModule = ({
     refetch: refetchMedicalRecords
   } = useGetMedicalRecords(currentPatientId);
 
-  const [labResults, setLabResults] = useState({
-    creatinine: '',
-    eGFR: '',
-    BUN: '',
-    calcium: '',
-    ANA: '',
-    complement: '',
-    urineColor: '',
-    oxalate: '',
-    urinePH: ''
-  });
   const [symptoms, setSymptoms] = useState('');
   const [diagnosis, setDiagnosis] = useState('');
   const [customDiagnosis, setCustomDiagnosis] = useState('');
@@ -500,6 +494,12 @@ export const AppointmentAndConsultationModule = ({
 
     // Fetch medical records from API for this patient
     setCurrentPatientId(actualPatientId);
+
+    // Fetch predict data if appointment has prediction
+    if (appointment.hasAIPrediction && actualPatientId) {
+      console.log('🔍 [openPatientExamination] Fetching predict data for patient:', actualPatientId);
+      fetchPredict(actualPatientId);
+    }
 
     // Ưu tiên dữ liệu có sẵn trong mock nếu khớp id
     const patientFromMock = patientData[patientId as keyof typeof patientData];
@@ -844,17 +844,6 @@ export const AppointmentAndConsultationModule = ({
 
   const resetFormData = () => {
     // Reset form data
-    setLabResults({
-      creatinine: '',
-      eGFR: '',
-      BUN: '',
-      calcium: '',
-      ANA: '',
-      complement: '',
-      urineColor: '',
-      oxalate: '',
-      urinePH: ''
-    });
     setSymptoms('');
     setDiagnosis('');
     setCustomDiagnosis('');
@@ -900,8 +889,11 @@ export const AppointmentAndConsultationModule = ({
         service: apt.note || 'Khám trực tiếp',
         status: (apt.status || 'CONFIRMED').toString().toLowerCase(),
         type: 'offline',
-        hasAIPrediction: false,
-        patientId: apt.patientId || ''
+        hasAIPrediction: apt.hasPredict || false,
+        patientId: apt.patientId || '',
+        // Preserve original data for examination modal
+        note: apt.note,
+        symptoms: apt.symptoms
       }))
       // Loại bỏ các lịch đã hoàn thành khỏi nguồn tuần để tránh trùng khi gộp với completed
       .filter(apt => apt.status !== 'completed');
@@ -915,8 +907,11 @@ export const AppointmentAndConsultationModule = ({
       service: apt.note || 'Khám trực tiếp',
       status: 'completed',
       type: apt.consultationType === 'ONLINE_CONSULTATION' ? 'online' : 'offline',
-      hasAIPrediction: false,
-      patientId: apt.patient?.id || ''
+      hasAIPrediction: apt.hasPredict || false,
+      patientId: apt.patient?.id || '',
+      // Preserve original data for examination modal
+      note: apt.note,
+      symptoms: apt.symptoms
     }));
 
     // Merge cả 2 sources
@@ -1010,7 +1005,30 @@ export const AppointmentAndConsultationModule = ({
                 {/* AI Results Tab */}
                 {examinationTab === 'ai-result' && (
                   <div className="space-y-6">
-                    {selectedPatient.aiPrediction ? (
+                    {/* Loading State */}
+                    {predictLoading && (
+                      <div className="text-center py-12">
+                        <div className="w-8 h-8 border-4 border-[#1E75FF] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                        <p className="text-[#334155]">Đang tải dữ liệu dự đoán AI...</p>
+                      </div>
+                    )}
+
+                    {/* Error State */}
+                    {predictError && !predictLoading && (
+                      <div className="text-center py-12">
+                        <AlertTriangle size={48} className="text-red-500 mx-auto mb-4" />
+                        <p className="text-red-600 mb-4">{predictError}</p>
+                        <button
+                          onClick={() => selectedPatient?.id && fetchPredict(selectedPatient.id)}
+                          className="px-4 py-2 bg-[#1E75FF] text-white rounded-xl hover:bg-[#1659C9] transition-colors"
+                        >
+                          Thử lại
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Data State */}
+                    {!predictLoading && !predictError && predictData ? (
                       <>
                         <div className="bg-gradient-to-r from-[#F59E0B]/10 to-[#F57C00]/10 border border-[#F59E0B]/20 rounded-2xl p-6">
                           <div className="flex items-center gap-3 mb-4">
@@ -1019,9 +1037,15 @@ export const AppointmentAndConsultationModule = ({
                             </div>
                             <div>
                               <h4 className="text-lg font-bold text-[#0F172A]">
-                                Nguy cơ {selectedPatient.aiPrediction.riskLevel === 'moderate' ? 'Trung bình' : 'Cao'} - {selectedPatient.aiPrediction.riskPercentage}%
+                                Giai đoạn CKD: {predictData.stage} - Độ tin cậy: {(predictData.confidence * 100).toFixed(1)}%
                               </h4>
-                              <p className="text-[#334155]">{selectedPatient.aiPrediction.description}</p>
+                              <p className="text-[#334155]">
+                                {predictData.stage === 1 && 'Giai đoạn 1: Tổn thương thận nhưng chức năng thận bình thường'}
+                                {predictData.stage === 2 && 'Giai đoạn 2: Suy giảm nhẹ chức năng thận'}
+                                {predictData.stage === 3 && 'Giai đoạn 3: Suy giảm trung bình chức năng thận'}
+                                {predictData.stage === 4 && 'Giai đoạn 4: Suy giảm nặng chức năng thận'}
+                                {predictData.stage === 5 && 'Giai đoạn 5: Suy thận giai đoạn cuối'}
+                              </p>
                             </div>
                           </div>
                         </div>
@@ -1030,18 +1054,26 @@ export const AppointmentAndConsultationModule = ({
                           <div className="bg-white border border-gray-200 rounded-2xl p-6">
                             <h4 className="text-lg font-semibold text-[#0F172A] mb-4 flex items-center gap-2">
                               <Activity className="w-5 h-5 text-[#1E75FF]" />
-                              <span>Các chỉ số quan trọng</span>
+                              <span>Các chỉ số sức khỏe</span>
                             </h4>
                             <div className="space-y-3">
-                              {selectedPatient.aiPrediction.keyIndicators.map((indicator: any, index: number) => <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
-                                  <div>
-                                    <p className="font-medium text-[#0F172A]">{indicator.name}</p>
-                                    <p className="text-sm text-[#334155]">{indicator.value}</p>
+                              {predictData.healthMetrics && predictData.healthMetrics.length > 0 ? (
+                                predictData.healthMetrics.map((metric, index) => (
+                                  <div key={metric.metricId || index} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+                                    <div>
+                                      <p className="font-medium text-[#0F172A]">{metric.metricName}</p>
+                                      <p className="text-sm text-[#334155]">
+                                        {metric.metricValue} {metric.unit}
+                                      </p>
+                                    </div>
+                                    <div className="text-xs text-[#64748B]">
+                                      {new Date(metric.measuredAt).toLocaleDateString('vi-VN')}
+                                    </div>
                                   </div>
-                                  <div className={`px-3 py-1 rounded-full text-xs font-medium ${indicator.status === 'high' ? 'bg-[#EF4444]/10 text-[#EF4444]' : indicator.status === 'low' ? 'bg-[#F59E0B]/10 text-[#F59E0B]' : 'bg-[#10B981]/10 text-[#10B981]'}`}>
-                                    {indicator.status === 'high' ? 'Cao' : indicator.status === 'low' ? 'Thấp' : 'Có'}
-                                  </div>
-                                </div>)}
+                                ))
+                              ) : (
+                                <p className="text-sm text-[#64748B] text-center py-4">Không có dữ liệu chỉ số</p>
+                              )}
                             </div>
                           </div>
 
@@ -1051,20 +1083,26 @@ export const AppointmentAndConsultationModule = ({
                               <span>Khuyến nghị từ AI</span>
                             </h4>
                             <div className="space-y-3">
-                              {selectedPatient.aiPrediction.recommendations.map((rec: string, index: number) => <div key={index} className="flex items-start gap-3 p-3 bg-[#1E75FF]/5 rounded-xl">
-                                  <div className="w-2 h-2 bg-[#1E75FF] rounded-full mt-2 flex-shrink-0"></div>
-                                  <p className="text-sm text-[#334155]">{rec}</p>
-                                </div>)}
+                              {predictData.recommendations && predictData.recommendations.length > 0 ? (
+                                predictData.recommendations.map((rec, index) => (
+                                  <div key={index} className="flex items-start gap-3 p-3 bg-[#1E75FF]/5 rounded-xl">
+                                    <div className="w-2 h-2 bg-[#1E75FF] rounded-full mt-2 flex-shrink-0"></div>
+                                    <p className="text-sm text-[#334155]">{rec}</p>
+                                  </div>
+                                ))
+                              ) : (
+                                <p className="text-sm text-[#64748B] text-center py-4">Không có khuyến nghị</p>
+                              )}
                             </div>
                           </div>
                         </div>
                       </>
-                    ) : (
+                    ) : !predictLoading && !predictError && !predictData ? (
                       <div className="text-center py-12">
                         <Brain size={48} className="text-gray-400 mx-auto mb-4" />
-                        <p className="text-[#334155]">Không có dự đoán AI</p>
+                        <p className="text-[#334155]">Không có dữ liệu dự đoán AI cho bệnh nhân này</p>
                       </div>
-                    )}
+                    ) : null}
                   </div>
                 )}
 
@@ -1203,112 +1241,69 @@ export const AppointmentAndConsultationModule = ({
 
                 {/* Examination Tab */}
                 {examinationTab === 'examination' && <div className="space-y-6">
-                    {/* Vital Signs */}
-                    <div className="bg-white border border-gray-200 rounded-2xl p-6">
+                    {/* Patient Information - READ ONLY */}
+                    <div className="bg-blue-50/50 border border-blue-200 rounded-2xl p-6">
                       <h4 className="text-lg font-semibold text-[#0F172A] mb-4 flex items-center gap-2">
-                        <Activity className="w-5 h-5 text-[#1E75FF]" />
-                        <span>Kết quả xét nghiệm</span>
+                        <FileText className="w-5 h-5 text-[#1E75FF]" />
+                        <span>Thông tin từ bệnh nhân</span>
                       </h4>
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      <div className="space-y-3">
                         <div>
-                          <label className="block text-sm font-medium text-[#334155] mb-2">
-                            Creatinin huyết thanh (mg/dL)
-                          </label>
-                          <input type="number" step="0.1" placeholder="1.0" value={labResults.creatinine} onChange={e => setLabResults({
-                        ...labResults,
-                        creatinine: e.target.value
-                      })} className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent" />
+                          <p className="text-sm font-medium text-[#334155] mb-1">
+                            Ghi chú thêm từ bệnh nhân:
+                          </p>
+                          <p className="text-[#0F172A] px-4 py-2 bg-white rounded-lg border border-gray-200">
+                            {selectedPatient?.appointment?.note || 'Không có thông tin'}
+                          </p>
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-[#334155] mb-2">
-                            eGFR (ml/min)
-                          </label>
-                          <input type="number" placeholder="95" value={labResults.eGFR} onChange={e => setLabResults({
-                        ...labResults,
-                        eGFR: e.target.value
-                      })} className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent" />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-[#334155] mb-2">
-                            Ure máu (BUN) (mg/dL)
-                          </label>
-                          <input type="number" placeholder="15" value={labResults.BUN} onChange={e => setLabResults({
-                        ...labResults,
-                        BUN: e.target.value
-                      })} className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent" />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-[#334155] mb-2">
-                            Canxi huyết thanh (mg/dL)
-                          </label>
-                          <input type="number" step="0.1" placeholder="10.0" value={labResults.calcium} onChange={e => setLabResults({
-                        ...labResults,
-                        calcium: e.target.value
-                      })} className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent" />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-[#334155] mb-2">
-                            ANA
-                          </label>
-                          <select value={labResults.ANA} onChange={e => setLabResults({
-                        ...labResults,
-                        ANA: e.target.value
-                      })} className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent">
-                            <option value="">Chọn kết quả</option>
-                            <option value="Âm tính">Âm tính</option>
-                            <option value="Dương tính">Dương tính</option>
-                          </select>
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-[#334155] mb-2">
-                            Bổ thể C3/C4 (mg/dL)
-                          </label>
-                          <input type="number" placeholder="130" value={labResults.complement} onChange={e => setLabResults({
-                        ...labResults,
-                        complement: e.target.value
-                      })} className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent" />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-[#334155] mb-2">
-                            Đái màu
-                          </label>
-                          <select value={labResults.urineColor} onChange={e => setLabResults({
-                        ...labResults,
-                        urineColor: e.target.value
-                      })} className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent">
-                            <option value="">Chọn màu</option>
-                            <option value="Âm tính">Âm tính</option>
-                            <option value="Dương tính">Dương tính</option>
-                          </select>
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-[#334155] mb-2">
-                            Nồng độ oxalat (mg/day)
-                          </label>
-                          <input type="number" step="0.1" placeholder="1.8" value={labResults.oxalate} onChange={e => setLabResults({
-                        ...labResults,
-                        oxalate: e.target.value
-                      })} className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent" />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-[#334155] mb-2">
-                            pH nước tiểu
-                          </label>
-                          <input type="number" step="0.1" placeholder="7.0" value={labResults.urinePH} onChange={e => setLabResults({
-                        ...labResults,
-                        urinePH: e.target.value
-                      })} className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent" />
+                          <p className="text-sm font-medium text-[#334155] mb-1">Triệu chứng:</p>
+                          <p className="text-[#0F172A] px-4 py-2 bg-white rounded-lg border border-gray-200">
+                            {selectedPatient?.appointment?.symptoms || 'Bệnh nhân chưa cung cấp'}
+                          </p>
                         </div>
                       </div>
                     </div>
 
-                    {/* Symptoms & Clinical Examination */}
+                    {/* Service Type */}
+                    <div className="bg-white border border-gray-200 rounded-2xl p-6">
+                      <h4 className="text-lg font-semibold text-[#0F172A] mb-4 flex items-center gap-2">
+                        <UserCheck className="w-5 h-5 text-[#1E75FF]" />
+                        <span>Dịch vụ khám</span>
+                      </h4>
+                      <div>
+                        <label className="block text-sm font-medium text-[#334155] mb-2">
+                          Dịch vụ khám
+                        </label>
+                        <select value={serviceName} onChange={e => setServiceName(e.target.value)} className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent">
+                          <option value="">Chọn dịch vụ khám</option>
+                          <option value="Khám tổng quát">Khám tổng quát</option>
+                          <option value="Nội tổng quát">Nội tổng quát</option>
+                          <option value="Tim mạch">Tim mạch</option>
+                          <option value="Thận - Tiết niệu">Thận - Tiết niệu</option>
+                          <option value="Nội tiết">Nội tiết</option>
+                          <option value="Khám định kỳ">Khám định kỳ</option>
+                          <option value="Tái khám">Tái khám</option>
+                          <option value="other">Khác...</option>
+                        </select>
+                      </div>
+                      {serviceName === 'other' && (
+                        <div className="mt-4">
+                          <label className="block text-sm font-medium text-[#334155] mb-2">
+                            Nhập dịch vụ khám
+                          </label>
+                          <input type="text" placeholder="Nhập tên dịch vụ khám cụ thể..." value={customServiceName} onChange={e => setCustomServiceName(e.target.value)} className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent" />
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Clinical Examination Results */}
                     <div className="bg-white border border-gray-200 rounded-2xl p-6">
                       <h4 className="text-lg font-semibold text-[#0F172A] mb-4 flex items-center gap-2">
                         <Stethoscope className="w-5 h-5 text-[#1E75FF]" />
-                        <span>Triệu chứng & Khám lâm sàng</span>
+                        <span>Kết quả khám lâm sàng</span>
                       </h4>
-                      <textarea placeholder="Ghi chú triệu chứng hiện tại, kết quả khám lâm sàng..." rows={4} value={symptoms} onChange={e => setSymptoms(e.target.value)} className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent resize-none" />
+                      <textarea placeholder="Ghi chú kết quả khám lâm sàng, các dấu hiệu lâm sàng, kết quả thăm khám..." rows={4} value={symptoms} onChange={e => setSymptoms(e.target.value)} className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent resize-none" />
                     </div>
 
                     {/* Diagnosis */}
@@ -1362,23 +1357,7 @@ export const AppointmentAndConsultationModule = ({
                         <Activity className="w-5 h-5 text-[#1E75FF]" />
                         <span>Tình trạng bệnh</span>
                       </h4>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div>
-                          <label className="block text-sm font-medium text-[#334155] mb-2">
-                            Dịch vụ khám
-                          </label>
-                          <select value={serviceName} onChange={e => setServiceName(e.target.value)} className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent">
-                            <option value="">Chọn dịch vụ khám</option>
-                            <option value="Khám tổng quát">Khám tổng quát</option>
-                            <option value="Nội tổng quát">Nội tổng quát</option>
-                            <option value="Tim mạch">Tim mạch</option>
-                            <option value="Thận - Tiết niệu">Thận - Tiết niệu</option>
-                            <option value="Nội tiết">Nội tiết</option>
-                            <option value="Khám định kỳ">Khám định kỳ</option>
-                            <option value="Tái khám">Tái khám</option>
-                            <option value="other">Khác...</option>
-                          </select>
-                        </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                           <label className="block text-sm font-medium text-[#334155] mb-2">
                             Giai đoạn bệnh
@@ -1406,20 +1385,6 @@ export const AppointmentAndConsultationModule = ({
                           </select>
                         </div>
                       </div>
-                      {serviceName === 'other' && (
-                        <div className="mt-4">
-                          <label className="block text-sm font-medium text-[#334155] mb-2">
-                            Nhập dịch vụ khám
-                          </label>
-                          <input
-                            type="text"
-                            placeholder="Nhập tên dịch vụ khám cụ thể..."
-                            value={customServiceName}
-                            onChange={e => setCustomServiceName(e.target.value)}
-                            className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent"
-                          />
-                        </div>
-                      )}
                     </div>
                   </div>}
 
