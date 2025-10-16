@@ -13,6 +13,7 @@ export type NavigationItem = 'dashboard' | 'profile' | 'appointments' | 'telehea
 export interface User {
   id: string;
   name: string;
+  fullName?: string | null;
   avatar?: string;
   email: string;
   phone: string;

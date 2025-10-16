@@ -101,7 +101,7 @@ export function DashboardPage({
       background: "linear-gradient(90deg, oklch(0.546 0.245 262.881) 0%, oklch(0.488 0.243 264.376) 100%)"
     }}>
         <h1 className="text-2xl lg:text-3xl font-bold mb-2">
-          Chào mừng trở lại, {user.name.split(' ').pop()}!
+          Chào mừng trở lại, {user.name || user.fullName || 'Bạn'}!
         </h1>
         <p className="text-blue-100 mb-4">
           Hôm nay là ngày tốt để chăm sóc sức khỏe của bạn

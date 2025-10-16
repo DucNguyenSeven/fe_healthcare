@@ -82,6 +82,20 @@ interface DoctorDashboardPageProps {
 export const DoctorDashboardPage = ({
   onNavigate = () => {}
 }: DoctorDashboardPageProps) => {
+  // Function to format current date in Vietnamese
+  const getCurrentDateString = () => {
+    const now = new Date();
+    const days = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
+    const months = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'];
+    
+    const dayName = days[now.getDay()];
+    const day = now.getDate();
+    const month = months[now.getMonth()];
+    const year = now.getFullYear();
+    
+    return `Hôm nay là ${dayName}, ${day} tháng ${month}, ${year}`;
+  };
+
   // @return
   return <div className="p-6 space-y-6 max-w-7xl mx-auto">
       {/* Welcome Banner - Updated to match Patient/Admin style */}
@@ -96,7 +110,7 @@ export const DoctorDashboardPage = ({
           <p className="text-white/90 text-lg" style={{
           textAlign: "left",
           justifyContent: "flex-start"
-        }}>Hôm nay là Thứ Tư, 20 tháng 8, 2025</p>
+        }}>{getCurrentDateString()}</p>
         </div>
       </div>
 
