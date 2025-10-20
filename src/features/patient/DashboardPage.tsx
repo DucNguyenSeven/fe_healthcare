@@ -14,9 +14,13 @@ import {
   Droplets,
   Weight,
   MapPin,
-  Phone
+  Phone,
+  ArrowUp,
+  ArrowDown,
+  Minus,
+  CheckCircle
 } from 'lucide-react';
-import type { HealthMetricLatest } from '@/types/dashboard';
+import type { HealthMetricLatest, HealthMetricWithComparison } from '@/types/dashboard';
 import type { TodayAppointment, PrescriptionGroup } from '@/types/dashboard';
 import type { MedicalRecordWithPrescriptions } from '@/types/medical-record';
 import { format } from 'date-fns';
@@ -29,7 +33,7 @@ interface DashboardPageProps {
     fullName?: string;
     email: string;
   };
-  healthMetrics: HealthMetricLatest[];
+  healthMetrics: (HealthMetricLatest | HealthMetricWithComparison)[];
   todayAppointments: TodayAppointment[];
   recentConsultations: MedicalRecordWithPrescriptions[];
   prescriptionGroups: PrescriptionGroup[];
@@ -91,17 +95,94 @@ export function DashboardPage({
   ];
 
   const getMetricIcon = (metricName: string) => {
-    switch (metricName) {
-      case 'eGFR':
-        return Activity;
-      case 'Creatinine':
-        return Droplets;
-      case 'Blood Pressure':
-        return Heart;
-      case 'Weight':
-        return Weight;
+    const normalized = metricName.toLowerCase();
+
+    if (normalized.includes('egfr') || normalized === 'gfr') {
+      return Activity;
+    }
+    if (normalized.includes('creatinine')) {
+      return Droplets;
+    }
+    if (normalized.includes('blood pressure') || normalized.includes('huyết áp')) {
+      return Heart;
+    }
+    if (normalized.includes('weight') || normalized.includes('cân nặng')) {
+      return Weight;
+    }
+    if (normalized.includes('bun') || normalized.includes('ure')) {
+      return Droplets; // Cùng icon với Creatinine vì cùng liên quan đến thận
+    }
+    if (normalized.includes('canxi') || normalized.includes('calcium')) {
+      return Activity; // Có thể thay bằng icon khác nếu cần
+    }
+
+    return Activity; // Default
+  };
+
+  // Helper: Lấy mô tả ngắn cho từng chỉ số
+  const getMetricDescription = (metricName: string): string => {
+    const normalized = metricName.toLowerCase();
+
+    if (normalized.includes('egfr') || normalized === 'gfr') {
+      return 'Chức năng thận';
+    }
+    if (normalized.includes('creatinine')) {
+      return 'Chỉ số thận';
+    }
+    if (normalized.includes('bun') || normalized.includes('ure')) {
+      return 'Nitơ ure máu';
+    }
+    if (normalized.includes('canxi') || normalized.includes('calcium')) {
+      return 'Canxi máu';
+    }
+    return '';
+  };
+
+  // Helper: Border color theo mức cảnh báo
+  const getBorderColor = (level: string): string => {
+    switch (level) {
+      case 'NORMAL':
+        return 'border-green-400';
+      case 'WARNING':
+        return 'border-yellow-400';
+      case 'DANGER':
+        return 'border-orange-400';
+      case 'CRITICAL':
+        return 'border-red-500';
       default:
-        return Activity;
+        return 'border-gray-300';
+    }
+  };
+
+  // Helper: Badge style theo mức cảnh báo
+  const getBadgeStyle = (level: string): string => {
+    switch (level) {
+      case 'NORMAL':
+        return 'bg-green-100 text-green-800';
+      case 'WARNING':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'DANGER':
+        return 'bg-orange-100 text-orange-800';
+      case 'CRITICAL':
+        return 'bg-red-100 text-red-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  // Helper: Icon cho từng mức cảnh báo
+  const getAlertIcon = (level: string) => {
+    switch (level) {
+      case 'NORMAL':
+        return '✅';
+      case 'WARNING':
+        return '⚠️';
+      case 'DANGER':
+        return '🔴';
+      case 'CRITICAL':
+        return '🆘';
+      default:
+        return '';
     }
   };
 
@@ -224,24 +305,126 @@ export function DashboardPage({
               {healthMetrics.length > 0 ? (
                 healthMetrics.map(metric => {
                   const Icon = getMetricIcon(metric.metricName);
+                  const metricWithComparison = metric as HealthMetricWithComparison;
+                  const hasComparison = 'previousMonthValue' in metricWithComparison &&
+                                       metricWithComparison.previousMonthValue !== undefined;
+
                   return (
-                    <div key={metric.metricId} className={`p-4 rounded-xl ${metric.alert.bgColor}`}>
-                      <div className="flex items-center justify-between mb-2">
-                        <Icon className={`w-5 h-5 ${metric.alert.iconColor}`} />
-                        {metric.alert.level !== 'NORMAL' && (
-                          <AlertTriangle className={`w-4 h-4 ${metric.alert.iconColor}`} />
-                        )}
+                    <div
+                      key={metric.metricId}
+                      className={`
+                        p-3.5 rounded-xl bg-white
+                        ${metric.alert.level === 'NORMAL' ? 'border-2' : 'border-4'}
+                        ${getBorderColor(metric.alert.level)}
+                        transition-all hover:shadow-md
+                      `}
+                    >
+                      {/* Header: Icon + Tên + Giải thích */}
+                      <div className="flex items-start justify-between mb-2">
+                        <div className="flex items-start gap-1.5 flex-1">
+                          <Icon className="w-4 h-4 text-gray-600 mt-0.5 flex-shrink-0" />
+                          <div className="min-w-0">
+                            <h3 className="font-semibold text-gray-900 text-xs leading-tight">{metric.displayName}</h3>
+                            {getMetricDescription(metric.metricName) && (
+                              <p className="text-[11px] text-gray-500 mt-0.5">{getMetricDescription(metric.metricName)}</p>
+                            )}
+                          </div>
+                        </div>
                       </div>
-                      <p className="text-sm text-gray-600 mb-1">{metric.displayName}</p>
-                      <p className={`text-lg font-semibold ${metric.alert.textColor}`}>
-                        {metric.metricValue} {metric.unit}
-                      </p>
-                      {/* Chú thích màu sắc */}
-                      <div className="mt-2">
-                        <span className={`text-xs font-medium ${metric.alert.textColor}`}>
-                          {metric.alert.label}
+
+                      {/* Body: Số TO + Badge cảnh báo */}
+                      <div className="flex items-end justify-between mb-2">
+                        <div>
+                          <p className="text-2xl font-bold text-gray-900 leading-none">{metric.metricValue}</p>
+                          <p className="text-xs text-gray-600 mt-0.5">{metric.unit}</p>
+                        </div>
+                        <span className={`
+                          px-2.5 py-0.5 rounded-full font-medium whitespace-nowrap
+                          ${metric.alert.level === 'NORMAL' ? 'text-[10px]' : 'text-xs font-bold'}
+                          ${getBadgeStyle(metric.alert.level)}
+                        `}>
+                          {getAlertIcon(metric.alert.level)}{' '}
+                          {metric.alert.level === 'NORMAL'
+                            ? metric.alert.label
+                            : metric.alert.label.toUpperCase()
+                          }
                         </span>
                       </div>
+
+                      {/* So sánh với mức bình thường */}
+                      {metricWithComparison.exceedanceStatus && (
+                        <div className={`
+                          mb-2 p-2.5 rounded-lg
+                          ${metricWithComparison.exceedanceStatus === 'normal'
+                            ? 'bg-green-50 border border-green-200'
+                            : metricWithComparison.alert.level === 'CRITICAL'
+                              ? 'bg-red-50 border border-red-200'
+                              : metricWithComparison.alert.level === 'DANGER'
+                                ? 'bg-orange-50 border border-orange-200'
+                                : 'bg-yellow-50 border border-yellow-200'
+                          }
+                        `}>
+                          <div className="flex items-start gap-1.5">
+                            {/* Icon */}
+                            <span className="text-base flex-shrink-0">
+                              {metricWithComparison.exceedanceStatus === 'normal' ? '✅' :
+                               metricWithComparison.alert.level === 'CRITICAL' ? '🆘' : '⚠️'}
+                            </span>
+
+                            {/* Nội dung */}
+                            <div className="flex-1 min-w-0">
+                              <p className={`
+                                text-xs leading-tight
+                                ${metricWithComparison.exceedanceStatus === 'normal'
+                                  ? 'text-green-700 font-medium'
+                                  : metricWithComparison.alert.level === 'CRITICAL'
+                                    ? 'text-red-700 font-bold'
+                                    : metricWithComparison.alert.level === 'DANGER'
+                                      ? 'text-orange-700 font-bold'
+                                      : 'text-yellow-700 font-semibold'
+                                }
+                              `}>
+                                {metricWithComparison.exceedanceMessage}
+                              </p>
+                              <p className="text-[10px] text-gray-600 mt-0.5">
+                                (Bình thường: {metricWithComparison.normalRange?.description})
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Đường kẻ phân cách - CHỈ hiển thị khi CÓ so sánh tháng trước */}
+                      {hasComparison && metricWithComparison.previousMonthValue && (
+                        <div className="border-t border-gray-200 my-2"></div>
+                      )}
+
+                      {/* So sánh với tháng trước */}
+                      {hasComparison && metricWithComparison.previousMonthValue && (
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-1.5">
+                            {metricWithComparison.changeDirection === 'up' ? (
+                              <ArrowUp className={`w-3.5 h-3.5 flex-shrink-0 ${metricWithComparison.isTrendGood ? 'text-green-600' : 'text-red-600'}`} />
+                            ) : metricWithComparison.changeDirection === 'down' ? (
+                              <ArrowDown className={`w-3.5 h-3.5 flex-shrink-0 ${metricWithComparison.isTrendGood ? 'text-green-600' : 'text-red-600'}`} />
+                            ) : (
+                              <Minus className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+                            )}
+                            <span className={`text-xs font-medium ${metricWithComparison.isTrendGood ? 'text-green-700' : metricWithComparison.changeDirection === 'stable' ? 'text-gray-600' : 'text-red-700'}`}>
+                              {metricWithComparison.changeDirection === 'up' ? 'Tăng' : metricWithComparison.changeDirection === 'down' ? 'Giảm' : 'Ổn định'}
+                              {metricWithComparison.changePercentage !== undefined && metricWithComparison.changeDirection !== 'stable' &&
+                                ` ${Math.abs(metricWithComparison.changePercentage).toFixed(1)}%`
+                              } so với tháng trước
+                            </span>
+                          </div>
+                          <p className="text-[10px] text-gray-500">
+                            {metricWithComparison.previousMonthDate &&
+                              `Tháng ${format(new Date(metricWithComparison.previousMonthDate), 'M', { locale: vi })}: `
+                            }
+                            {metricWithComparison.previousMonthValue} {metric.unit}
+                          </p>
+                        </div>
+                      )}
                     </div>
                   );
                 })

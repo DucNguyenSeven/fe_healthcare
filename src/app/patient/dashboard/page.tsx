@@ -3,7 +3,8 @@
 import { DashboardPage } from '@/features/patient'
 import { useGetMe } from '@/hooks/auth/useGetMe'
 import { useAuthContext } from '@/contexts/AuthContext'
-import { useLatestHealthMetrics } from '@/hooks/health-metrics/useLatestHealthMetrics'
+// import { useLatestHealthMetrics } from '@/hooks/health-metrics/useLatestHealthMetrics' // API cũ - giữ để tham khảo
+import { useHealthMetricsComparison } from '@/hooks/health-metrics/useHealthMetricsComparison' // API mới với so sánh tháng trước
 import { useTodayAppointments } from '@/hooks/appointments/useTodayAppointments'
 import { usePrescriptionGroups } from '@/hooks/prescriptions/usePrescriptionGroups'
 import { useRecentConsultations } from '@/hooks/medical-records/useRecentConsultations'
@@ -28,11 +29,12 @@ export default function PatientDashboard() {
   });
 
   // Fetch dashboard data using custom hooks
+  // 🔄 UPDATED: Sử dụng useHealthMetricsComparison để lấy chỉ số + so sánh với tháng trước
   const {
     data: healthMetrics = [],
     isLoading: isLoadingMetrics,
     error: healthMetricsError
-  } = useLatestHealthMetrics(patientId)
+  } = useHealthMetricsComparison(patientId)
 
   // 🔍 DEBUG: Log health metrics result
   console.log('🔍 Health Metrics Result:', {

@@ -46,6 +46,31 @@ export interface HealthMetricLatest extends HealthMetricResponse {
 }
 
 /**
+ * Chỉ số sức khỏe với thông tin so sánh tháng trước
+ * Extends HealthMetricLatest để có đầy đủ thông tin hiển thị + so sánh
+ */
+export interface HealthMetricWithComparison extends HealthMetricLatest {
+  // Thông tin so sánh với tháng trước
+  previousMonthValue?: number;
+  previousMonthDate?: string; // ISO date string
+  changePercentage?: number; // % thay đổi (số âm = giảm, số dương = tăng)
+  changeDirection?: 'up' | 'down' | 'stable';
+  isTrendGood?: boolean; // Xu hướng tốt hay xấu (phụ thuộc loại chỉ số)
+
+  // Ngưỡng bình thường để hiển thị
+  normalRange?: {
+    min?: number;
+    max?: number;
+    description: string; // VD: "≥90 ml/min" hoặc "8.5-10.5 mg/dL"
+  };
+
+  // So sánh với mức bình thường (THÊM MỚI)
+  exceedancePercentage?: number;     // % vượt/thiếu so với ngưỡng
+  exceedanceStatus?: 'over' | 'under' | 'normal';
+  exceedanceMessage?: string;        // "Vượt mức bình thường 76.9%"
+}
+
+/**
  * Response từ API get-health-metrics-latest
  */
 export interface GetLatestHealthMetricsResponse {
@@ -346,6 +371,125 @@ export function getBloodPressureAlert(systolic: number): MetricAlert {
       iconColor: 'text-red-500'
     };
   }
+}
+
+/**
+ * Phân loại BUN (Ure máu / Blood Urea Nitrogen)
+ * Giá trị bình thường: 7-20 mg/dL
+ * Giá trị cao cho thấy chức năng thận giảm
+ */
+export function getBUNAlert(value: number): MetricAlert {
+  if (value >= 7 && value <= 20) {
+    return {
+      level: 'NORMAL',
+      label: 'Bình thường',
+      color: 'green',
+      bgColor: 'bg-green-50',
+      textColor: 'text-green-800',
+      iconColor: 'text-green-500'
+    };
+  } else if (value > 20 && value <= 30) {
+    return {
+      level: 'WARNING',
+      label: 'Cảnh báo',
+      color: 'yellow',
+      bgColor: 'bg-yellow-50',
+      textColor: 'text-yellow-800',
+      iconColor: 'text-yellow-500'
+    };
+  } else if (value > 30 && value <= 50) {
+    return {
+      level: 'DANGER',
+      label: 'Nguy hiểm',
+      color: 'orange',
+      bgColor: 'bg-orange-50',
+      textColor: 'text-orange-800',
+      iconColor: 'text-orange-500'
+    };
+  } else {
+    return {
+      level: 'CRITICAL',
+      label: 'Rất nguy hiểm',
+      color: 'red',
+      bgColor: 'bg-red-50',
+      textColor: 'text-red-800',
+      iconColor: 'text-red-500'
+    };
+  }
+}
+
+/**
+ * Phân loại Canxi máu (Serum Calcium)
+ * Giá trị bình thường: 8.5-10.5 mg/dL
+ * Cả tăng và giảm canxi đều có thể nguy hiểm
+ */
+export function getCalciumAlert(value: number): MetricAlert {
+  if (value >= 8.5 && value <= 10.5) {
+    return {
+      level: 'NORMAL',
+      label: 'Bình thường',
+      color: 'green',
+      bgColor: 'bg-green-50',
+      textColor: 'text-green-800',
+      iconColor: 'text-green-500'
+    };
+  } else if ((value >= 8.0 && value < 8.5) || (value > 10.5 && value <= 11.0)) {
+    return {
+      level: 'WARNING',
+      label: 'Cảnh báo',
+      color: 'yellow',
+      bgColor: 'bg-yellow-50',
+      textColor: 'text-yellow-800',
+      iconColor: 'text-yellow-500'
+    };
+  } else if ((value >= 7.0 && value < 8.0) || (value > 11.0 && value <= 12.0)) {
+    return {
+      level: 'DANGER',
+      label: 'Nguy hiểm',
+      color: 'orange',
+      bgColor: 'bg-orange-50',
+      textColor: 'text-orange-800',
+      iconColor: 'text-orange-500'
+    };
+  } else {
+    return {
+      level: 'CRITICAL',
+      label: 'Rất nguy hiểm',
+      color: 'red',
+      bgColor: 'bg-red-50',
+      textColor: 'text-red-800',
+      iconColor: 'text-red-500'
+    };
+  }
+}
+
+/**
+ * Lấy ngưỡng bình thường cho từng chỉ số
+ */
+export function getMetricNormalRange(metricName: string): {
+  min?: number;
+  max?: number;
+  description: string;
+} {
+  const normalized = metricName.toLowerCase();
+
+  if (normalized.includes('egfr') || normalized === 'gfr') {
+    return { min: 90, description: '≥90 ml/min' };
+  }
+
+  if (normalized.includes('creatinine') || normalized === 'serum_creatinine') {
+    return { max: 1.3, description: '≤1.3 mg/dL' };
+  }
+
+  if (normalized.includes('bun') || normalized.includes('ure')) {
+    return { min: 7, max: 20, description: '7-20 mg/dL' };
+  }
+
+  if (normalized.includes('canxi') || normalized.includes('calcium')) {
+    return { min: 8.5, max: 10.5, description: '8.5-10.5 mg/dL' };
+  }
+
+  return { description: 'Tùy theo tiêu chuẩn lâm sàng' };
 }
 
 /**
