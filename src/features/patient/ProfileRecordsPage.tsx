@@ -9,6 +9,7 @@ import { usePatientHealthPanels } from '@/hooks/health-metrics/usePatientPanels'
 import { useUpdateUser } from '@/hooks/auth/useUpdateUser';
 import { useUpdateAvatar } from '@/hooks/auth/useUpdateAvatar';
 import { useGetMedicalRecords } from '@/hooks/medical-records';
+import { useSearchParams } from 'next/navigation';
 import type { GetMeResponse } from '@/types/auth';
 import type { UpdateUserRequest } from '@/lib/api/types';
 import type { MedicalRecordWithPrescriptions } from '@/types/medical-record';
@@ -64,7 +65,31 @@ export function ProfileRecordsPage(_props: ProfileRecordsPageProps = {}) {
   
   // Update avatar hook
   const { updateAvatar, isLoading: isUploadingAvatar, error: avatarError, progress } = useUpdateAvatar();
-  const [activeTab, setActiveTab] = useState<'personal' | 'testHistory' | 'medical' | 'files'>('personal');
+
+  // Read query params to handle deep linking (e.g., from dashboard "Xem biểu đồ")
+  const searchParams = useSearchParams();
+  const tabParam = searchParams.get('tab');
+
+  // Map tab query param to activeTab state
+  const getInitialTab = (): 'personal' | 'testHistory' | 'medical' | 'files' => {
+    if (tabParam === 'test-results') return 'testHistory';
+    if (tabParam === 'medical') return 'medical';
+    if (tabParam === 'files') return 'files';
+    return 'personal';
+  };
+
+  const [activeTab, setActiveTab] = useState<'personal' | 'testHistory' | 'medical' | 'files'>(getInitialTab());
+
+  // Update activeTab when query param changes
+  useEffect(() => {
+    if (tabParam === 'test-results') {
+      setActiveTab('testHistory');
+    } else if (tabParam === 'medical') {
+      setActiveTab('medical');
+    } else if (tabParam === 'files') {
+      setActiveTab('files');
+    }
+  }, [tabParam]);
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [avatar, setAvatar] = useState<string | null>(null);

@@ -1,4 +1,5 @@
 import api from './client';
+import type { GetPrescriptionGroupsResponse } from '@/types/dashboard';
 
 // Types
 export interface CreatePrescriptionRequest {
@@ -78,4 +79,27 @@ export const createMultiplePrescriptions = async (
   });
 
   return { successful, failed };
+};
+
+/**
+ * Lấy danh sách toa thuốc nhóm theo lần khám
+ * API: GET /api/v1/prescriptions/groups/{patientId}
+ */
+export const getPrescriptionGroups = async (
+  patientId: string
+): Promise<GetPrescriptionGroupsResponse> => {
+  try {
+    const response = await api.get<GetPrescriptionGroupsResponse>(
+      `/api/v1/prescriptions/groups/${patientId}`
+    );
+    return response.data;
+  } catch (error: any) {
+    console.error('Error fetching prescription groups:', error);
+    throw {
+      code: error.response?.status || 500,
+      message: error.response?.data?.message || error.message || 'Không thể tải danh sách toa thuốc',
+      success: false,
+      data: []
+    };
+  }
 };

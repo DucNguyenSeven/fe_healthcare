@@ -1,4 +1,5 @@
 import api from '@/lib/api/client';
+import type { GetLatestHealthMetricsResponse } from '@/types/dashboard';
 
 export interface CreateHealthMetricPanelRequest {
   patientId: string;
@@ -36,6 +37,59 @@ export const HealthMetricsApi = {
       }>>>(`/api/v1/health-metrics/by-patient?${query.toString()}`)
       .then((r) => r.data);
   },
+
+  /**
+   * Lấy chỉ số sức khỏe mới nhất của bệnh nhân
+   * API: GET /api/v1/health-metrics/get-health-metrics-latest/{patientId}
+   * Trả về: eGFR, Creatinine, Blood Pressure, Weight
+   */
+  async getLatestHealthMetrics(patientId: string): Promise<GetLatestHealthMetricsResponse> {
+    try {
+      console.log('🔍 [API] Fetching health metrics for patient:', patientId);
+
+      const response = await api.get<GetLatestHealthMetricsResponse>(
+        `/api/v1/health-metrics/get-health-metrics-latest/${patientId}`
+      );
+
+      console.log('🔍 [API] Raw Axios Response:', {
+        status: response.status,
+        statusText: response.statusText,
+        data: response.data,
+        headers: response.headers
+      });
+
+      // ✅ FIX: Handle different response structures
+      // If API returns array directly (no wrapper)
+      if (Array.isArray(response.data)) {
+        console.log('🔍 [API] Response is array, wrapping it');
+        return {
+          code: 200,
+          message: 'Success',
+          success: true,
+          data: response.data
+        };
+      }
+
+      // If API returns wrapped response { code, message, data }
+      console.log('🔍 [API] Response is object, returning as-is');
+      return response.data;
+
+    } catch (error: any) {
+      console.error('❌ [API] Error fetching health metrics:', {
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        message: error.response?.data?.message,
+        data: error.response?.data
+      });
+
+      throw {
+        code: error.response?.status || 500,
+        message: error.response?.data?.message || error.message || 'Không thể tải chỉ số sức khỏe',
+        success: false,
+        data: []
+      };
+    }
+  }
 };
 
 export default HealthMetricsApi;
