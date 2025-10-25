@@ -619,10 +619,11 @@ export function AppointmentsPage() {
         setAddressDetail('');
         resetBooking();
 
-        // Hiển thị thông báo thành công
-        toast.success('Đặt lịch thành công!', {
-          description: 'Chờ bác sĩ xác nhận. Bạn sẽ nhận thông báo khi được chấp nhận.',
-          duration: 6000,
+        // Hiển thị loading toast - đợi WebSocket confirmation từ backend
+        toast.loading('Đang xác nhận đặt lịch...', {
+          id: 'booking-confirmation',
+          description: 'Vui lòng chờ trong giây lát',
+          duration: Infinity // Will be dismissed by WebSocket event
         });
 
         // 💾 Save prediction data if this booking came from CKD prediction

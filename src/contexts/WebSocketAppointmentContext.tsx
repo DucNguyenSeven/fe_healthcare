@@ -101,6 +101,9 @@ export function WebSocketAppointmentProvider({ children }: WebSocketAppointmentP
     } else if (user.role === 'PATIENT' && patientId === user.userId) {
       console.log('✅ [AppointmentContext] Showing notification for PATIENT');
 
+      // Dismiss loading toast from AppointmentsPage before showing final success
+      toast.dismiss('booking-confirmation');
+
       // Trigger refetch callbacks for patient
       console.log(`🔍 [AppointmentContext] Triggering ${updateCallbacksRef.current.size} refetch callback(s) for PATIENT`);
       updateCallbacksRef.current.forEach(callback => {
@@ -293,6 +296,9 @@ export function WebSocketAppointmentProvider({ children }: WebSocketAppointmentP
     // Show error notification and refetch ONLY for relevant user
     if (user.role === 'PATIENT' && patientId === user.userId) {
       console.log('❌ [AppointmentContext] Showing error notification for PATIENT');
+
+      // Dismiss loading toast from AppointmentsPage before showing error
+      toast.dismiss('booking-confirmation');
 
       // Trigger refetch callbacks for patient (to show updated available slots)
       console.log(`🔍 [AppointmentContext] Triggering ${updateCallbacksRef.current.size} refetch callback(s) for PATIENT (failed booking)`);
