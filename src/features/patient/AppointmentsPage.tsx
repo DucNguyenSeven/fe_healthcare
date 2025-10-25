@@ -153,7 +153,10 @@ export function AppointmentsPage() {
   };
 
   const timelineAppointments = processTimelineAppointments();
-  const futureAppointments = timelineAppointments.filter(apt => !apt.isPast);
+
+  // Tách thành 3 nhóm: future (sau hôm nay), today (hôm nay), past (trước hôm nay)
+  const futureAppointments = timelineAppointments.filter(apt => !apt.isPast && !apt.isToday);
+  const todayAppointments = timelineAppointments.filter(apt => apt.isToday);
   const pastAppointments = timelineAppointments.filter(apt => apt.isPast);
 
   const toggleAppointmentExpansion = (appointmentId: string) => {
@@ -1426,38 +1429,56 @@ export function AppointmentsPage() {
       {/* Timeline */}
       {!appointmentsLoading && !appointmentsError && (
         <div className="space-y-0">
-          {/* Future appointments */}
-          {futureAppointments.length > 0 && <div className="mb-12">
-              <div className="flex items-center space-x-3 mb-6">
-                <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-                <h2 className="text-xl font-semibold text-gray-900">Lịch hẹn sắp tới</h2>
+          {/* 1. Future appointments - LUÔN hiển thị */}
+          <div className="mb-12">
+            <div className="flex items-center space-x-3 mb-6">
+              <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+              <h2 className="text-xl font-semibold text-gray-900">Lịch hẹn sắp tới</h2>
+            </div>
+            {futureAppointments.length > 0 ? (
+              futureAppointments.map((appointment, index) => renderTimelineEntry(appointment, index === futureAppointments.length - 1))
+            ) : (
+              <div className="ml-12 text-center py-8 bg-gray-50 rounded-xl border border-gray-200">
+                <Calendar className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                <p className="text-gray-500 text-sm">Không có lịch hẹn sắp tới</p>
               </div>
-              {futureAppointments.map((appointment, index) => renderTimelineEntry(appointment, index === futureAppointments.length - 1))}
-            </div>}
-
-        {/* Today marker */}
-        <div className="relative mb-12">
-          <div className="absolute left-4 w-4 h-4 bg-blue-500 rounded-full border-4 border-blue-100 shadow-lg"></div>
-          <div className="ml-12 flex items-center space-x-3">
-            <div className="h-0.5 bg-gradient-to-r from-blue-500 to-transparent flex-1"></div>
-            <span className="px-4 py-2 bg-blue-500 text-white rounded-full text-sm font-medium shadow-sm">
-              Hôm nay
-            </span>
-            <div className="h-0.5 bg-gradient-to-l from-blue-500 to-transparent flex-1"></div>
+            )}
           </div>
-        </div>
 
-        {/* Past appointments */}
-        {pastAppointments.length > 0 && <div>
+          {/* 2. Today appointments - LUÔN hiển thị */}
+          <div className="mb-12">
+            <div className="flex items-center space-x-3 mb-6">
+              <div className="w-3 h-3 bg-orange-500 rounded-full"></div>
+              <h2 className="text-xl font-semibold text-gray-900">Cuộc hẹn hôm nay</h2>
+            </div>
+            {todayAppointments.length > 0 ? (
+              todayAppointments.map((appointment, index) => renderTimelineEntry(appointment, index === todayAppointments.length - 1))
+            ) : (
+              <div className="ml-12 text-center py-8 bg-orange-50 rounded-xl border border-orange-200">
+                <Clock className="w-12 h-12 text-orange-300 mx-auto mb-3" />
+                <p className="text-orange-600 text-sm">Không có cuộc hẹn hôm nay</p>
+              </div>
+            )}
+          </div>
+
+          {/* 3. Past appointments - LUÔN hiển thị */}
+          <div className="mb-12">
             <div className="flex items-center space-x-3 mb-6">
               <div className="w-3 h-3 bg-gray-400 rounded-full"></div>
               <h2 className="text-xl font-semibold text-gray-900">Lịch sử khám bệnh</h2>
             </div>
-            {pastAppointments.map((appointment, index) => renderTimelineEntry(appointment, index === pastAppointments.length - 1))}
-          </div>}
+            {pastAppointments.length > 0 ? (
+              pastAppointments.map((appointment, index) => renderTimelineEntry(appointment, index === pastAppointments.length - 1))
+            ) : (
+              <div className="ml-12 text-center py-8 bg-gray-50 rounded-xl border border-gray-200">
+                <Calendar className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                <p className="text-gray-500 text-sm">Chưa có lịch sử khám bệnh</p>
+              </div>
+            )}
+          </div>
 
-        {/* Empty state - only show when no appointments from API and no mock data */}
-        {timelineAppointments.length === 0 && !appointmentsLoading && <div className="text-center py-16">
+          {/* Empty state - only show when no appointments at all */}
+          {timelineAppointments.length === 0 && !appointmentsLoading && <div className="text-center py-16">
             <Calendar className="w-20 h-20 text-gray-300 mx-auto mb-6" />
             <h3 className="text-xl font-semibold text-gray-900 mb-3">Chưa có lịch hẹn nào</h3>
             <p className="text-gray-600 mb-6 max-w-md mx-auto">
