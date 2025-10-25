@@ -198,3 +198,82 @@ export const getAppointmentDetail = async (appointmentId: string): Promise<Appoi
     throw new Error('Không thể lấy thông tin chi tiết appointment');
   }
 };
+
+// ==================== NEW APIs for Follow-up Management ====================
+
+/**
+ * Request body for scheduling follow-up appointment by doctor
+ */
+export interface ScheduleFollowUpByDoctorRequest {
+  medicalRecordId: string;  // Medical Record just created (REQUIRED)
+  patientId: string;         // Patient ID (REQUIRED)
+  doctorId: string;          // Doctor ID (REQUIRED)
+  scheduleId: string;        // Doctor's schedule ID (REQUIRED)
+  slotId: number;            // Time slot ID (REQUIRED)
+  appointmentDate: string;   // Appointment date YYYY-MM-DD (REQUIRED)
+  note?: string;             // Optional note (default: "Tái khám theo chỉ định của bác sĩ")
+}
+
+/**
+ * Response from scheduling follow-up appointment
+ */
+export interface ScheduleFollowUpByDoctorResponse {
+  appointmentId: string;
+  consultationType: 'FOLLOW_UP';
+  status: 'CONFIRMED';
+  relatedRecordId: string;
+  patient: any;
+  doctor: any;
+  timeSlot: {
+    slotId: number;
+    startTime: string;
+    endTime: string;
+  };
+  appointmentDate: string;
+  note: string;
+}
+
+export interface ScheduleFollowUpApiResponse {
+  code: number;
+  message: string;
+  success: boolean;
+  data: ScheduleFollowUpByDoctorResponse;
+}
+
+/**
+ * Bác sĩ đặt lịch tái khám cho bệnh nhân
+ * @param data - Thông tin đặt lịch tái khám
+ * @returns Promise<ScheduleFollowUpApiResponse>
+ */
+export const scheduleFollowUpByDoctor = async (
+  data: ScheduleFollowUpByDoctorRequest
+): Promise<ScheduleFollowUpApiResponse> => {
+  try {
+    console.log('🔍 [API - scheduleFollowUpByDoctor] Sending request:', {
+      endpoint: '/api/v1/appointments/schedule-follow-up-by-doctor',
+      method: 'POST',
+      data
+    });
+
+    const response = await api.post<ScheduleFollowUpApiResponse>(
+      '/api/v1/appointments/schedule-follow-up-by-doctor',
+      data
+    );
+
+    console.log('🔍 [API - scheduleFollowUpByDoctor] Received response:', {
+      status: response.status,
+      data: response.data
+    });
+
+    return response.data;
+  } catch (error: any) {
+    console.error('🔍 [API] Schedule follow-up error:', {
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      message: error.response?.data?.message,
+      data: error.response?.data
+    });
+
+    throw error;
+  }
+};

@@ -8,6 +8,7 @@ import type { AppointmentWeekFilterResponse } from '@/lib/api/appointments';
 import { useDoctorAppointments } from '@/hooks/appointments';
 import { useAppointmentFilter } from '@/hooks/appointments/useAppointmentFilter';
 import { useBookingAppointment } from '@/hooks/appointments/useBookingAppointment';
+import { useScheduleFollowUp } from '@/hooks/appointments/useScheduleFollowUp';
 import { useGetMe } from '@/hooks/auth/useGetMe';
 import { useCreateMedicalRecord, useGetMedicalRecords } from '@/hooks/medical-records';
 import { useCreateMultiplePrescriptions } from '@/hooks/prescriptions';
@@ -162,8 +163,8 @@ export const AppointmentAndConsultationModule = ({
   // Hook for getting predict data
   const { data: predictData, loading: predictLoading, error: predictError, fetchPredict } = useGetPredict();
 
-  // Hooks cho đặt lịch tái khám
-  const { bookingAppointment: createFollowUpAppointment } = useBookingAppointment();
+  // Hooks cho đặt lịch tái khám - SỬ DỤNG API MỚI
+  const { scheduleFollowUp } = useScheduleFollowUp();
   const { timeSlots, scheduleId, timeSlotMapping, fetchDoctorSchedule } = useDoctorSchedule();
 
   // States cho follow-up appointment
@@ -174,6 +175,7 @@ export const AppointmentAndConsultationModule = ({
   const [followUpTimeSlots, setFollowUpTimeSlots] = useState<any[]>([]);
   const [loadingFollowUpSlots, setLoadingFollowUpSlots] = useState(false);
   const [openScheduleModalForFollowUp, setOpenScheduleModalForFollowUp] = useState(false);
+  const [followUpNote, setFollowUpNote] = useState(''); // Ghi chú tái khám (optional)
 
   // States for confirm/reject modals
   const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -762,53 +764,44 @@ export const AppointmentAndConsultationModule = ({
         }
       }
 
-      // BƯỚC 3: Đặt lịch tái khám (NẾU CÓ)
+      // BƯỚC 3: Đặt lịch tái khám (NẾU CÓ) - SỬ DỤNG API MỚI
       if (followUpDate && followUpTimeSlot && followUpScheduleId) {
         try {
-          // Map loại khám to consultationType (chuẩn backend)
-          const consultationTypeMap: { 
-            [key: string]: 'FOLLOW_UP' | 'DIRECT_CONSULTATION' | 'ONLINE_CONSULTATION' 
-          } = {
-            'Tái khám': 'FOLLOW_UP',
-            'Xét nghiệm': 'DIRECT_CONSULTATION',
-            'Khám trực tiếp': 'DIRECT_CONSULTATION',
-            'Tư vấn online': 'ONLINE_CONSULTATION'
-          };
+          console.log('🔍 [Đặt lịch tái khám] Bắt đầu với recordId:', recordId);
 
-          const selectedSlot = followUpTimeSlots.find(s => s.slotId === followUpTimeSlot);
-          const addressDetail =
-            (selectedPatient?.appointment?.addressDetail as string | undefined) ||
-            (selectedPatient?.appointment?.clinicAddress as string | undefined) ||
-            (selectedPatient?.appointment?.doctorInfo?.clinicAddress as string | undefined) ||
-            '';
-
+          // Dùng API mới scheduleFollowUpByDoctor
+          // Backend tự động set consultationType = FOLLOW_UP, status = CONFIRMED
           const followUpAppointmentData = {
+            medicalRecordId: recordId, // ← QUAN TRỌNG: Link đến Medical Record vừa tạo
             patientId: patientId,
-            scheduleId: followUpScheduleId,
             doctorId: me.userId,
+            scheduleId: followUpScheduleId,
             slotId: followUpTimeSlot,
-            consultationType: consultationTypeMap[followUpType] || 'FOLLOW_UP',
-            status: 'CONFIRMED' as const, // CONFIRMED vì bác sĩ trực tiếp đặt
-            note: `Tái khám theo chỉ định của bác sĩ - ${followUpType}`,
-            // Bổ sung các field như bên bệnh nhân
             appointmentDate: followUpDate,
-            appointmentTime: selectedSlot?.startTime || '',
-            addressDetail
+            note: followUpNote || `Tái khám theo chỉ định của bác sĩ - ${followUpType}` // Optional
           };
 
-          const followUpResult = await createFollowUpAppointment(followUpAppointmentData);
-          
+          const followUpResult = await scheduleFollowUp(followUpAppointmentData);
+
           if (followUpResult) {
             const selectedSlot = followUpTimeSlots.find(s => s.slotId === followUpTimeSlot);
+
+            console.log('🔍 [Đặt lịch tái khám] Thành công:', {
+              appointmentId: followUpResult.data.appointmentId,
+              consultationType: followUpResult.data.consultationType,
+              status: followUpResult.data.status,
+              relatedRecordId: followUpResult.data.relatedRecordId
+            });
+
             toast.success('Đã đặt lịch tái khám thành công!', {
-              description: `${new Date(followUpDate).toLocaleDateString('vi-VN')} - ${selectedSlot?.startTime.substring(0, 5)}`,
+              description: `${new Date(followUpDate).toLocaleDateString('vi-VN')} - ${selectedSlot?.startTime.substring(0, 5)} (Tự động xác nhận)`,
               duration: 4000,
             });
           }
-        } catch (followUpError) {
-          console.error('Error creating follow-up appointment:', followUpError);
+        } catch (followUpError: any) {
+          console.error('🔍 [Đặt lịch tái khám] Lỗi:', followUpError);
           toast.warning('Đã lưu hồ sơ khám nhưng không thể đặt lịch tái khám', {
-            description: 'Vui lòng đặt lịch tái khám thủ công',
+            description: followUpError.response?.data?.message || 'Vui lòng đặt lịch tái khám thủ công',
             duration: 5000,
           });
         }
@@ -875,6 +868,7 @@ export const AppointmentAndConsultationModule = ({
     setFollowUpTimeSlot(null);
     setFollowUpScheduleId(null);
     setFollowUpTimeSlots([]);
+    setFollowUpNote(''); // Reset ghi chú tái khám
     setSignatureUrl(null);
   };
   // Chuyển dữ liệu API thành format cũ của UI
@@ -1545,6 +1539,25 @@ export const AppointmentAndConsultationModule = ({
                               </button>
                             </div>
                           )}
+                        </div>
+                      )}
+
+                      {/* Ghi chú tái khám (Optional) */}
+                      {followUpDate && followUpTimeSlot && (
+                        <div className="mt-4">
+                          <label className="block text-sm font-medium text-[#334155] mb-2">
+                            Ghi chú tái khám (tùy chọn)
+                          </label>
+                          <textarea
+                            value={followUpNote}
+                            onChange={e => setFollowUpNote(e.target.value)}
+                            rows={3}
+                            placeholder="VD: Tái khám kiểm tra kết quả xét nghiệm sau 2 tuần"
+                            className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent resize-none"
+                          />
+                          <p className="mt-1 text-xs text-gray-500">
+                            Để trống nếu muốn dùng ghi chú mặc định: "Tái khám theo chỉ định của bác sĩ"
+                          </p>
                         </div>
                       )}
 

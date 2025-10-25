@@ -145,3 +145,119 @@ export const getPrescriptionsByRecordId = async (
     };
   }
 };
+
+// ==================== NEW APIs for Follow-up Management ====================
+
+/**
+ * Episode Type enum
+ */
+export type EpisodeType = 'INITIAL' | 'FOLLOW_UP';
+
+/**
+ * Medical Record with Episode info
+ */
+export interface MedicalRecordWithEpisode extends MedicalRecordWithPrescriptions {
+  parentRecordId?: string | null;
+  episodeType?: EpisodeType;
+  relatedRecordId?: string | null;
+}
+
+/**
+ * Timeline Response structure
+ */
+export interface MedicalRecordTimelineResponse {
+  rootRecord: MedicalRecordWithEpisode;
+  followUpRecords: MedicalRecordWithEpisode[];
+}
+
+/**
+ * Get medical record timeline (full history from root to all follow-ups)
+ * Can be called with any recordId in the chain, always returns full timeline
+ * @param recordId - ID of any medical record in the chain (INITIAL or FOLLOW_UP)
+ * @returns Timeline with root record and all follow-up records
+ */
+export const getMedicalRecordTimeline = async (
+  recordId: string
+): Promise<ApiResponse<MedicalRecordTimelineResponse>> => {
+  try {
+    console.log('🔍 [API - getMedicalRecordTimeline] Fetching timeline for record:', recordId);
+
+    const response = await api.get<ApiResponse<MedicalRecordTimelineResponse>>(
+      `/api/v1/medical-records/${recordId}/timeline`
+    );
+
+    console.log('🔍 [API - getMedicalRecordTimeline] Response:', {
+      rootRecordId: response.data.data?.rootRecord?.recordId,
+      followUpCount: response.data.data?.followUpRecords?.length || 0
+    });
+
+    return {
+      success: true,
+      data: response.data.data,
+      message: response.data.message,
+    };
+  } catch (error: any) {
+    console.error('🔍 [API] Get timeline error:', error);
+    return {
+      success: false,
+      message: error.response?.data?.message || error.message || 'Không thể tải lịch sử khám',
+    };
+  }
+};
+
+/**
+ * Get patient episodes (only INITIAL records)
+ * Used for displaying clean list of main examination episodes
+ * @param patientId - Patient ID
+ * @param page - Page number (default 0)
+ * @param size - Page size (default 20)
+ * @param sortBy - Sort field (default 'createdAt')
+ * @param order - Sort order 'ASC' | 'DESC' (default 'DESC')
+ */
+export const getPatientEpisodes = async (params: {
+  patientId: string;
+  page?: number;
+  size?: number;
+  sortBy?: string;
+  order?: 'ASC' | 'DESC';
+}): Promise<ApiResponse<GetMedicalRecordsResponse>> => {
+  try {
+    const {
+      patientId,
+      page = 0,
+      size = 20,
+      sortBy = 'createdAt',
+      order = 'DESC'
+    } = params;
+
+    const queryParams = new URLSearchParams({
+      page: page.toString(),
+      size: size.toString(),
+      sortBy,
+      order,
+    });
+
+    console.log('🔍 [API - getPatientEpisodes] Fetching episodes for patient:', patientId);
+
+    const response = await api.get<ApiResponse<GetMedicalRecordsResponse>>(
+      `/api/v1/medical-records/patient/${patientId}/episodes?${queryParams.toString()}`
+    );
+
+    console.log('🔍 [API - getPatientEpisodes] Response:', {
+      totalRecords: response.data.data?.pagination?.totalRecords,
+      currentPage: response.data.data?.pagination?.currentPage
+    });
+
+    return {
+      success: true,
+      data: response.data.data,
+      message: response.data.message,
+    };
+  } catch (error: any) {
+    console.error('🔍 [API] Get episodes error:', error);
+    return {
+      success: false,
+      message: error.response?.data?.message || error.message || 'Không thể tải danh sách đợt khám',
+    };
+  }
+};
