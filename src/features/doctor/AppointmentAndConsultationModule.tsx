@@ -13,7 +13,7 @@ import { useGetMe } from '@/hooks/auth/useGetMe';
 import { useCreateMedicalRecord, useGetMedicalRecords } from '@/hooks/medical-records';
 import { useCreateMultiplePrescriptions } from '@/hooks/prescriptions';
 import { useDoctorSchedule } from '@/hooks/doctor-schedules';
-import { updateAppointmentStatus, getAppointmentDetail } from '@/lib/api/appointments';
+import { getAppointmentDetail } from '@/lib/api/appointments';
 import { useUpdateAppointmentStatus } from '@/hooks/appointments/useUpdateAppointmentStatus';
 import { useAppointmentSocket } from '@/hooks/appointments/useAppointmentSocket';
 import { useGetPredict } from '@/hooks/predict';
@@ -267,7 +267,12 @@ export const AppointmentAndConsultationModule = ({
 
     const success = await updateStatus(
       selectedAppointmentForAction.appointmentId || selectedAppointmentForAction.id,
-      'CONFIRMED'
+      'CONFIRMED',
+      undefined, // no reject reason
+      {
+        patientId: selectedAppointmentForAction.patientId,
+        doctorId: me?.userId
+      }
     );
 
     if (success) {
@@ -288,7 +293,11 @@ export const AppointmentAndConsultationModule = ({
     const success = await updateStatus(
       selectedAppointmentForAction.appointmentId || selectedAppointmentForAction.id,
       'REJECTED',
-      rejectReason || 'Lịch đầy, vui lòng chọn khung giờ khác'
+      rejectReason || 'Lịch đầy, vui lòng chọn khung giờ khác',
+      {
+        patientId: selectedAppointmentForAction.patientId,
+        doctorId: me?.userId
+      }
     );
 
     if (success) {
@@ -761,6 +770,7 @@ export const AppointmentAndConsultationModule = ({
         const prescriptionResult = await createPrescriptions(validPrescriptions);
 
         if (prescriptionResult.failed.length > 0) {
+          console.warn('Some prescriptions failed to create:', prescriptionResult.failed);
         }
       }
 
@@ -807,13 +817,21 @@ export const AppointmentAndConsultationModule = ({
         }
       }
 
-      // BƯỚC 4: Cập nhật appointment status
-      await updateAppointmentStatus(selectedPatient.appointment.id || selectedPatient.appointment.appointmentId, 'COMPLETED');
+      // BƯỚC 4: Cập nhật appointment status (using hook instead of direct API call to optimize)
+      await updateStatus(
+        selectedPatient.appointment.id || selectedPatient.appointment.appointmentId,
+        'COMPLETED',
+        undefined, // no reject reason
+        {
+          patientId: patientId,
+          doctorId: me.userId
+        }
+      );
 
       // SUCCESS: Đóng modal, reset form và refresh data
       toast.success('Đã hoàn thành khám bệnh!', {
-        description: followUpDate 
-          ? 'Hồ sơ khám, đơn thuốc và lịch tái khám đã được lưu' 
+        description: followUpDate
+          ? 'Hồ sơ khám, đơn thuốc và lịch tái khám đã được lưu'
           : 'Hồ sơ khám và đơn thuốc đã được lưu',
         duration: 3000,
       });

@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { bookingAppointment, BookingAppointmentRequest, BookingAppointmentResponse } from '@/lib/api/appointments';
 import { webSocketAppointmentService } from '@/services/websocket-appointment';
+import { useGetMe } from '@/hooks/auth/useGetMe';
 
 export interface UseBookingAppointmentReturn {
   bookingAppointment: (data: BookingAppointmentRequest) => Promise<BookingAppointmentResponse | null>;
@@ -18,6 +19,7 @@ export const useBookingAppointment = (): UseBookingAppointmentReturn => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const { data: me } = useGetMe();
 
   const handleBookingAppointment = useCallback(async (data: BookingAppointmentRequest): Promise<BookingAppointmentResponse | null> => {
     try {
@@ -42,13 +44,15 @@ export const useBookingAppointment = (): UseBookingAppointmentReturn => {
             doctorId: data.doctorId,
             event: 'BOOKING_APPOINTMENT' as const,
             hasPredict: data.hasPredict || false, // ✅ Add hasPredict at top level for backend to parse easily
-            createAppointmentRequest: data
+            createAppointmentRequest: data,
+            skipRefetchForUserId: me?.userId // Skip refetch for patient who just booked
           };
           console.log('🔍 [useBookingAppointment] Sending WebSocket event:', wsEvent);
           console.log('🔍🔍🔍 [DEBUG - WebSocket] hasPredict value:', {
             hasPredict: wsEvent.hasPredict,
             hasPredictType: typeof wsEvent.hasPredict,
-            fromRequestData: data.hasPredict
+            fromRequestData: data.hasPredict,
+            skipRefetchForUserId: me?.userId
           });
           webSocketAppointmentService.sendScheduleEvent(wsEvent);
           console.log('✅ [useBookingAppointment] WebSocket event sent successfully');
@@ -83,7 +87,7 @@ export const useBookingAppointment = (): UseBookingAppointmentReturn => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [me?.userId]);
 
   const clearError = useCallback(() => {
     setError(null);

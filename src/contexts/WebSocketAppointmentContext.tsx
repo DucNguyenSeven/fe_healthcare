@@ -46,7 +46,7 @@ export function WebSocketAppointmentProvider({ children }: WebSocketAppointmentP
       user: user ? { userId: user.userId, role: user.role } : null
     });
 
-    const { appointmentId, patientId, doctorId, success } = data;
+    const { appointmentId, patientId, doctorId, success, skipRefetchForUserId } = data;
 
     if (!success) {
       console.warn('⚠️ [AppointmentContext] Appointment booking not successful, skipping');
@@ -75,16 +75,23 @@ export function WebSocketAppointmentProvider({ children }: WebSocketAppointmentP
     if (user.role === 'DOCTOR' && doctorId === user.userId) {
       console.log('✅ [AppointmentContext] Showing notification for DOCTOR');
 
-      // Trigger refetch callbacks for doctor
-      console.log(`🔍 [AppointmentContext] Triggering ${updateCallbacksRef.current.size} refetch callback(s) for DOCTOR`);
-      updateCallbacksRef.current.forEach(callback => {
-        try {
-          callback();
-          console.log('✅ [AppointmentContext] Refetch callback executed successfully');
-        } catch (error) {
-          console.error('❌ [AppointmentContext] Error in refetch callback:', error);
-        }
-      });
+      // Only trigger refetch if this user is not the one who initiated the action
+      const shouldSkipRefetch = skipRefetchForUserId === user.userId;
+
+      if (!shouldSkipRefetch) {
+        // Trigger refetch callbacks for doctor
+        console.log(`🔍 [AppointmentContext] Triggering ${updateCallbacksRef.current.size} refetch callback(s) for DOCTOR`);
+        updateCallbacksRef.current.forEach(callback => {
+          try {
+            callback();
+            console.log('✅ [AppointmentContext] Refetch callback executed successfully');
+          } catch (error) {
+            console.error('❌ [AppointmentContext] Error in refetch callback:', error);
+          }
+        });
+      } else {
+        console.log('🔍 [AppointmentContext] Skipping refetch for doctor who initiated booking:', user.userId);
+      }
 
       // Doctor receives notification about new booking
       toast.info('Lịch hẹn mới', {
@@ -104,16 +111,23 @@ export function WebSocketAppointmentProvider({ children }: WebSocketAppointmentP
       // Dismiss loading toast from AppointmentsPage before showing final success
       toast.dismiss('booking-confirmation');
 
-      // Trigger refetch callbacks for patient
-      console.log(`🔍 [AppointmentContext] Triggering ${updateCallbacksRef.current.size} refetch callback(s) for PATIENT`);
-      updateCallbacksRef.current.forEach(callback => {
-        try {
-          callback();
-          console.log('✅ [AppointmentContext] Refetch callback executed successfully');
-        } catch (error) {
-          console.error('❌ [AppointmentContext] Error in refetch callback:', error);
-        }
-      });
+      // Only trigger refetch if this user is not the one who initiated the action
+      const shouldSkipRefetch = skipRefetchForUserId === user.userId;
+
+      if (!shouldSkipRefetch) {
+        // Trigger refetch callbacks for patient
+        console.log(`🔍 [AppointmentContext] Triggering ${updateCallbacksRef.current.size} refetch callback(s) for PATIENT`);
+        updateCallbacksRef.current.forEach(callback => {
+          try {
+            callback();
+            console.log('✅ [AppointmentContext] Refetch callback executed successfully');
+          } catch (error) {
+            console.error('❌ [AppointmentContext] Error in refetch callback:', error);
+          }
+        });
+      } else {
+        console.log('🔍 [AppointmentContext] Skipping refetch for patient who initiated booking:', user.userId);
+      }
 
       // Patient receives confirmation after booking
       toast.success('Đặt lịch thành công!', {
@@ -134,7 +148,7 @@ export function WebSocketAppointmentProvider({ children }: WebSocketAppointmentP
    * Handle UPDATE_APPOINTMENT_STATUS event
    */
   const handleUpdateStatus = useCallback((data: AppointmentSocketData) => {
-    const { appointmentId, patientId, doctorId, status, success, rejectReason } = data;
+    const { appointmentId, patientId, doctorId, status, success, rejectReason, skipRefetchForUserId } = data;
 
     if (!success || !user || !status) return;
 
@@ -150,8 +164,15 @@ export function WebSocketAppointmentProvider({ children }: WebSocketAppointmentP
 
     // Notifications and refetch ONLY for relevant user
     if (user.role === 'PATIENT' && patientId === user.userId) {
-      // Trigger refetch callbacks for patient
-      updateCallbacksRef.current.forEach(callback => callback());
+      // Only trigger refetch if this user is not the one who initiated the action
+      const shouldSkipRefetch = skipRefetchForUserId === user.userId;
+
+      if (!shouldSkipRefetch) {
+        // Trigger refetch callbacks for patient
+        updateCallbacksRef.current.forEach(callback => callback());
+      } else {
+        console.log('🔍 [AppointmentContext] Skipping refetch for user who initiated action:', user.userId);
+      }
 
       // Patient receives status update
       if (status === 'CONFIRMED') {
@@ -189,8 +210,15 @@ export function WebSocketAppointmentProvider({ children }: WebSocketAppointmentP
         });
       }
     } else if (user.role === 'DOCTOR' && doctorId === user.userId) {
-      // Trigger refetch callbacks for doctor
-      updateCallbacksRef.current.forEach(callback => callback());
+      // Only trigger refetch if this user is not the one who initiated the action
+      const shouldSkipRefetch = skipRefetchForUserId === user.userId;
+
+      if (!shouldSkipRefetch) {
+        // Trigger refetch callbacks for doctor
+        updateCallbacksRef.current.forEach(callback => callback());
+      } else {
+        console.log('🔍 [AppointmentContext] Skipping refetch for doctor who initiated action:', user.userId);
+      }
 
       // Doctor receives notification (for completed status from system)
       if (status === 'CANCELED') {

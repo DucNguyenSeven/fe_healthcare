@@ -1323,7 +1323,8 @@ export function AppointmentsPage() {
         sortDir: 'DESC'
       });
     }
-  }, [currentUser?.userId, fetchAppointments]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUser?.userId]); // fetchAppointments intentionally omitted to prevent duplicate fetches
 
   useEffect(() => {
     // Kiểm tra nếu có dữ liệu từ CKD prediction

@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import api from '@/lib/api/client';
-import { getDoctorInfo } from '@/lib/api/doctors';
+import { getDoctorInfo, getDoctorsInfo } from '@/lib/api/doctors';
 
 export interface AppointmentResponse {
   appointmentId: string;
@@ -65,6 +65,7 @@ export interface GetPatientAppointmentsParams {
 
 /**
  * Function để enrich appointments với thông tin bác sĩ đầy đủ
+ * OPTIMIZED: Use batch API instead of individual calls
  */
 const enrichAppointmentsWithDoctorInfo = async (appointments: AppointmentResponse[]): Promise<AppointmentResponse[]> => {
   try {
@@ -79,25 +80,47 @@ const enrichAppointmentsWithDoctorInfo = async (appointments: AppointmentRespons
       return appointments;
     }
 
-    // Fetch thông tin bác sĩ cho từng ID
-    const doctorInfoPromises = doctorIds.map(async (doctorId) => {
-      try {
-        const doctorResponse = await getDoctorInfo(doctorId);
-        return doctorResponse.success ? { id: doctorId, info: doctorResponse.data } : null;
-      } catch (error) {
-        console.error(`Error fetching doctor info for ID ${doctorId}:`, error);
-        return null;
-      }
-    });
+    // OPTIMIZED: Use batch API instead of individual calls (N calls → 1 call)
+    console.log(`🔍 [usePatientAppointments] Fetching info for ${doctorIds.length} doctors using batch API`);
 
-    const doctorResults = await Promise.all(doctorInfoPromises);
     const doctorInfoMap = new Map<string, any>();
 
-    doctorResults.forEach(result => {
-      if (result) {
-        doctorInfoMap.set(result.id, result.info);
+    try {
+      const doctorInfoResponse = await getDoctorsInfo(doctorIds);
+
+      if (doctorInfoResponse.success && doctorInfoResponse.data) {
+        console.log(`✅ [usePatientAppointments] Successfully fetched ${doctorInfoResponse.data.length} doctor info`);
+
+        doctorInfoResponse.data.forEach(doctorInfo => {
+          const doctorId = doctorInfo.userId || doctorInfo.id;
+          if (doctorId) {
+            doctorInfoMap.set(doctorId, doctorInfo);
+          }
+        });
       }
-    });
+    } catch (error) {
+      console.error('❌ [usePatientAppointments] Error fetching batch doctor info:', error);
+      // Fallback to individual calls if batch fails
+      console.warn('⚠️ [usePatientAppointments] Falling back to individual getDoctorInfo calls');
+
+      const doctorInfoPromises = doctorIds.map(async (doctorId) => {
+        try {
+          const doctorResponse = await getDoctorInfo(doctorId);
+          return doctorResponse.success ? { id: doctorId, info: doctorResponse.data } : null;
+        } catch (error) {
+          console.error(`Error fetching doctor info for ID ${doctorId}:`, error);
+          return null;
+        }
+      });
+
+      const doctorResults = await Promise.all(doctorInfoPromises);
+
+      doctorResults.forEach(result => {
+        if (result) {
+          doctorInfoMap.set(result.id, result.info);
+        }
+      });
+    }
 
 
     // Enrich appointments với thông tin bác sĩ đầy đủ

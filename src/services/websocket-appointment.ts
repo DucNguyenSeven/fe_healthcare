@@ -27,6 +27,7 @@ export interface AppointmentSocketData {
   success: boolean;
   message?: string;
   rejectReason?: string;
+  skipRefetchForUserId?: string; // User ID that should skip refetch (because they already have updated data)
 }
 
 export interface AppointmentSocketResponse extends WebSocketResponse {
@@ -205,6 +206,7 @@ class WebSocketAppointmentService {
     doctorId: string;
     event: AppointmentSocketEvent;
     createAppointmentRequest?: any;
+    skipRefetchForUserId?: string; // Optional: User ID that should skip refetch
   }): void {
     // 🔍 DEBUG: Check WebSocket status before sending
     console.log('🔍 [AppointmentSocket] Checking WebSocket status:', {
@@ -228,7 +230,8 @@ class WebSocketAppointmentService {
           patientId: eventData.patientId,
           doctorId: eventData.doctorId,
           event: eventData.event,
-          createAppointmentRequest: eventData.createAppointmentRequest || null
+          createAppointmentRequest: eventData.createAppointmentRequest || null,
+          skipRefetchForUserId: eventData.skipRefetchForUserId || undefined
         }
       };
 
