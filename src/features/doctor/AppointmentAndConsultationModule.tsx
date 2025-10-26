@@ -117,7 +117,7 @@ interface AppointmentAndConsultationModuleProps {
 export const AppointmentAndConsultationModule = ({
   activeView = 'appointments'
 }: AppointmentAndConsultationModuleProps) => {
-  const [appointmentTab, setAppointmentTab] = useState('upcoming');
+  const [appointmentTab, setAppointmentTab] = useState('pending'); // Changed default to 'pending'
   const [selectedAppointment, setSelectedAppointment] = useState<any>(null);
   const [consultationTab, setConsultationTab] = useState('profile');
   const [chatMessage, setChatMessage] = useState('');
@@ -912,6 +912,98 @@ export const AppointmentAndConsultationModule = ({
     return [...weekAppointments, ...completedAppointmentsNormalized];
   }, [doctorWeekAppointments, completedAppointments]);
 
+  // Helper: Categorize pending appointments by urgency
+  const categorizePendingAppointments = (appointments: any[]) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const upcoming: any[] = []; // Hôm nay & Ngày mai
+    const thisWeek: any[] = []; // 2-7 ngày tới
+    const later: any[] = []; // > 7 ngày
+
+    appointments.forEach(apt => {
+      const aptDate = new Date(apt.date);
+      aptDate.setHours(0, 0, 0, 0);
+      const daysDiff = Math.ceil((aptDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+
+      if (daysDiff >= 0 && daysDiff <= 1) {
+        upcoming.push(apt);
+      } else if (daysDiff > 1 && daysDiff <= 7) {
+        thisWeek.push(apt);
+      } else if (daysDiff > 7) {
+        later.push(apt);
+      }
+    });
+
+    // Sort each category by: date ASC (earlier first), then createdAt ASC (FIFO within same date)
+    const sortByDateThenCreated = (a: any, b: any) => {
+      const dateCompare = new Date(a.date).getTime() - new Date(b.date).getTime();
+      if (dateCompare !== 0) return dateCompare;
+
+      // If same date, sort by time
+      const timeCompare = a.time.localeCompare(b.time);
+      if (timeCompare !== 0) return timeCompare;
+
+      // If same date+time, FIFO by creation time (if available)
+      if (a.createdAt && b.createdAt) {
+        return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+      }
+      return 0;
+    };
+
+    upcoming.sort(sortByDateThenCreated);
+    thisWeek.sort(sortByDateThenCreated);
+    later.sort(sortByDateThenCreated);
+
+    return { upcoming, thisWeek, later };
+  };
+
+  // Helper: Categorize confirmed appointments
+  const categorizeConfirmedAppointments = (appointments: any[]) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const todayAppts: any[] = [];
+    const thisWeekAppts: any[] = [];
+    const futureAppts: any[] = [];
+
+    appointments.forEach(apt => {
+      const aptDate = new Date(apt.date);
+      aptDate.setHours(0, 0, 0, 0);
+      const daysDiff = Math.ceil((aptDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+
+      if (daysDiff === 0) {
+        todayAppts.push(apt);
+      } else if (daysDiff > 0 && daysDiff <= 7) {
+        thisWeekAppts.push(apt);
+      } else if (daysDiff > 7) {
+        futureAppts.push(apt);
+      }
+    });
+
+    // Sort by date + time ASC
+    const sortByDateTime = (a: any, b: any) => {
+      const dateCompare = new Date(a.date).getTime() - new Date(b.date).getTime();
+      if (dateCompare !== 0) return dateCompare;
+      return a.time.localeCompare(b.time);
+    };
+
+    todayAppts.sort((a: any, b: any) => a.time.localeCompare(b.time)); // Today: only time matters
+    thisWeekAppts.sort(sortByDateTime);
+    futureAppts.sort(sortByDateTime);
+
+    return { today: todayAppts, thisWeek: thisWeekAppts, future: futureAppts };
+  };
+
+  // Helper: Sort completed appointments (recent first)
+  const sortCompletedAppointments = (appointments: any[]) => {
+    return appointments.sort((a, b) => {
+      const dateCompare = new Date(b.date).getTime() - new Date(a.date).getTime();
+      if (dateCompare !== 0) return dateCompare;
+      return b.time.localeCompare(a.time);
+    });
+  };
+
   const filterAppointments = (appointments: any[]) => {
     return appointments.filter(appointment => {
       const matchesSearch = appointment.patient.toLowerCase().includes(searchTerm.toLowerCase());
@@ -919,6 +1011,103 @@ export const AppointmentAndConsultationModule = ({
       const matchesStatus = statusFilter === 'all' || appointment.status === statusFilter;
       return matchesSearch && matchesType && matchesStatus;
     });
+  };
+
+  // Helper: Render single appointment card
+  const renderAppointmentCard = (appointment: any, index: number) => {
+    return (
+      <motion.div
+        key={appointment.id}
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: index * 0.05 }}
+        className="border border-gray-200 rounded-2xl p-6 hover:shadow-md transition-shadow"
+      >
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            {appointment.type === 'online' ? (
+              <Video size={20} className="text-[#1E75FF]" />
+            ) : (
+              <User size={20} className="text-[#10B981]" />
+            )}
+            <span className="text-sm font-medium text-[#334155]">
+              {appointment.type === 'online' ? 'Trực tuyến' : 'Trực tiếp'}
+            </span>
+          </div>
+          <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(appointment.status)}`}>
+            {getStatusText(appointment.status)}
+          </span>
+        </div>
+
+        <div className="space-y-3 mb-4">
+          <h3 className="font-semibold text-[#0F172A]">{appointment.patient}</h3>
+          <p className="text-sm text-[#334155]">{appointment.service}</p>
+          <div className="flex items-center gap-2 text-sm text-[#334155]">
+            <Clock size={16} />
+            <span>{appointment.time} - {new Date(appointment.date).toLocaleDateString('vi-VN')}</span>
+          </div>
+          {appointment.hasAIPrediction && (
+            <div className="flex items-center gap-2">
+              <div className="px-3 py-1 bg-gradient-to-r from-[#1E75FF] to-[#10B981] text-white rounded-full text-xs font-medium flex items-center gap-1">
+                <Brain size={12} />
+                <span>Có kết quả dự đoán AI</span>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Action Buttons based on tab and status */}
+        {appointmentTab === 'confirmed' && appointment.status === 'confirmed' && (
+          <div className="flex gap-2">
+            <button
+              onClick={() => openPatientExamination(appointment.patientId, appointment)}
+              className="flex-1 bg-[#10B981] hover:bg-[#059669] text-white py-2 px-3 rounded-xl text-sm font-medium flex items-center justify-center gap-1 transition-colors"
+            >
+              <Stethoscope size={16} />
+              <span>Bắt đầu khám</span>
+            </button>
+            <button
+              onClick={() => viewPatientHistory(appointment.patientId)}
+              className="flex-1 bg-[#F59E0B] hover:bg-[#D97706] text-white py-2 px-3 rounded-xl text-sm font-medium flex items-center justify-center gap-1 transition-colors"
+            >
+              <History size={16} />
+              <span>Xem lịch sử</span>
+            </button>
+          </div>
+        )}
+
+        {appointmentTab === 'pending' && appointment.status === 'pending' && (
+          <div className="flex gap-2">
+            <button
+              onClick={() => handleOpenConfirmModal(appointment)}
+              disabled={updateStatusLoading}
+              className="flex-1 bg-[#10B981] hover:bg-[#059669] text-white py-2 px-3 rounded-xl text-sm font-medium flex items-center justify-center gap-1 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Check size={16} />
+              <span>Chấp nhận</span>
+            </button>
+            <button
+              onClick={() => handleOpenRejectModal(appointment)}
+              disabled={updateStatusLoading}
+              className="flex-1 bg-[#EF4444] hover:bg-[#DC2626] text-white py-2 px-3 rounded-xl text-sm font-medium flex items-center justify-center gap-1 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <X size={16} />
+              <span>Từ chối</span>
+            </button>
+          </div>
+        )}
+
+        {appointmentTab === 'completed' && appointment.status === 'completed' && (
+          <button
+            onClick={() => handleViewResult(appointment)}
+            className="w-full bg-[#1E75FF] hover:bg-[#1659C9] text-white py-2 px-3 rounded-xl text-sm font-medium flex items-center justify-center gap-1 transition-colors"
+          >
+            <Eye size={16} />
+            <span>Xem kết quả</span>
+          </button>
+        )}
+      </motion.div>
+    );
   };
   const renderExaminationModal = () => {
     if (!selectedPatient) return null;
@@ -1634,18 +1823,31 @@ export const AppointmentAndConsultationModule = ({
       </div>;
   };
   const renderAppointments = () => {
-    // Lọc appointments theo tab hiện tại
+    // Filter appointments by tab
     const currentAppointments = normalizedAppointments.filter(appointment => {
-      if (appointmentTab === 'upcoming') {
-        // Tab "Sắp tới": hiển thị appointments có status là CONFIRMED hoặc PENDING
-        return appointment.status === 'confirmed' || appointment.status === 'pending';
+      if (appointmentTab === 'pending') {
+        return appointment.status === 'pending';
+      } else if (appointmentTab === 'confirmed') {
+        return appointment.status === 'confirmed';
       } else if (appointmentTab === 'completed') {
-        // Tab "Đã Hoàn Thành": hiển thị appointments có status là COMPLETED
         return appointment.status === 'completed';
       }
       return false;
     });
+
+    // Apply search and filter
     const filteredAppointments = filterAppointments(currentAppointments);
+
+    // Categorize and sort based on tab
+    let categorizedData: any = null;
+    if (appointmentTab === 'pending') {
+      categorizedData = categorizePendingAppointments(filteredAppointments);
+    } else if (appointmentTab === 'confirmed') {
+      categorizedData = categorizeConfirmedAppointments(filteredAppointments);
+    } else if (appointmentTab === 'completed') {
+      const sorted = sortCompletedAppointments([...filteredAppointments]);
+      categorizedData = { all: sorted };
+    }
     return <div className="p-6 space-y-6">
         <div className="flex items-center justify-between" style={{
         display: "none"
@@ -1656,15 +1858,38 @@ export const AppointmentAndConsultationModule = ({
         <div className="bg-white rounded-2xl shadow-[0_10px_24px_rgba(16,24,40,0.08)] overflow-hidden">
           <div className="border-b border-gray-100">
             <div className="flex">
-              {[{
-              id: 'upcoming',
-              label: 'Sắp tới'
-            }, {
-              id: 'completed',
-              label: 'Đã Hoàn Thành'
-            }].map(tab => <button key={tab.id} onClick={() => setAppointmentTab(tab.id)} className={`px-6 py-4 font-medium transition-colors ${appointmentTab === tab.id ? 'text-[#1E75FF] border-b-2 border-[#1E75FF]' : 'text-[#334155] hover:text-[#1E75FF]'}`}>
-                  {tab.label}
-                </button>)}
+              {(() => {
+                // Calculate counts for each tab
+                const pendingCount = normalizedAppointments.filter(apt => apt.status === 'pending').length;
+                const confirmedCount = normalizedAppointments.filter(apt => apt.status === 'confirmed').length;
+                const completedCount = normalizedAppointments.filter(apt => apt.status === 'completed').length;
+
+                return [{
+                  id: 'pending',
+                  label: 'Chờ Xác Nhận',
+                  count: pendingCount,
+                  badgeColor: pendingCount > 0 ? 'bg-orange-500' : 'bg-gray-400'
+                }, {
+                  id: 'confirmed',
+                  label: 'Lịch Hẹn',
+                  count: confirmedCount,
+                  badgeColor: 'bg-blue-500'
+                }, {
+                  id: 'completed',
+                  label: 'Đã Hoàn Thành',
+                  count: completedCount,
+                  badgeColor: 'bg-gray-500'
+                }].map(tab => <button key={tab.id} onClick={() => setAppointmentTab(tab.id)} className={`px-6 py-4 font-medium transition-colors relative ${appointmentTab === tab.id ? 'text-[#1E75FF] border-b-2 border-[#1E75FF]' : 'text-[#334155] hover:text-[#1E75FF]'}`}>
+                      <span className="flex items-center gap-2">
+                        {tab.label}
+                        {tab.count > 0 && (
+                          <span className={`${tab.badgeColor} text-white px-2 py-0.5 rounded-full text-xs font-medium`}>
+                            {tab.count}
+                          </span>
+                        )}
+                      </span>
+                    </button>);
+              })()}
             </div>
           </div>
 
@@ -1706,83 +1931,104 @@ export const AppointmentAndConsultationModule = ({
                 <button onClick={appointmentTab === 'completed' ? clearCompletedError : clearDoctorAptError} className="mt-2 text-sm text-red-600 hover:text-red-800 underline">Thử lại</button>
               </div>
             )}
-            {filteredAppointments.length === 0 ? <div className="text-center py-12">
+            {/* Render categorized content based on tab */}
+            {filteredAppointments.length === 0 ? (
+              <div className="text-center py-12">
                 <Calendar size={48} className="text-gray-400 mx-auto mb-4" />
-                <p className="text-[#334155] mb-4">Chưa có lịch hẹn nào trong mục này</p>
-              </div> : <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {filteredAppointments.map((appointment, index) => <motion.div key={appointment.id} initial={{
-              opacity: 0,
-              y: 20
-            }} animate={{
-              opacity: 1,
-              y: 0
-            }} transition={{
-              delay: index * 0.1
-            }} className="border border-gray-200 rounded-2xl p-6 hover:shadow-md transition-shadow">
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center gap-2">
-                        {appointment.type === 'online' ? <Video size={20} className="text-[#1E75FF]" /> : <User size={20} className="text-[#10B981]" />}
-                        <span className="text-sm font-medium text-[#334155]">
-                          {appointment.type === 'online' ? 'Trực tuyến' : 'Trực tiếp'}
-                        </span>
+                <p className="text-[#334155] mb-4">
+                  {appointmentTab === 'pending' && 'Không có lịch hẹn nào chờ xác nhận'}
+                  {appointmentTab === 'confirmed' && 'Không có lịch hẹn nào'}
+                  {appointmentTab === 'completed' && 'Chưa có lịch hẹn nào hoàn thành'}
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {/* TAB 1: Pending - Categorized */}
+                {appointmentTab === 'pending' && categorizedData && (
+                  <>
+                    {categorizedData.upcoming.length > 0 && (
+                      <div>
+                        <h3 className="text-sm font-semibold text-gray-600 mb-3 flex items-center gap-2">
+                          <span className="w-1 h-4 bg-orange-500 rounded"></span>
+                          SẮP TỚI ({categorizedData.upcoming.length})
+                        </h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                          {categorizedData.upcoming.map((apt: any, idx: number) => renderAppointmentCard(apt, idx))}
+                        </div>
                       </div>
-                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(appointment.status)}`}>
-                        {getStatusText(appointment.status)}
-                      </span>
-                    </div>
-
-                    <div className="space-y-3 mb-4">
-                      <h3 className="font-semibold text-[#0F172A]">{appointment.patient}</h3>
-                      <p className="text-sm text-[#334155]">{appointment.service}</p>
-                      <div className="flex items-center gap-2 text-sm text-[#334155]">
-                        <Clock size={16} />
-                        <span>{appointment.time} - {new Date(appointment.date).toLocaleDateString('vi-VN')}</span>
+                    )}
+                    {categorizedData.thisWeek.length > 0 && (
+                      <div>
+                        <h3 className="text-sm font-semibold text-gray-600 mb-3 flex items-center gap-2">
+                          <span className="w-1 h-4 bg-blue-500 rounded"></span>
+                          TRONG TUẦN ({categorizedData.thisWeek.length})
+                        </h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                          {categorizedData.thisWeek.map((apt: any, idx: number) => renderAppointmentCard(apt, idx))}
+                        </div>
                       </div>
-                      {appointment.hasAIPrediction && <div className="flex items-center gap-2">
-                          <div className="px-3 py-1 bg-gradient-to-r from-[#1E75FF] to-[#10B981] text-white rounded-full text-xs font-medium flex items-center gap-1">
-                            <Brain size={12} />
-                            <span>Có kết quả dự đoán AI</span>
-                          </div>
-                        </div>}
-                    </div>
+                    )}
+                    {categorizedData.later.length > 0 && (
+                      <div>
+                        <h3 className="text-sm font-semibold text-gray-600 mb-3 flex items-center gap-2">
+                          <span className="w-1 h-4 bg-gray-400 rounded"></span>
+                          CÁC NGÀY KHÁC ({categorizedData.later.length})
+                        </h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                          {categorizedData.later.map((apt: any, idx: number) => renderAppointmentCard(apt, idx))}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
 
-                    {/* Updated Action Buttons */}
-                    {appointmentTab === 'upcoming' && appointment.status === 'confirmed' && <div className="flex gap-2">
-                        <button onClick={() => openPatientExamination(appointment.patientId, appointment)} className="flex-1 bg-[#10B981] hover:bg-[#059669] text-white py-2 px-3 rounded-xl text-sm font-medium flex items-center justify-center gap-1 transition-colors">
-                          <Stethoscope size={16} />
-                          <span>Bắt đầu khám</span>
-                        </button>
-                        <button onClick={() => viewPatientHistory(appointment.patientId)} className="flex-1 bg-[#F59E0B] hover:bg-[#D97706] text-white py-2 px-3 rounded-xl text-sm font-medium flex items-center justify-center gap-1 transition-colors">
-                          <History size={16} />
-                          <span>Xem lịch sử</span>
-                        </button>
-                      </div>}
+                {/* TAB 2: Confirmed - Categorized */}
+                {appointmentTab === 'confirmed' && categorizedData && (
+                  <>
+                    {categorizedData.today.length > 0 && (
+                      <div>
+                        <h3 className="text-sm font-semibold text-gray-600 mb-3 flex items-center gap-2">
+                          <span className="w-1 h-4 bg-red-500 rounded"></span>
+                          HÔM NAY ({categorizedData.today.length})
+                        </h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                          {categorizedData.today.map((apt: any, idx: number) => renderAppointmentCard(apt, idx))}
+                        </div>
+                      </div>
+                    )}
+                    {categorizedData.thisWeek.length > 0 && (
+                      <div>
+                        <h3 className="text-sm font-semibold text-gray-600 mb-3 flex items-center gap-2">
+                          <span className="w-1 h-4 bg-blue-500 rounded"></span>
+                          TUẦN NÀY ({categorizedData.thisWeek.length})
+                        </h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                          {categorizedData.thisWeek.map((apt: any, idx: number) => renderAppointmentCard(apt, idx))}
+                        </div>
+                      </div>
+                    )}
+                    {categorizedData.future.length > 0 && (
+                      <div>
+                        <h3 className="text-sm font-semibold text-gray-600 mb-3 flex items-center gap-2">
+                          <span className="w-1 h-4 bg-gray-400 rounded"></span>
+                          TƯƠNG LAI ({categorizedData.future.length})
+                        </h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                          {categorizedData.future.map((apt: any, idx: number) => renderAppointmentCard(apt, idx))}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
 
-                    {appointmentTab === 'upcoming' && appointment.status === 'pending' && <div className="flex gap-2">
-                        <button
-                          onClick={() => handleOpenConfirmModal(appointment)}
-                          disabled={updateStatusLoading}
-                          className="flex-1 bg-[#10B981] hover:bg-[#059669] text-white py-2 px-3 rounded-xl text-sm font-medium flex items-center justify-center gap-1 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          <Check size={16} />
-                          <span>Chấp nhận</span>
-                        </button>
-                        <button
-                          onClick={() => handleOpenRejectModal(appointment)}
-                          disabled={updateStatusLoading}
-                          className="flex-1 bg-[#EF4444] hover:bg-[#DC2626] text-white py-2 px-3 rounded-xl text-sm font-medium flex items-center justify-center gap-1 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          <X size={16} />
-                          <span>Từ chối</span>
-                        </button>
-                      </div>}
-
-                    {appointmentTab === 'completed' && appointment.status === 'completed' && <button onClick={() => handleViewResult(appointment)} className="w-full bg-[#1E75FF] hover:bg-[#1659C9] text-white py-2 px-3 rounded-xl text-sm font-medium flex items-center justify-center gap-1 transition-colors">
-                        <Eye size={16} />
-                        <span>Xem kết quả</span>
-                      </button>}
-                  </motion.div>)}
-              </div>}
+                {/* TAB 3: Completed - Flat list sorted DESC */}
+                {appointmentTab === 'completed' && categorizedData && categorizedData.all && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {categorizedData.all.map((apt: any, idx: number) => renderAppointmentCard(apt, idx))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>;
