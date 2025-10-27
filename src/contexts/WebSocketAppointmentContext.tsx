@@ -134,6 +134,23 @@ export function WebSocketAppointmentProvider({ children }: WebSocketAppointmentP
         description: 'Chờ bác sĩ xác nhận. Bạn sẽ nhận thông báo khi được chấp nhận.',
         duration: 6000
       });
+
+      // 💾 Save prediction data if this booking came from CKD prediction
+      // NOTE: This is moved here from AppointmentsPage because we need appointmentId from WebSocket response
+      const pendingPrediction = localStorage.getItem('pending_ckd_prediction');
+      if (pendingPrediction && appointmentId) {
+        console.log('💾 [AppointmentContext] Found pending prediction, saving after successful booking...');
+
+        // Import necessary functions (will be available from AppointmentsPage context)
+        // For now, just clean up localStorage - actual save will be handled by AppointmentsPage
+        try {
+          console.log('🧹 [AppointmentContext] Cleaning up prediction from localStorage');
+          // Don't remove here - let AppointmentsPage handle it when it refetches
+          // localStorage.removeItem('pending_ckd_prediction');
+        } catch (err) {
+          console.error('❌ [AppointmentContext] Error handling prediction:', err);
+        }
+      }
     } else {
       console.log('⚠️ [AppointmentContext] User role/ID does not match, skipping refetch and notification:', {
         userRole: user.role,

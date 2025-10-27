@@ -23,66 +23,63 @@ export const useBookingAppointment = (): UseBookingAppointmentReturn => {
 
   const handleBookingAppointment = useCallback(async (data: BookingAppointmentRequest): Promise<BookingAppointmentResponse | null> => {
     try {
-      console.log('🔍 [useBookingAppointment] Starting appointment booking:', data);
+      console.log('🔍 [useBookingAppointment] Starting WebSocket booking (NO API CALL):', data);
       setLoading(true);
       setError(null);
       setSuccess(false);
 
-      const response = await bookingAppointment(data);
-      console.log('🔍 [useBookingAppointment] Received response from API:', response);
-
-      // Kiểm tra cả success và status để tương thích với cả hai format
-      if ((response.success === true || response.status === 'success') && response.data) {
-        console.log('✅ [useBookingAppointment] Booking successful, preparing to send WebSocket event');
-        setSuccess(true);
-
-        // Send WebSocket event after successful booking
-        try {
-          const wsEvent = {
-            appointmentId: response.data.appointmentId || null,
-            patientId: data.patientId,
-            doctorId: data.doctorId,
-            event: 'BOOKING_APPOINTMENT' as const,
-            hasPredict: data.hasPredict || false, // ✅ Add hasPredict at top level for backend to parse easily
-            createAppointmentRequest: data,
-            skipRefetchForUserId: me?.userId // Skip refetch for patient who just booked
-          };
-          console.log('🔍 [useBookingAppointment] Sending WebSocket event:', wsEvent);
-          console.log('🔍🔍🔍 [DEBUG - WebSocket] hasPredict value:', {
-            hasPredict: wsEvent.hasPredict,
-            hasPredictType: typeof wsEvent.hasPredict,
-            fromRequestData: data.hasPredict,
-            skipRefetchForUserId: me?.userId
-          });
-          webSocketAppointmentService.sendScheduleEvent(wsEvent);
-          console.log('✅ [useBookingAppointment] WebSocket event sent successfully');
-        } catch (wsError) {
-          console.error('❌ [useBookingAppointment] Failed to send WebSocket event:', wsError);
-          // Don't fail the booking if WebSocket fails
+      // ✅ CHỈ GỬI WEBSOCKET - KHÔNG GỌI API
+      // Backend WebSocket sẽ tạo appointment và broadcast notification realtime
+      try {
+        // Check WebSocket connection first
+        if (!webSocketAppointmentService.isConnected()) {
+          throw new Error('WebSocket chưa kết nối. Vui lòng kiểm tra kết nối internet.');
         }
 
-        return response.data;
-      } else {
-        throw new Error(response.message || 'Không thể đặt lịch khám');
+        const wsEvent = {
+          appointmentId: null, // ← null vì chưa tạo, backend sẽ tạo mới
+          patientId: data.patientId,
+          doctorId: data.doctorId,
+          event: 'BOOKING_APPOINTMENT' as const,
+          hasPredict: data.hasPredict || false,
+          createAppointmentRequest: data, // ← Backend sẽ tạo appointment từ đây
+          skipRefetchForUserId: me?.userId // Skip refetch for patient who just booked
+        };
+
+        console.log('🔍 [useBookingAppointment] Sending WebSocket event:', wsEvent);
+        console.log('🔍🔍🔍 [DEBUG - WebSocket] Event details:', {
+          hasPredict: wsEvent.hasPredict,
+          hasPredictType: typeof wsEvent.hasPredict,
+          fromRequestData: data.hasPredict,
+          skipRefetchForUserId: me?.userId,
+          isConnected: webSocketAppointmentService.isConnected()
+        });
+
+        webSocketAppointmentService.sendScheduleEvent(wsEvent);
+        console.log('✅ [useBookingAppointment] WebSocket event sent successfully');
+
+        setSuccess(true);
+
+        // Return null vì không có response ngay lập tức
+        // WebSocketAppointmentContext sẽ nhận response và hiển thị toast
+        return null;
+      } catch (wsError: any) {
+        console.error('❌ [useBookingAppointment] Failed to send WebSocket event:', wsError);
+        throw new Error(wsError.message || 'Không thể gửi yêu cầu đặt lịch qua WebSocket');
       }
     } catch (err: any) {
       // Extract detailed error information
-      const errorMessage = err.response?.data?.message || err.message || 'Có lỗi xảy ra khi đặt lịch khám';
-      const statusCode = err.response?.status;
+      const errorMessage = err.message || 'Có lỗi xảy ra khi đặt lịch khám';
 
       console.error('❌ [useBookingAppointment] Booking failed:', {
         message: errorMessage,
-        statusCode,
         fullError: err
       });
 
       setError(errorMessage);
 
-      // Re-throw error để caller (AppointmentsPage) có thể handle cụ thể
-      // Attach thêm status code để caller biết loại error
+      // Re-throw error để caller (AppointmentsPage) có thể handle
       const enhancedError = new Error(errorMessage) as any;
-      enhancedError.response = err.response;
-      enhancedError.statusCode = statusCode;
       throw enhancedError;
     } finally {
       setLoading(false);

@@ -19,7 +19,7 @@ export interface MedicalRecord {
 export interface Prescription {
   prescriptionId: string;
   medicalRecordId: string;
-  medicalName: string;
+  medicationName: string;  // Changed from medicalName to match backend API
   dosage: string;
   frequency: string[];
   startDate: string;

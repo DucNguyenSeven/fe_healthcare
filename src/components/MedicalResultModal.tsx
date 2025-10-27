@@ -3,8 +3,10 @@
 import React, { useEffect, useState } from 'react';
 import { X, User, Stethoscope, Calendar, FileText, Pill, AlertCircle, CheckCircle, Loader2, ClipboardList, AlertTriangle, Activity, Phone, Mail } from 'lucide-react';
 import { useMedicalResultsByAppointment } from '@/hooks/medical-results';
-import { getMedicalRecordById } from '@/lib/api/medical-records';
+import { getMedicalRecordById, getMedicalRecordTimeline } from '@/lib/api/medical-records';
 import type { MedicalRecordWithPrescriptions } from '@/types/medical-record';
+import type { MedicalRecordTimelineResponse, MedicalRecordWithEpisode } from '@/lib/api/medical-records';
+import { MedicalRecordTimeline } from '@/components/medical-records/MedicalRecordTimeline';
 
 interface MedicalResultModalProps {
   isOpen: boolean;
@@ -28,16 +30,27 @@ interface MedicalResultModalProps {
 export function MedicalResultModal({ isOpen, onClose, appointmentId, patientInfo, doctorInfo }: MedicalResultModalProps) {
   // API hook
   const { fetchMedicalResults, loading, error, data, clearError } = useMedicalResultsByAppointment();
-  
+
   // State for full medical record data (with signature)
   const [fullRecord, setFullRecord] = useState<MedicalRecordWithPrescriptions | null>(null);
   const [loadingFullRecord, setLoadingFullRecord] = useState(false);
+
+  // State for tabs
+  const [activeTab, setActiveTab] = useState<'current' | 'timeline'>('current');
+
+  // State for timeline data
+  const [timelineData, setTimelineData] = useState<MedicalRecordTimelineResponse | null>(null);
+  const [loadingTimeline, setLoadingTimeline] = useState(false);
+  const [timelineError, setTimelineError] = useState<string | null>(null);
 
   // Fetch medical results when modal opens
   useEffect(() => {
     if (isOpen && appointmentId) {
       fetchMedicalResults(appointmentId);
       setFullRecord(null); // Reset full record
+      setTimelineData(null); // Reset timeline data
+      setActiveTab('current'); // Reset to current tab
+      setTimelineError(null); // Reset timeline error
     }
   }, [isOpen, appointmentId, fetchMedicalResults]);
 
@@ -60,6 +73,31 @@ export function MedicalResultModal({ isOpen, onClose, appointmentId, patientInfo
     };
 
     fetchFullRecord();
+  }, [data?.medicalRecord?.recordId]);
+
+  // Fetch timeline after getting recordId
+  useEffect(() => {
+    const fetchTimeline = async () => {
+      if (data?.medicalRecord?.recordId) {
+        setLoadingTimeline(true);
+        setTimelineError(null);
+        try {
+          const response = await getMedicalRecordTimeline(data.medicalRecord.recordId);
+          if (response.success && response.data) {
+            setTimelineData(response.data);
+          } else {
+            setTimelineError(response.message || 'Không thể tải lịch sử khám');
+          }
+        } catch (err) {
+          console.error('Error fetching timeline:', err);
+          setTimelineError('Có lỗi xảy ra khi tải lịch sử khám');
+        } finally {
+          setLoadingTimeline(false);
+        }
+      }
+    };
+
+    fetchTimeline();
   }, [data?.medicalRecord?.recordId]);
 
   // Patient info for display
@@ -144,6 +182,40 @@ export function MedicalResultModal({ isOpen, onClose, appointmentId, patientInfo
           )}
         </div>
 
+        {/* Tabs */}
+        {data && !loading && !error && (
+          <div className="px-8 pt-6 pb-0">
+            <div className="flex gap-2">
+              <button
+                onClick={() => setActiveTab('current')}
+                className={`flex-1 py-3 px-4 rounded-xl font-medium transition-all ${
+                  activeTab === 'current'
+                    ? 'bg-blue-600 text-white shadow-md'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                <span className="flex items-center justify-center gap-2">
+                  <FileText className="w-4 h-4" />
+                  Kết quả lần này
+                </span>
+              </button>
+              <button
+                onClick={() => setActiveTab('timeline')}
+                className={`flex-1 py-3 px-4 rounded-xl font-medium transition-all ${
+                  activeTab === 'timeline'
+                    ? 'bg-blue-600 text-white shadow-md'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                <span className="flex items-center justify-center gap-2">
+                  <Calendar className="w-4 h-4" />
+                  Lịch sử khám đầy đủ
+                </span>
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Scrollable Content Area */}
         <div className="p-8 overflow-y-auto max-h-[calc(90vh-280px)]">
           {/* Loading State */}
@@ -177,7 +249,7 @@ export function MedicalResultModal({ isOpen, onClose, appointmentId, patientInfo
           )}
 
           {/* Content - Only show when data is loaded */}
-          {data && !loading && !error && (
+          {data && !loading && !error && activeTab === 'current' && (
           <div className="space-y-6">
             {/* Patient Information */}
             {(fullRecord?.patient || patientInfo) && (
@@ -287,7 +359,7 @@ export function MedicalResultModal({ isOpen, onClose, appointmentId, patientInfo
                             </div>
                             <div>
                               <h5 className="font-semibold text-gray-900 mb-1">
-                                {prescription.medicalName}
+                                {prescription.medicationName}
                               </h5>
                               <p className="text-sm text-gray-600">
                                 Liều lượng: <span className="font-medium">{prescription.dosage}</span>
@@ -350,8 +422,8 @@ export function MedicalResultModal({ isOpen, onClose, appointmentId, patientInfo
           </div>
           )}
 
-          {/* Close Button */}
-          {data && !loading && !error && (
+          {/* Close Button for Current Tab */}
+          {data && !loading && !error && activeTab === 'current' && (
             <div className="mt-6 flex justify-end">
               <button
                 onClick={onClose}
@@ -359,6 +431,79 @@ export function MedicalResultModal({ isOpen, onClose, appointmentId, patientInfo
               >
                 Đóng
               </button>
+            </div>
+          )}
+
+          {/* Timeline Tab Content */}
+          {data && !loading && !error && activeTab === 'timeline' && (
+            <div className="space-y-6">
+              {/* Loading State for Timeline */}
+              {loadingTimeline && (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="w-8 h-8 animate-spin text-blue-500 mr-3" />
+                  <span className="text-gray-600">Đang tải lịch sử khám...</span>
+                </div>
+              )}
+
+              {/* Timeline Error State */}
+              {timelineError && !loadingTimeline && (
+                <div className="bg-red-50 border border-red-200 rounded-xl p-6">
+                  <div className="flex items-center">
+                    <AlertCircle className="w-6 h-6 text-red-500 mr-3" />
+                    <div>
+                      <h3 className="font-medium text-red-800">Không thể tải lịch sử khám</h3>
+                      <p className="text-red-600 mt-1">{timelineError}</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={async () => {
+                      if (data?.medicalRecord?.recordId) {
+                        setLoadingTimeline(true);
+                        setTimelineError(null);
+                        try {
+                          const response = await getMedicalRecordTimeline(data.medicalRecord.recordId);
+                          if (response.success && response.data) {
+                            setTimelineData(response.data);
+                          } else {
+                            setTimelineError(response.message || 'Không thể tải lịch sử khám');
+                          }
+                        } catch (err) {
+                          setTimelineError('Có lỗi xảy ra khi tải lịch sử khám');
+                        } finally {
+                          setLoadingTimeline(false);
+                        }
+                      }
+                    }}
+                    className="mt-3 px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors text-sm"
+                  >
+                    Thử lại
+                  </button>
+                </div>
+              )}
+
+              {/* Timeline Component */}
+              {timelineData && !loadingTimeline && !timelineError && (
+                <div className="bg-gray-50 p-6 rounded-2xl">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                    <Calendar className="w-5 h-5 text-blue-600" />
+                    Lịch sử khám bệnh đầy đủ
+                  </h3>
+                  <MedicalRecordTimeline
+                    rootRecord={timelineData.rootRecord}
+                    followUpRecords={timelineData.followUpRecords}
+                  />
+                </div>
+              )}
+
+              {/* Close Button for Timeline Tab */}
+              <div className="mt-6 flex justify-end">
+                <button
+                  onClick={onClose}
+                  className="px-6 py-3 bg-gray-200 text-gray-700 rounded-2xl hover:bg-gray-300 transition-colors font-medium"
+                >
+                  Đóng
+                </button>
+              </div>
             </div>
           )}
         </div>

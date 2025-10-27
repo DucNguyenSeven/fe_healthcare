@@ -23,7 +23,7 @@ export interface MedicalRecord {
 export interface Prescription {
   prescriptionId: string;
   medicalRecordId: string;
-  medicalName: string;
+  medicationName: string;  // Changed from medicalName to match backend API
   dosage: string;
   frequency: string[] | string; // Support both array and string format
   startDate?: string;
@@ -91,7 +91,7 @@ export interface MockMedicalRecord {
 
 export interface MockPrescription {
   prescriptionId: string;
-  medicalName: string;
+  medicationName: string;  // Changed from medicalName to match backend API
   dosage: string;
   frequency: string;
   startDate: string;

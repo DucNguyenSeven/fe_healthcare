@@ -92,7 +92,7 @@ export type MedicationFrequency = 'MORNING' | 'AFTERNOON' | 'EVENING';
  */
 export interface PrescriptionItem {
   prescriptionId: string;
-  medicalName: string;
+  medicationName: string;  // Changed from medicalName to match backend API
   dosage: string;
   frequency: MedicationFrequency[];
   notes?: string;

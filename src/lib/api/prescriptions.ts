@@ -4,7 +4,7 @@ import type { GetPrescriptionGroupsResponse } from '@/types/dashboard';
 // Types
 export interface CreatePrescriptionRequest {
   medicalRecordId: string;
-  medicalName: string;
+  medicationName: string;  // Changed from medicalName to match backend API
   dosage: string;
   frequency: string[];
   startDate?: string;
@@ -15,7 +15,7 @@ export interface CreatePrescriptionRequest {
 export interface CreatePrescriptionResponse {
   prescriptionId: string;
   medicalRecordId: string;
-  medicalName: string;
+  medicationName: string;  // Changed from medicalName to match backend API
   dosage: string;
   frequency: string[];
   startDate?: string;

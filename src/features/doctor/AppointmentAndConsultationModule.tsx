@@ -758,7 +758,7 @@ export const AppointmentAndConsultationModule = ({
         .filter(row => row.drug && row.drug.trim() !== '' && row.dosage && row.usage)
         .map(row => ({
           medicalRecordId: recordId, // Sử dụng recordId đã extract
-          medicalName: row.drug,
+          medicationName: row.drug,  // Changed from medicalName to match backend API
           dosage: row.dosage,
           frequency: row.usage ? row.usage.split(',') : [], // Transform string to array
           startDate: row.startDate || '',
@@ -1400,7 +1400,7 @@ export const AppointmentAndConsultationModule = ({
                                             className="bg-blue-50 p-3 rounded-xl border border-blue-200"
                                           >
                                             <p className="font-medium text-[#0F172A] text-sm mb-1">
-                                              {prescription.medicalName}
+                                              {prescription.medicationName}
                                             </p>
                                             <p className="text-xs text-[#334155] mb-2">
                                               Liều: {prescription.dosage}

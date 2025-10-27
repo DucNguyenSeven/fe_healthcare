@@ -2,13 +2,16 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { User as UserIcon, Phone, Mail, MapPin, Calendar, Heart, AlertTriangle, Upload, FileText, Download, Trash2, Edit3, Save, X, Plus, Clock, Shield, Camera, Check, Activity, Pill, CalendarCheck, ClipboardList } from 'lucide-react';
+import { User as UserIcon, Phone, Mail, MapPin, Calendar, Heart, AlertTriangle, Upload, FileText, Download, Trash2, Edit3, Save, X, Plus, Clock, Shield, Camera, Check, Activity, Pill, CalendarCheck, ClipboardList, Loader2 } from 'lucide-react';
 import { useGetMe } from '@/hooks/auth/useGetMe';
 import { useCreateHealthMetricPanel } from '@/hooks/health-metrics/useCreatePanel';
 import { usePatientHealthPanels } from '@/hooks/health-metrics/usePatientPanels';
 import { useUpdateUser } from '@/hooks/auth/useUpdateUser';
 import { useUpdateAvatar } from '@/hooks/auth/useUpdateAvatar';
 import { useGetMedicalRecords } from '@/hooks/medical-records';
+import { getMedicalRecordTimeline } from '@/lib/api/medical-records';
+import type { MedicalRecordTimelineResponse } from '@/lib/api/medical-records';
+import { MedicalRecordTimeline } from '@/components/medical-records/MedicalRecordTimeline';
 import { useSearchParams } from 'next/navigation';
 import type { GetMeResponse } from '@/types/auth';
 import type { UpdateUserRequest } from '@/lib/api/types';
@@ -115,6 +118,12 @@ export function ProfileRecordsPage(_props: ProfileRecordsPageProps = {}) {
 
   const [selectedRecord, setSelectedRecord] = useState<MedicalRecordWithPrescriptions | null>(null);
   const [showRecordDetailModal, setShowRecordDetailModal] = useState(false);
+
+  // Timeline state
+  const [recordDetailTab, setRecordDetailTab] = useState<'current' | 'timeline'>('current');
+  const [recordTimeline, setRecordTimeline] = useState<MedicalRecordTimelineResponse | null>(null);
+  const [loadingRecordTimeline, setLoadingRecordTimeline] = useState(false);
+  const [recordTimelineError, setRecordTimelineError] = useState<string | null>(null);
 
   // New test result form data
   const [newTestData, setNewTestData] = useState<NewTestResult>({
@@ -946,9 +955,30 @@ export function ProfileRecordsPage(_props: ProfileRecordsPageProps = {}) {
       </div>
     </div>;
   const renderMedicalHistory = () => {
-    const handleViewDetail = (record: MedicalRecordWithPrescriptions) => {
+    const handleViewDetail = async (record: MedicalRecordWithPrescriptions) => {
       setSelectedRecord(record);
       setShowRecordDetailModal(true);
+      setRecordDetailTab('current'); // Reset to current tab
+      setRecordTimeline(null); // Reset timeline data
+      setRecordTimelineError(null); // Reset error
+
+      // Fetch timeline
+      if (record.recordId) {
+        setLoadingRecordTimeline(true);
+        try {
+          const response = await getMedicalRecordTimeline(record.recordId);
+          if (response.success && response.data) {
+            setRecordTimeline(response.data);
+          } else {
+            setRecordTimelineError(response.message || 'Không thể tải lịch sử khám');
+          }
+        } catch (err) {
+          console.error('Error fetching timeline:', err);
+          setRecordTimelineError('Có lỗi xảy ra khi tải lịch sử khám');
+        } finally {
+          setLoadingRecordTimeline(false);
+        }
+      }
     };
 
     return (
@@ -1072,7 +1102,7 @@ export function ProfileRecordsPage(_props: ProfileRecordsPageProps = {}) {
                               <div className="flex items-start justify-between">
                                 <div>
                                   <p className="font-medium text-gray-900 text-sm">
-                                    {prescription.medicalName}
+                                    {prescription.medicationName}
                                   </p>
                                   <p className="text-xs text-gray-600 mt-1">
                                     Liều: {prescription.dosage}
@@ -1470,8 +1500,43 @@ export function ProfileRecordsPage(_props: ProfileRecordsPageProps = {}) {
                 </div>
               </div>
 
+              {/* Tabs */}
+              <div className="px-8 pt-6 pb-0">
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setRecordDetailTab('current')}
+                    className={`flex-1 py-3 px-4 rounded-xl font-medium transition-all ${
+                      recordDetailTab === 'current'
+                        ? 'bg-blue-600 text-white shadow-md'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}
+                  >
+                    <span className="flex items-center justify-center gap-2">
+                      <FileText className="w-4 h-4" />
+                      Kết quả lần này
+                    </span>
+                  </button>
+                  <button
+                    onClick={() => setRecordDetailTab('timeline')}
+                    className={`flex-1 py-3 px-4 rounded-xl font-medium transition-all ${
+                      recordDetailTab === 'timeline'
+                        ? 'bg-blue-600 text-white shadow-md'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}
+                  >
+                    <span className="flex items-center justify-center gap-2">
+                      <Calendar className="w-4 h-4" />
+                      Lịch sử khám đầy đủ
+                    </span>
+                  </button>
+                </div>
+              </div>
+
               {/* Scrollable Content Area */}
               <div className="p-8 overflow-y-auto max-h-[calc(90vh-280px)]">
+                {/* Current Tab Content */}
+                {recordDetailTab === 'current' && (
+                  <div className="space-y-6">
                 {/* Patient Information */}
                 {selectedRecord.patient && (
                   <div className="bg-blue-50 border border-blue-200 p-6 rounded-2xl mb-6">
@@ -1572,7 +1637,7 @@ export function ProfileRecordsPage(_props: ProfileRecordsPageProps = {}) {
                                 </div>
                                 <div>
                                   <h5 className="font-semibold text-gray-900 mb-1">
-                                    {prescription.medicalName}
+                                    {prescription.medicationName}
                                   </h5>
                                   <p className="text-sm text-gray-600">
                                     Liều lượng: <span className="font-medium">{prescription.dosage}</span>
@@ -1633,7 +1698,7 @@ export function ProfileRecordsPage(_props: ProfileRecordsPageProps = {}) {
                 )}
                 </div>
 
-                {/* Close Button */}
+                {/* Close Button for Current Tab */}
                 <div className="mt-6 flex justify-end">
                   <button
                     onClick={() => {
@@ -1645,6 +1710,84 @@ export function ProfileRecordsPage(_props: ProfileRecordsPageProps = {}) {
                     Đóng
                   </button>
                 </div>
+                  </div>
+                )}
+
+                {/* Timeline Tab Content */}
+                {recordDetailTab === 'timeline' && (
+                  <div className="space-y-6">
+                    {/* Loading State for Timeline */}
+                    {loadingRecordTimeline && (
+                      <div className="flex items-center justify-center py-12">
+                        <Loader2 className="w-8 h-8 animate-spin text-blue-500 mr-3" />
+                        <span className="text-gray-600">Đang tải lịch sử khám...</span>
+                      </div>
+                    )}
+
+                    {/* Timeline Error State */}
+                    {recordTimelineError && !loadingRecordTimeline && (
+                      <div className="bg-red-50 border border-red-200 rounded-xl p-6">
+                        <div className="flex items-center">
+                          <AlertTriangle className="w-6 h-6 text-red-500 mr-3" />
+                          <div>
+                            <h3 className="font-medium text-red-800">Không thể tải lịch sử khám</h3>
+                            <p className="text-red-600 mt-1">{recordTimelineError}</p>
+                          </div>
+                        </div>
+                        <button
+                          onClick={async () => {
+                            if (selectedRecord?.recordId) {
+                              setLoadingRecordTimeline(true);
+                              setRecordTimelineError(null);
+                              try {
+                                const response = await getMedicalRecordTimeline(selectedRecord.recordId);
+                                if (response.success && response.data) {
+                                  setRecordTimeline(response.data);
+                                } else {
+                                  setRecordTimelineError(response.message || 'Không thể tải lịch sử khám');
+                                }
+                              } catch (err) {
+                                setRecordTimelineError('Có lỗi xảy ra khi tải lịch sử khám');
+                              } finally {
+                                setLoadingRecordTimeline(false);
+                              }
+                            }
+                          }}
+                          className="mt-3 px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors text-sm"
+                        >
+                          Thử lại
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Timeline Component */}
+                    {recordTimeline && !loadingRecordTimeline && !recordTimelineError && (
+                      <div className="bg-gray-50 p-6 rounded-2xl">
+                        <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                          <Calendar className="w-5 h-5 text-blue-600" />
+                          Lịch sử khám bệnh đầy đủ
+                        </h3>
+                        <MedicalRecordTimeline
+                          rootRecord={recordTimeline.rootRecord}
+                          followUpRecords={recordTimeline.followUpRecords}
+                        />
+                      </div>
+                    )}
+
+                    {/* Close Button for Timeline Tab */}
+                    <div className="mt-6 flex justify-end">
+                      <button
+                        onClick={() => {
+                          setShowRecordDetailModal(false);
+                          setSelectedRecord(null);
+                        }}
+                        className="px-6 py-3 bg-gray-200 text-gray-700 rounded-2xl hover:bg-gray-300 transition-colors font-medium"
+                      >
+                        Đóng
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             </motion.div>
           </motion.div>

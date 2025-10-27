@@ -604,120 +604,33 @@ export function AppointmentsPage() {
       console.log('🔍 [handleBookAppointment] Verify appointmentDate:', bookingData.appointmentDate);
       console.log('🔍 [handleBookAppointment] Verify appointmentTime:', bookingData.appointmentTime);
 
-      // BƯỚC 6: Gọi API booking
-      console.log('🚀 [handleBookAppointment] Sending booking request to API...');
-      const result = await bookingAppointment(bookingData);
+      // BƯỚC 6: Gửi WebSocket booking (KHÔNG GỌI API)
+      console.log('🚀 [handleBookAppointment] Sending WebSocket booking request...');
+      await bookingAppointment(bookingData);
 
-      if (result) {
-        console.log('✅ [handleBookAppointment] Booking successful!', result);
+      // WebSocket event đã được gửi thành công
+      console.log('✅ [handleBookAppointment] WebSocket event sent successfully');
 
-        // Reset form
-        setShowBookingForm(false);
-        setSelectedDoctor(null);
-        setSelectedDate('');
-        setSelectedTime('');
-        setSelectedSlotId(null);
-        setSymptoms('');
-        setNote('');
-        setAddressDetail('');
-        resetBooking();
+      // Reset form
+      setShowBookingForm(false);
+      setSelectedDoctor(null);
+      setSelectedDate('');
+      setSelectedTime('');
+      setSelectedSlotId(null);
+      setSymptoms('');
+      setNote('');
+      setAddressDetail('');
+      resetBooking();
 
-        // Hiển thị loading toast - đợi WebSocket confirmation từ backend
-        toast.loading('Đang xác nhận đặt lịch...', {
-          id: 'booking-confirmation',
-          description: 'Vui lòng chờ trong giây lát',
-          duration: Infinity // Will be dismissed by WebSocket event
-        });
+      // Hiển thị loading toast - đợi WebSocket confirmation từ backend
+      toast.loading('Đang xác nhận đặt lịch...', {
+        id: 'booking-confirmation',
+        description: 'Vui lòng chờ trong giây lát',
+        duration: Infinity // Will be dismissed by WebSocket event
+      });
 
-        // 💾 Save prediction data if this booking came from CKD prediction
-        const pendingPrediction = localStorage.getItem('pending_ckd_prediction');
-        console.log('🔍🔍🔍 [DEBUG - After Booking Success] Checking localStorage for prediction:', {
-          hasPendingPrediction: !!pendingPrediction,
-          localStorageKey: 'pending_ckd_prediction',
-          localStorageValue: pendingPrediction
-        });
-
-        if (pendingPrediction) {
-          try {
-            console.log('💾 [handleBookAppointment] Booking successful with prediction, now saving prediction data...');
-            const predData = JSON.parse(pendingPrediction);
-
-            console.log('📊 [handleBookAppointment] Prediction data to save:', {
-              stage: predData.stage,
-              confidence: predData.confidence,
-              recommendationsCount: predData.recommendations?.length || 0,
-              healthMetricsFields: Object.keys(predData.healthMetrics || {}).length
-            });
-
-            // Transform only 9 lab test fields to array format
-            const healthMetrics = transformHealthMetricsToArray(
-              predData.healthMetrics,
-              currentUser.userId
-            );
-
-            console.log('📤 [handleBookAppointment] Sending save predict history request:', {
-              patientId: currentUser.userId,
-              stage: predData.stage,
-              confidence: predData.confidence,
-              healthMetricsCount: healthMetrics.length
-            });
-
-            // Save predict history to database
-            await savePredictHistory({
-              patientId: currentUser.userId,
-              stage: predData.stage,
-              confidence: predData.confidence,
-              recommendations: predData.recommendations || [],
-              healthMetrics: healthMetrics
-            });
-
-            console.log('✅ [handleBookAppointment] Successfully saved prediction + 9 lab metrics after booking');
-
-            // Clean up localStorage after successful save
-            console.log('🔍🔍🔍 [DEBUG - Before Cleanup] localStorage before removal:', {
-              pendingPrediction: localStorage.getItem('pending_ckd_prediction'),
-              oldFormat: localStorage.getItem('ckd_prediction_result')
-            });
-
-            localStorage.removeItem('pending_ckd_prediction');
-            localStorage.removeItem('ckd_prediction_result');
-
-            console.log('🧹 [handleBookAppointment] Cleaned up prediction from localStorage');
-            console.log('🔍🔍🔍 [DEBUG - After Cleanup] localStorage after removal:', {
-              pendingPrediction: localStorage.getItem('pending_ckd_prediction'),
-              oldFormat: localStorage.getItem('ckd_prediction_result')
-            });
-
-          } catch (saveError) {
-            console.error('❌ [handleBookAppointment] Failed to save prediction after booking:', {
-              error: saveError instanceof Error ? saveError.message : String(saveError),
-              details: saveError
-            });
-            console.error('💡 [handleBookAppointment] Booking was successful, but prediction save failed');
-            // Don't fail the booking if save fails, just log error
-            // User can still see their appointment
-          }
-        } else {
-          console.log('ℹ️ [handleBookAppointment] No pending prediction found - this is a normal booking (not from CKD prediction)');
-        }
-
-        // Refresh appointments list after successful booking
-        if (currentUser?.userId) {
-          const today = new Date();
-          const endDate = new Date(today);
-          endDate.setFullYear(today.getFullYear() + 1);
-
-          fetchAppointments({
-            patientId: currentUser.userId,
-            startTime: '2020-01-01',
-            endTime: endDate.toISOString().split('T')[0],
-            page: 0,
-            size: 50,
-            sortBy: 'appointmentDate',
-            sortDir: 'DESC'
-          });
-        }
-      }
+      // NOTE: Prediction data sẽ được xử lý trong WebSocketAppointmentContext
+      // sau khi nhận được WebSocket response với appointmentId
     } catch (error: any) {
       console.error('❌ [handleBookAppointment] Booking error:', {
         message: error.message,
