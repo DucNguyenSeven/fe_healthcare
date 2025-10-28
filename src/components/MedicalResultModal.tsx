@@ -3,10 +3,9 @@
 import React, { useEffect, useState } from 'react';
 import { X, User, Stethoscope, Calendar, FileText, Pill, AlertCircle, CheckCircle, Loader2, ClipboardList, AlertTriangle, Activity, Phone, Mail } from 'lucide-react';
 import { useMedicalResultsByAppointment } from '@/hooks/medical-results';
-import { getMedicalRecordById, getMedicalRecordTimeline } from '@/lib/api/medical-records';
+import { getMedicalRecordById } from '@/lib/api/medical-records';
 import type { MedicalRecordWithPrescriptions } from '@/types/medical-record';
-import type { MedicalRecordTimelineResponse, MedicalRecordWithEpisode } from '@/lib/api/medical-records';
-import { MedicalRecordTimeline } from '@/components/medical-records/MedicalRecordTimeline';
+import { FullTimelineTab } from '@/components/medical-records/timeline/FullTimelineTab';
 
 interface MedicalResultModalProps {
   isOpen: boolean;
@@ -38,19 +37,12 @@ export function MedicalResultModal({ isOpen, onClose, appointmentId, patientInfo
   // State for tabs
   const [activeTab, setActiveTab] = useState<'current' | 'timeline'>('current');
 
-  // State for timeline data
-  const [timelineData, setTimelineData] = useState<MedicalRecordTimelineResponse | null>(null);
-  const [loadingTimeline, setLoadingTimeline] = useState(false);
-  const [timelineError, setTimelineError] = useState<string | null>(null);
-
   // Fetch medical results when modal opens
   useEffect(() => {
     if (isOpen && appointmentId) {
       fetchMedicalResults(appointmentId);
       setFullRecord(null); // Reset full record
-      setTimelineData(null); // Reset timeline data
       setActiveTab('current'); // Reset to current tab
-      setTimelineError(null); // Reset timeline error
     }
   }, [isOpen, appointmentId, fetchMedicalResults]);
 
@@ -74,73 +66,6 @@ export function MedicalResultModal({ isOpen, onClose, appointmentId, patientInfo
 
     fetchFullRecord();
   }, [data?.medicalRecord?.recordId]);
-
-  // Fetch timeline after getting recordId
-  useEffect(() => {
-    const fetchTimeline = async () => {
-      if (data?.medicalRecord?.recordId) {
-        setLoadingTimeline(true);
-        setTimelineError(null);
-        try {
-          console.log('🔍 [MedicalResultModal] Fetching timeline for recordId:', data.medicalRecord.recordId);
-          const response = await getMedicalRecordTimeline(data.medicalRecord.recordId);
-          if (response.success && response.data) {
-            console.log('✅ [MedicalResultModal] Timeline fetched successfully:', {
-              hasRootRecord: !!response.data.rootRecord,
-              followUpCount: response.data.followUpRecords?.length || 0
-            });
-            setTimelineData(response.data);
-          } else {
-            console.warn('⚠️ [MedicalResultModal] Timeline fetch failed:', response.message);
-            setTimelineError(response.message || 'Không thể tải lịch sử khám');
-          }
-        } catch (err) {
-          console.error('❌ [MedicalResultModal] Error fetching timeline:', err);
-          setTimelineError('Có lỗi xảy ra khi tải lịch sử khám');
-        } finally {
-          setLoadingTimeline(false);
-        }
-      }
-    };
-
-    fetchTimeline();
-  }, [data?.medicalRecord?.recordId]);
-
-  // Merge rootRecord + followUpRecords into single array for timeline display
-  const allTimelineRecords = React.useMemo(() => {
-    if (!timelineData) return [];
-
-    const records: MedicalRecordWithEpisode[] = [];
-
-    // Add root record first (initial examination)
-    if (timelineData.rootRecord) {
-      records.push(timelineData.rootRecord);
-    }
-
-    // Add follow-up records
-    if (timelineData.followUpRecords && timelineData.followUpRecords.length > 0) {
-      records.push(...timelineData.followUpRecords);
-    }
-
-    // Sort by appointmentDate ascending (old → new)
-    const sortedRecords = records.sort((a, b) => {
-      const dateA = new Date(a.appointmentDate || a.createdAt).getTime();
-      const dateB = new Date(b.appointmentDate || b.createdAt).getTime();
-      return dateA - dateB;
-    });
-
-    console.log('📋 [MedicalResultModal] Merged timeline records:', {
-      totalRecords: sortedRecords.length,
-      records: sortedRecords.map(r => ({
-        recordId: r.recordId,
-        diagnosis: r.diagnosis,
-        appointmentDate: r.appointmentDate,
-        episodeType: r.episodeType
-      }))
-    });
-
-    return sortedRecords;
-  }, [timelineData]);
 
   // Patient info for display
   const patient = {
@@ -476,73 +401,12 @@ export function MedicalResultModal({ isOpen, onClose, appointmentId, patientInfo
             </div>
           )}
 
-          {/* Timeline Tab Content */}
+          {/* Timeline Tab Content - NEW: Using FullTimelineTab with Episodes */}
           {data && !loading && !error && activeTab === 'timeline' && (
             <div className="space-y-6">
-              {/* Loading State for Timeline */}
-              {loadingTimeline && (
-                <div className="flex items-center justify-center py-12">
-                  <Loader2 className="w-8 h-8 animate-spin text-blue-500 mr-3" />
-                  <span className="text-gray-600">Đang tải lịch sử khám...</span>
-                </div>
-              )}
-
-              {/* Timeline Error State */}
-              {timelineError && !loadingTimeline && (
-                <div className="bg-red-50 border border-red-200 rounded-xl p-6">
-                  <div className="flex items-center">
-                    <AlertCircle className="w-6 h-6 text-red-500 mr-3" />
-                    <div>
-                      <h3 className="font-medium text-red-800">Không thể tải lịch sử khám</h3>
-                      <p className="text-red-600 mt-1">{timelineError}</p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={async () => {
-                      if (data?.medicalRecord?.recordId) {
-                        setLoadingTimeline(true);
-                        setTimelineError(null);
-                        try {
-                          const response = await getMedicalRecordTimeline(data.medicalRecord.recordId);
-                          if (response.success && response.data) {
-                            setTimelineData(response.data);
-                          } else {
-                            setTimelineError(response.message || 'Không thể tải lịch sử khám');
-                          }
-                        } catch (err) {
-                          setTimelineError('Có lỗi xảy ra khi tải lịch sử khám');
-                        } finally {
-                          setLoadingTimeline(false);
-                        }
-                      }
-                    }}
-                    className="mt-3 px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors text-sm"
-                  >
-                    Thử lại
-                  </button>
-                </div>
-              )}
-
-              {/* Timeline Component */}
-              {allTimelineRecords.length > 0 && !loadingTimeline && !timelineError && (
-                <div className="bg-gray-50 p-6 rounded-2xl">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                    <Calendar className="w-5 h-5 text-blue-600" />
-                    Lịch sử khám bệnh đầy đủ ({allTimelineRecords.length} lần khám)
-                  </h3>
-                  <MedicalRecordTimeline
-                    allRecords={allTimelineRecords}
-                  />
-                </div>
-              )}
-
-              {/* No Timeline Data State */}
-              {allTimelineRecords.length === 0 && !loadingTimeline && !timelineError && (
-                <div className="bg-gray-50 border border-gray-200 rounded-xl p-8 text-center">
-                  <Calendar className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-                  <h3 className="font-medium text-gray-700 mb-1">Chưa có lịch sử khám</h3>
-                  <p className="text-gray-500 text-sm">Đây là lần khám đầu tiên của bệnh nhân</p>
-                </div>
+              {/* Use new FullTimelineTab component that handles its own loading/error states */}
+              {data.medicalRecord?.recordId && (
+                <FullTimelineTab recordId={data.medicalRecord.recordId} />
               )}
 
               {/* Close Button for Timeline Tab */}

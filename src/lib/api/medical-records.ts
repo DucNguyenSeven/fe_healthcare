@@ -4,7 +4,8 @@ import type {
   Prescription,
   GetMedicalRecordsParams,
   GetMedicalRecordsResponse,
-  ApiResponse
+  ApiResponse,
+  MedicalRecordFullTimelineResponse
 } from '@/types/medical-record';
 
 // Types for Create (existing)
@@ -277,6 +278,48 @@ export const getPatientEpisodes = async (params: {
     return {
       success: false,
       message: error.response?.data?.message || error.message || 'Không thể tải danh sách đợt khám',
+    };
+  }
+};
+
+/**
+ * Get full medical history with episodes grouping
+ * NEW API for full timeline with episodes
+ * @param recordId - Medical record ID
+ * @returns Promise<MedicalRecordFullTimelineResponse>
+ * @throws Error if request fails
+ */
+export const getFullTimeline = async (
+  recordId: string
+): Promise<ApiResponse<MedicalRecordFullTimelineResponse>> => {
+  try {
+    console.log('🔍 [API - getFullTimeline] Fetching full timeline for record:', recordId);
+
+    const response = await api.get<ApiResponse<MedicalRecordFullTimelineResponse>>(
+      `/api/v1/medical-records/${recordId}/full-timeline`
+    );
+
+    console.log('🔍 [API - getFullTimeline] Response:', {
+      totalVisits: response.data.data?.totalVisits || 0,
+      totalEpisodes: response.data.data?.totalEpisodes || 0,
+      episodesCount: response.data.data?.episodes?.length || 0
+    });
+
+    // Assuming response structure: { code, message, success, data }
+    if (response.data.success && response.data.data) {
+      return {
+        success: true,
+        data: response.data.data,
+        message: response.data.message,
+      };
+    }
+
+    throw new Error(response.data.message || 'Failed to fetch full timeline');
+  } catch (error: any) {
+    console.error('🔍 [API] Get full timeline error:', error);
+    return {
+      success: false,
+      message: error.response?.data?.message || error.message || 'Không thể tải lịch sử khám đầy đủ',
     };
   }
 };

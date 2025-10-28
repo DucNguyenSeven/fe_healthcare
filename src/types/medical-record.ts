@@ -99,3 +99,58 @@ export interface MockPrescription {
   endDate: string;
   notes: string;
 }
+
+// ==================== NEW: Full Timeline with Episodes Types ====================
+
+/**
+ * Response từ API GET /medical-records/{recordId}/full-timeline
+ */
+export interface MedicalRecordFullTimelineResponse {
+  totalVisits: number;
+  totalEpisodes: number;
+  episodes: EpisodeGroup[];
+}
+
+/**
+ * Episode Group - Đợt điều trị (bao gồm khám ban đầu + các lần tái khám)
+ */
+export interface EpisodeGroup {
+  episodeId: string;              // Root record ID
+  isCurrentEpisode: boolean;      // True nếu episode này chứa cuộc khám hiện tại
+  firstVisitDate: string;         // ISO date string - Ngày khám lần đầu của episode
+  totalVisitsInEpisode: number;   // Tổng số lần khám trong episode này
+  serviceName: string;            // Tên dịch vụ/chuyên khoa
+  rootDiagnosis: string;          // Chẩn đoán của lần khám đầu tiên
+  visits: VisitDetail[];          // Danh sách các lần khám (sorted DESC - mới nhất trước)
+}
+
+/**
+ * Visit Detail - Chi tiết một lần khám
+ */
+export interface VisitDetail {
+  recordId: string;
+  appointmentId: string;
+  appointmentDate: string;        // ISO date string
+  episodeType: 'INITIAL' | 'FOLLOW_UP';
+  parentRecordId: string | null;  // Null nếu là INITIAL, có giá trị nếu là FOLLOW_UP
+  isCurrentVisit: boolean;        // True nếu đây là cuộc khám đang xem
+  diagnosis: string;
+  symptoms: string;
+  treatment: string;
+  doctorNote: string;
+  serviceName: string;
+  visitNumberInEpisode: number;   // Số thứ tự trong episode (1, 2, 3...)
+  prescriptions: PrescriptionResponse[];
+  createdAt: string;              // ISO date string
+}
+
+/**
+ * Prescription Response từ full timeline API
+ */
+export interface PrescriptionResponse {
+  prescriptionId: string;
+  medicalName: string;
+  dosage: string;
+  frequency: string;              // Comma-separated: "MORNING,AFTERNOON,EVENING"
+  notes?: string;
+}
