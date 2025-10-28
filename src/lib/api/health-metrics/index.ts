@@ -39,6 +39,24 @@ export const HealthMetricsApi = {
   },
 
   /**
+   * Lấy panel chỉ số theo patientId và ngày cụ thể
+   * API: GET /api/v1/health-metrics/by-patient-and-date?patientId={patientId}&measuredAt={date}
+   */
+  getPanelsByPatientAndDate(params: { patientId: string; measuredAt: string }) {
+    const query = new URLSearchParams({ 
+      patientId: params.patientId,
+      measuredAt: params.measuredAt 
+    });
+    return api
+      .get<ApiEnvelope<Array<{
+        id?: string;
+        measuredAt: string;
+        metrics: Array<{ name: string; value: number | string; unit: string }>;
+      }>>>(`/api/v1/health-metrics/by-patient-and-date?${query.toString()}`)
+      .then((r) => r.data);
+  },
+
+  /**
    * Lấy chỉ số sức khỏe mới nhất của bệnh nhân
    * API: GET /api/v1/health-metrics/get-health-metrics-latest/{patientId}
    * Trả về: eGFR, Creatinine, Blood Pressure, Weight

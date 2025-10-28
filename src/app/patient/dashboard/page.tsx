@@ -130,6 +130,7 @@ export default function PatientDashboard() {
     <DashboardPage
       user={user}
       healthMetrics={healthMetrics}
+      patientId={patientId}
       todayAppointments={todayAppointments}
       recentConsultations={recentConsultations}
       prescriptionGroups={prescriptionGroups}

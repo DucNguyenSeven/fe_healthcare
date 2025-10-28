@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Plus,
   Calendar,
@@ -18,7 +18,8 @@ import {
   ArrowUp,
   ArrowDown,
   Minus,
-  CheckCircle
+  CheckCircle,
+  ChevronDown
 } from 'lucide-react';
 import type { HealthMetricLatest, HealthMetricWithComparison } from '@/types/dashboard';
 import type { TodayAppointment, PrescriptionGroup } from '@/types/dashboard';
@@ -26,6 +27,15 @@ import type { MedicalRecordWithPrescriptions } from '@/types/medical-record';
 import { format } from 'date-fns';
 import { vi } from 'date-fns/locale';
 import { PrescriptionGroupModal } from './PrescriptionGroupModal';
+import { usePatientHealthPanels } from '@/hooks/health-metrics/usePatientPanels';
+import { usePanelByDate } from '@/hooks/health-metrics/usePanelByDate';
+import {
+  getEGFRAlert,
+  getCreatinineAlert,
+  getBUNAlert,
+  getCalciumAlert,
+  getMetricNormalRange
+} from '@/types/dashboard';
 
 interface DashboardPageProps {
   user: {
@@ -34,6 +44,7 @@ interface DashboardPageProps {
     email: string;
   };
   healthMetrics: (HealthMetricLatest | HealthMetricWithComparison)[];
+  patientId?: string;
   todayAppointments: TodayAppointment[];
   recentConsultations: MedicalRecordWithPrescriptions[];
   prescriptionGroups: PrescriptionGroup[];
@@ -43,7 +54,8 @@ interface DashboardPageProps {
 
 export function DashboardPage({
   user,
-  healthMetrics,
+  healthMetrics: defaultHealthMetrics,
+  patientId,
   todayAppointments,
   recentConsultations,
   prescriptionGroups,
@@ -52,6 +64,261 @@ export function DashboardPage({
 }: DashboardPageProps) {
   const [selectedPrescriptionGroup, setSelectedPrescriptionGroup] = useState<PrescriptionGroup | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+
+  // Lấy tất cả panels để tạo dropdown
+  const { panels, loading: panelsLoading } = usePatientHealthPanels(patientId);
+
+  // Lấy panel theo ngày được chọn (nếu có)
+  const { 
+    data: selectedPanelData, 
+    isLoading: isLoadingSelectedPanel,
+    error: selectedPanelError 
+  } = usePanelByDate(patientId, selectedDate);
+
+  // Tạo danh sách ngày cho dropdown
+  const availableDates = useMemo(() => {
+    if (!panels || panels.length === 0) return [];
+    
+    return panels
+      .map(panel => ({
+        id: panel.id,
+        date: panel.measuredAt,
+        displayDate: format(new Date(panel.measuredAt), 'dd/MM/yyyy', { locale: vi }),
+        timestamp: new Date(panel.measuredAt).getTime()
+      }))
+      .sort((a, b) => b.timestamp - a.timestamp)
+      .map((item, index) => ({
+        ...item,
+        isLatest: index === 0
+      }));
+  }, [panels]);
+
+  // Helper functions để tính toán metrics
+  const getDisplayName = (metricName: string): string => {
+    const mapping: Record<string, string> = {
+      'gfr': 'eGFR',
+      'serum_creatinine': 'Creatinine huyết thanh',
+      'bun': 'Ure máu (BUN)',
+      'serum_calcium': 'Canxi huyết thanh',
+      'eGFR': 'eGFR',
+      'Creatinine': 'Creatinine huyết thanh',
+      'BUN': 'Ure máu (BUN)',
+      'Canxi máu': 'Canxi huyết thanh'
+    };
+    return mapping[metricName] || metricName;
+  };
+
+  const calculateAlert = (metricName: string, value: number) => {
+    const normalized = metricName.toLowerCase();
+    if (normalized.includes('egfr') || normalized === 'gfr') return getEGFRAlert(value);
+    if (normalized.includes('creatinine') || normalized === 'serum_creatinine') return getCreatinineAlert(value);
+    if (normalized.includes('bun') || normalized.includes('ure')) return getBUNAlert(value);
+    if (normalized.includes('canxi') || normalized.includes('calcium')) return getCalciumAlert(value);
+    return {
+      level: 'NORMAL' as const,
+      label: 'Bình thường',
+      color: 'blue',
+      bgColor: 'bg-blue-50',
+      textColor: 'text-blue-800',
+      iconColor: 'text-blue-500'
+    };
+  };
+
+  const calculateExceedance = (metricName: string, currentValue: number, normalRange: any) => {
+    const normalized = metricName.toLowerCase();
+
+    if (normalized.includes('egfr') || normalized === 'gfr') {
+      if (currentValue >= 90) return { status: 'normal' as const, message: 'Trong mức bình thường' };
+      const percentage = ((90 - currentValue) / 90) * 100;
+      return { percentage, status: 'under' as const, message: `Thấp hơn mức bình thường ${percentage.toFixed(1)}%` };
+    }
+
+    if (normalized.includes('creatinine') || normalized === 'serum_creatinine') {
+      if (currentValue <= 1.3) return { status: 'normal' as const, message: 'Trong mức bình thường' };
+      const percentage = ((currentValue - 1.3) / 1.3) * 100;
+      return { percentage, status: 'over' as const, message: `Vượt mức bình thường ${percentage.toFixed(1)}%` };
+    }
+
+    if (normalized.includes('bun') || normalized.includes('ure')) {
+      if (currentValue >= 7 && currentValue <= 20) return { status: 'normal' as const, message: 'Trong mức bình thường' };
+      if (currentValue < 7) {
+        const percentage = ((7 - currentValue) / 7) * 100;
+        return { percentage, status: 'under' as const, message: `Thấp hơn mức bình thường ${percentage.toFixed(1)}%` };
+      }
+      const percentage = ((currentValue - 20) / 20) * 100;
+      return { percentage, status: 'over' as const, message: `Vượt mức bình thường ${percentage.toFixed(1)}%` };
+    }
+
+    if (normalized.includes('canxi') || normalized.includes('calcium')) {
+      if (currentValue >= 8.5 && currentValue <= 10.5) return { status: 'normal' as const, message: 'Trong mức bình thường' };
+      if (currentValue < 8.5) {
+        const percentage = ((8.5 - currentValue) / 8.5) * 100;
+        return { percentage, status: 'under' as const, message: `Thấp hơn mức bình thường ${percentage.toFixed(1)}%` };
+      }
+      const percentage = ((currentValue - 10.5) / 10.5) * 100;
+      return { percentage, status: 'over' as const, message: `Vượt mức bình thường ${percentage.toFixed(1)}%` };
+    }
+
+    return { status: 'normal' as const, message: 'Trong mức bình thường' };
+  };
+
+  const determineTrendQuality = (metricName: string, changeDirection: 'up' | 'down' | 'stable', currentValue: number, previousValue?: number) => {
+    if (changeDirection === 'stable') return true;
+    const normalized = metricName.toLowerCase();
+    
+    if (normalized.includes('egfr') || normalized === 'gfr') return changeDirection === 'up';
+    if (normalized.includes('creatinine')) return changeDirection === 'down';
+    if (normalized.includes('bun') || normalized.includes('ure')) return changeDirection === 'down';
+    if (normalized.includes('canxi') || normalized.includes('calcium')) {
+      if (currentValue >= 8.5 && currentValue <= 10.5) return true;
+      if (currentValue < 8.5) return changeDirection === 'up';
+      if (currentValue > 10.5) return changeDirection === 'down';
+    }
+    return true;
+  };
+
+  // Tính toán healthMetrics dựa trên ngày được chọn
+  const healthMetrics = useMemo(() => {
+    // Nếu không chọn ngày → Dùng data mặc định (mới nhất)
+    if (!selectedDate || !patientId) {
+      return defaultHealthMetrics;
+    }
+
+    // Nếu đang loading → Giữ data cũ (tránh flicker)
+    if (isLoadingSelectedPanel) {
+      return defaultHealthMetrics;
+    }
+
+    // Nếu có lỗi hoặc không có data → Fallback về default
+    if (selectedPanelError || !selectedPanelData) {
+      console.warn('⚠️ No data for selected date, using default');
+      return defaultHealthMetrics;
+    }
+
+    // Tìm panel trước đó để so sánh
+    const sortedPanels = panels ? [...panels].sort((a, b) => 
+      new Date(b.measuredAt).getTime() - new Date(a.measuredAt).getTime()
+    ) : [];
+
+    const selectedIndex = sortedPanels.findIndex(p => p.measuredAt === selectedDate);
+    const previousPanel = selectedIndex !== -1 && selectedIndex < sortedPanels.length - 1 
+      ? sortedPanels[selectedIndex + 1] 
+      : null;
+
+    const selectedPanel = selectedPanelData;
+
+    const normalizeMetrics = (panel: any) => {
+      if (!panel?.metrics) return {};
+      
+      // Nếu metrics đã là object (từ usePanelByDate) → return luôn
+      if (!Array.isArray(panel.metrics)) {
+        return panel.metrics;
+      }
+      
+      // Nếu metrics là array (từ getPanelsByPatient) → normalize
+      return panel.metrics.reduce((acc: any, metric: any) => {
+        acc[metric.name.toLowerCase()] = { value: metric.value, unit: metric.unit };
+        return acc;
+      }, {});
+    };
+
+    const currentMetrics = normalizeMetrics(selectedPanel);
+    const previousMetrics = previousPanel ? normalizeMetrics(previousPanel) : {};
+
+    const priorityMetrics = [
+      { key: 'gfr', altKeys: ['egfr'] },
+      { key: 'serum_creatinine', altKeys: ['creatinine'] },
+      { key: 'bun', altKeys: ['ure máu'] },
+      { key: 'serum_calcium', altKeys: ['canxi máu', 'calcium'] }
+    ];
+
+    const results: HealthMetricWithComparison[] = [];
+
+    for (const { key, altKeys } of priorityMetrics) {
+      let metricData = currentMetrics[key];
+      let foundKey = key;
+
+      if (!metricData) {
+        for (const altKey of altKeys) {
+          if (currentMetrics[altKey]) {
+            metricData = currentMetrics[altKey];
+            foundKey = altKey;
+            break;
+          }
+        }
+      }
+
+      if (!metricData) continue;
+
+      const currentValue = Number(metricData.value);
+      const unit = metricData.unit;
+
+      let previousValue: number | undefined;
+      let previousDate: string | undefined;
+
+      if (previousPanel) {
+        let prevMetricData = previousMetrics[key];
+        if (!prevMetricData) {
+          for (const altKey of altKeys) {
+            if (previousMetrics[altKey]) {
+              prevMetricData = previousMetrics[altKey];
+              break;
+            }
+          }
+        }
+        if (prevMetricData) {
+          previousValue = Number(prevMetricData.value);
+          previousDate = previousPanel.measuredAt;
+        }
+      }
+
+      let changePercentage: number | undefined;
+      let changeDirection: 'up' | 'down' | 'stable';
+
+      if (previousValue !== undefined && previousValue !== 0) {
+        changePercentage = ((currentValue - previousValue) / previousValue) * 100;
+        if (Math.abs(changePercentage) < 2) {
+          changeDirection = 'stable';
+        } else if (changePercentage > 0) {
+          changeDirection = 'up';
+        } else {
+          changeDirection = 'down';
+        }
+      } else {
+        changeDirection = 'stable';
+      }
+
+      const isTrendGood = determineTrendQuality(foundKey, changeDirection, currentValue, previousValue);
+      const displayName = getDisplayName(foundKey);
+      const alert = calculateAlert(foundKey, currentValue);
+      const normalRange = getMetricNormalRange(foundKey);
+      const exceedance = calculateExceedance(foundKey, currentValue, normalRange);
+
+      results.push({
+        metricId: `${selectedPanel.id}-${foundKey}`,
+        patientId: patientId,
+        metricName: foundKey,
+        metricValue: currentValue,
+        unit: unit,
+        measuredAt: selectedPanel.measuredAt,
+        displayName: displayName,
+        alert: alert,
+        formattedValue: `${currentValue} ${unit}`,
+        previousMonthValue: previousValue,
+        previousMonthDate: previousDate,
+        changePercentage: changePercentage,
+        changeDirection: changeDirection,
+        isTrendGood: isTrendGood,
+        normalRange: normalRange,
+        exceedancePercentage: exceedance.percentage,
+        exceedanceStatus: exceedance.status,
+        exceedanceMessage: exceedance.message
+      });
+    }
+
+    return results;
+  }, [selectedDate, defaultHealthMetrics, panels, patientId, selectedPanelData, isLoadingSelectedPanel, selectedPanelError]);
 
   const openPrescriptionModal = (group: PrescriptionGroup) => {
     setSelectedPrescriptionGroup(group);
@@ -292,7 +559,28 @@ export function DashboardPage({
           {/* Health Metrics Card - ƯU TIÊN CHỈ SỐ SUY THẬN */}
           <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-semibold text-gray-900">Chỉ số sức khỏe</h2>
+              <div className="flex items-center gap-3">
+                <h2 className="text-xl font-semibold text-gray-900">Chỉ số sức khỏe</h2>
+                
+                {/* Dropdown chọn ngày */}
+                {availableDates.length > 0 && patientId && (
+                  <div className="relative">
+                    <select
+                      value={selectedDate || availableDates[0]?.date || ''}
+                      onChange={(e) => setSelectedDate(e.target.value || null)}
+                      className="appearance-none bg-white border border-gray-300 rounded-lg px-3 py-1.5 pr-8 text-sm text-gray-700 hover:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent cursor-pointer"
+                    >
+                      {availableDates.map((dateOption) => (
+                        <option key={dateOption.id} value={dateOption.date}>
+                          {dateOption.isLatest ? `${dateOption.displayDate} (Mới nhất)` : dateOption.displayDate}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
+                  </div>
+                )}
+              </div>
+              
               <button
                 onClick={() => onNavigate('monitoring')}
                 className="text-blue-600 hover:text-blue-700 text-sm font-medium flex items-center"
@@ -302,7 +590,16 @@ export function DashboardPage({
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-              {healthMetrics.length > 0 ? (
+              {isLoadingSelectedPanel && selectedDate ? (
+                // Loading skeleton khi đang fetch data cho ngày được chọn
+                [1, 2, 3, 4].map((i) => (
+                  <div key={i} className="p-3.5 rounded-xl border-2 border-gray-200 animate-pulse">
+                    <div className="h-4 bg-gray-200 rounded mb-2 w-3/4"></div>
+                    <div className="h-8 bg-gray-200 rounded mb-2 w-1/2"></div>
+                    <div className="h-3 bg-gray-200 rounded w-full"></div>
+                  </div>
+                ))
+              ) : healthMetrics.length > 0 ? (
                 healthMetrics.map(metric => {
                   const Icon = getMetricIcon(metric.metricName);
                   const metricWithComparison = metric as HealthMetricWithComparison;
