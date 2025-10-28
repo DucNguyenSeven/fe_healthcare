@@ -26,7 +26,7 @@ type MonitoringView = 'overview' | 'thresholds' | 'reminders';
 
 export function MonitoringPage() {
   // Get current user
-  const { data: user } = useGetMe();
+  const { data: user, isLoading: isLoadingUser } = useGetMe();
   const patientId = user?.userId || '';
 
   // View state
@@ -36,6 +36,43 @@ export function MonitoringPage() {
   // Metric selection state
   const allMetricKeys = getAllMetricKeys();
   const [selectedMetrics, setSelectedMetrics] = useState<string[]>(PRIORITY_METRICS);
+
+  // Normalize metric key from API to chart key
+  const normalizeMetricKey = (apiKey: string): string => {
+    const normalized = apiKey.toLowerCase();
+
+    // Map API keys to standardized chart keys
+    if (normalized.includes('gfr') || normalized === 'egfr') {
+      return 'gfr';
+    }
+    if (normalized.includes('creatinine')) {
+      return 'serum_creatinine';
+    }
+    if (normalized.includes('bun')) {
+      return 'bun';
+    }
+    if (normalized.includes('canxi') || normalized.includes('calcium')) {
+      return 'serum_calcium';
+    }
+    if (normalized.includes('ana')) {
+      return 'ana';
+    }
+    if (normalized.includes('c3') || normalized.includes('c4') || normalized.includes('bổ thể')) {
+      return 'c3_c4';
+    }
+    if (normalized.includes('hematuria') || normalized.includes('đái máu') || normalized.includes('hồng cầu')) {
+      return 'hematuria';
+    }
+    if (normalized.includes('oxalat')) {
+      return 'oxalate_levels';
+    }
+    if (normalized.includes('ph')) {
+      return 'urine_ph';
+    }
+
+    // Return original if no mapping found
+    return normalized;
+  };
 
   // Get alert level for metric (defined before useMemo to avoid TDZ)
   const getMetricAlert = (metricName: string, value: number) => {
@@ -72,27 +109,46 @@ export function MonitoringPage() {
 
   // Transform panel data to chart format - include all panels for timeline visualization
   const chartData = useMemo<ChartDataPoint[]>(() => {
-    if (panels.length === 0) return [];
+    if (panels.length === 0) {
+      return [];
+    }
 
-    // Convert all panels to chart data points
-    const dataPoints = panels.map(panel => {
+    // Get all unique metric keys from all panels
+    const allMetricKeysInPanels = new Set<string>();
+    panels.forEach(panel => {
+      Object.keys(panel.metrics).forEach(metricKey => {
+        const normalizedKey = normalizeMetricKey(metricKey);
+        allMetricKeysInPanels.add(normalizedKey);
+      });
+    });
+
+    // Convert all panels to chart data points with consistent keys
+    const dataPoints = panels.map((panel) => {
       const dataPoint: ChartDataPoint = {
         date: panel.measuredAt,
         timestamp: new Date(panel.measuredAt).getTime()
       };
 
-      // Add metric values
+      // Initialize all metrics as null (for missing values)
+      allMetricKeysInPanels.forEach(key => {
+        dataPoint[key] = null;
+        dataPoint[`${key}Alert`] = null;
+      });
+
+      // Add actual metric values with normalized keys
       Object.keys(panel.metrics).forEach(metricKey => {
         const metric = panel.metrics[metricKey];
         const value = typeof metric.value === 'string' ? parseFloat(metric.value) : metric.value;
 
         if (!isNaN(value)) {
-          dataPoint[metricKey] = value;
+          // Normalize the metric key to match chart expectations
+          const normalizedKey = normalizeMetricKey(metricKey);
+          dataPoint[normalizedKey] = value;
 
-          // Add alert level
+          // Add alert level using normalized key
           const alert = getMetricAlert(metricKey, value);
           if (alert) {
-            dataPoint[`${metricKey}Alert`] = alert;
+            dataPoint[`${normalizedKey}Alert`] = alert;
           }
         }
       });
@@ -113,21 +169,32 @@ export function MonitoringPage() {
       timestamp: new Date(previousPanel.measuredAt).getTime()
     };
 
+    // Initialize all selected metrics as null
+    selectedMetrics.forEach(key => {
+      dataPoint[key] = null;
+      dataPoint[`${key}Alert`] = null;
+    });
+
+    // Add actual metric values with normalized keys
     Object.keys(previousPanel.metrics).forEach(metricKey => {
       const metric = previousPanel.metrics[metricKey];
       const value = typeof metric.value === 'string' ? parseFloat(metric.value) : metric.value;
 
       if (!isNaN(value)) {
-        dataPoint[metricKey] = value;
+        // Normalize the metric key to match chart expectations
+        const normalizedKey = normalizeMetricKey(metricKey);
+        dataPoint[normalizedKey] = value;
+
+        // Add alert level using normalized key
         const alert = getMetricAlert(metricKey, value);
         if (alert) {
-          dataPoint[`${metricKey}Alert`] = alert;
+          dataPoint[`${normalizedKey}Alert`] = alert;
         }
       }
     });
 
     return [dataPoint];
-  }, [previousPanel]);
+  }, [previousPanel, selectedMetrics]);
 
   // Toggle metric visibility
   const handleMetricToggle = (metricKey: string) => {

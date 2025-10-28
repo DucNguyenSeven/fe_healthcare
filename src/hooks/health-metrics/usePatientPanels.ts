@@ -18,12 +18,15 @@ export function usePatientHealthPanels(patientId?: string) {
 
   const fetchPanels = useCallback(async () => {
     if (!patientId) return;
+    
     setLoading(true);
     setError(null);
     try {
       const res = await HealthMetricsApi.getPanelsByPatient({ patientId });
       const payload: any = (res as any)?.data ?? res as any;
+      
       if (!payload) throw new Error(((res as any)?.message) || 'Không thể tải dữ liệu');
+      
       const normalized = (payload || []).map((p: any, idx: number) => ({
         id: p.id || String(idx),
         measuredAt: p.measuredAt,
@@ -32,6 +35,7 @@ export function usePatientHealthPanels(patientId?: string) {
           return acc;
         }, {} as Record<string, { value: number | string; unit: string }>),
       })) as HealthMetricPanelRow[];
+      
       setPanels(normalized);
       setTotalElements(normalized.length);
       setTotalPages(1);
