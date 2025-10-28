@@ -19,9 +19,18 @@ export const PrescriptionList: React.FC<PrescriptionListProps> = ({ prescription
     return null;
   }
 
-  // Helper function to format frequency
-  const formatFrequency = (frequency: string): string[] => {
-    return frequency.split(',').map(f => f.trim());
+  // Helper function to format frequency - handle both string and array
+  const formatFrequency = (frequency: string | string[] | any): string[] => {
+    // Handle if frequency is already an array
+    if (Array.isArray(frequency)) {
+      return frequency;
+    }
+    // Handle if frequency is a string
+    if (typeof frequency === 'string' && frequency) {
+      return frequency.split(',').map(f => f.trim());
+    }
+    // Fallback for null/undefined/invalid
+    return [];
   };
 
   // Helper function to translate frequency
@@ -60,7 +69,14 @@ export const PrescriptionList: React.FC<PrescriptionListProps> = ({ prescription
       {expanded && (
         <div className="mt-3 space-y-2">
           {prescriptions.map((prescription, index) => {
-            const frequencies = formatFrequency(prescription.frequency);
+            // Safely format frequency
+            let frequencies: string[] = [];
+            try {
+              frequencies = formatFrequency(prescription.frequency);
+            } catch (error) {
+              console.error('Error formatting frequency:', error, prescription.frequency);
+              frequencies = [];
+            }
 
             return (
               <div
