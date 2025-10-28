@@ -754,11 +754,13 @@ export const AppointmentAndConsultationModule = ({
       medicalRecord.recordId = recordId;
 
       // BƯỚC 2: Tạo prescriptions (chỉ những dòng có thuốc)
+      console.log('🔍 [Prescriptions] Raw prescription rows:', prescriptionRows);
+
       const validPrescriptions = prescriptionRows
         .filter(row => row.drug && row.drug.trim() !== '' && row.dosage && row.usage)
         .map(row => ({
           medicalRecordId: recordId, // Sử dụng recordId đã extract
-          medicationName: row.drug,  // Changed from medicalName to match backend API
+          medicalName: row.drug,  // Backend DTO field is camelCase (matches CreatePrescriptionRequest)
           dosage: row.dosage,
           frequency: row.usage ? row.usage.split(',') : [], // Transform string to array
           startDate: row.startDate || '',
@@ -766,12 +768,55 @@ export const AppointmentAndConsultationModule = ({
           notes: row.notes || ''
         }));
 
+      console.log('🔍 [Prescriptions] Valid prescriptions count:', validPrescriptions.length);
+      console.log('🔍 [Prescriptions] Valid prescriptions data:', validPrescriptions);
+
+      // Kiểm tra nếu có prescription rows nhưng không valid → thiếu thông tin
+      if (validPrescriptions.length === 0 && prescriptionRows.length > 0) {
+        // Tìm các dòng thiếu thông tin
+        const incompletedRows = prescriptionRows.filter(row => {
+          const hasDrug = row.drug && row.drug.trim() !== '';
+          const hasDosage = row.dosage && row.dosage.trim() !== '';
+          const hasUsage = row.usage && row.usage.trim() !== '';
+          return hasDrug || hasDosage || hasUsage; // Có ít nhất 1 field được điền
+        });
+
+        if (incompletedRows.length > 0) {
+          console.warn('⚠️ [Prescriptions] Found incomplete prescription rows:', incompletedRows);
+
+          toast.error('Đơn thuốc chưa đầy đủ thông tin', {
+            description: 'Vui lòng điền đầy đủ: Tên thuốc, Liều lượng và Cách dùng cho từng loại thuốc. Hoặc xóa các dòng thuốc trống.',
+            duration: 6000,
+          });
+          return; // Dừng lại, không cho phép hoàn thành khám
+        }
+      }
+
       if (validPrescriptions.length > 0) {
+        console.log('🔍 [Prescriptions] Calling createPrescriptions API...');
         const prescriptionResult = await createPrescriptions(validPrescriptions);
 
+        console.log('🔍 [Prescriptions] Result:', {
+          successful: prescriptionResult.successful.length,
+          failed: prescriptionResult.failed.length,
+          successfulData: prescriptionResult.successful,
+          failedData: prescriptionResult.failed
+        });
+
         if (prescriptionResult.failed.length > 0) {
-          console.warn('Some prescriptions failed to create:', prescriptionResult.failed);
+          console.warn('⚠️ [Prescriptions] Some prescriptions failed to create:', prescriptionResult.failed);
+
+          toast.warning('Một số đơn thuốc không thể lưu', {
+            description: `Đã lưu ${prescriptionResult.successful.length}/${prescriptionRows.length} đơn thuốc`,
+            duration: 5000,
+          });
         }
+
+        if (prescriptionResult.successful.length > 0) {
+          console.log('✅ [Prescriptions] Successfully created:', prescriptionResult.successful.length, 'prescriptions');
+        }
+      } else {
+        console.log('⚠️ [Prescriptions] No valid prescriptions to create');
       }
 
       // BƯỚC 3: Đặt lịch tái khám (NẾU CÓ) - SỬ DỤNG API MỚI
@@ -1180,10 +1225,48 @@ export const AppointmentAndConsultationModule = ({
               icon: Brain
             }].map(tab => {
               const Icon = tab.icon;
-              return <button key={tab.id} onClick={() => setExaminationTab(tab.id)} className={`flex items-center gap-2 px-6 py-4 font-medium transition-colors border-b-2 ${examinationTab === tab.id ? 'text-[#1E75FF] border-[#1E75FF]' : 'text-[#334155] border-transparent hover:text-[#1E75FF]'}`}>
-                    <Icon size={16} />
-                    <span>{tab.label}</span>
-                  </button>;
+
+              // Tính số prescriptions hợp lệ cho badge
+              let badge = null;
+              if (tab.id === 'prescription') {
+                const validCount = prescriptionRows.filter(row =>
+                  row.drug && row.drug.trim() !== '' &&
+                  row.dosage && row.dosage.trim() !== '' &&
+                  row.usage && row.usage.trim() !== ''
+                ).length;
+                const totalCount = prescriptionRows.filter(row =>
+                  row.drug || row.dosage || row.usage
+                ).length;
+
+                if (totalCount > 0) {
+                  const isComplete = validCount === totalCount;
+                  badge = (
+                    <span className={`ml-2 px-2 py-0.5 rounded-full text-xs font-semibold ${
+                      isComplete
+                        ? 'bg-green-100 text-green-700'
+                        : 'bg-amber-100 text-amber-700'
+                    }`}>
+                      {validCount}/{totalCount}
+                    </span>
+                  );
+                }
+              }
+
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setExaminationTab(tab.id)}
+                  className={`flex items-center gap-2 px-6 py-4 font-medium transition-colors border-b-2 ${
+                    examinationTab === tab.id
+                      ? 'text-[#1E75FF] border-[#1E75FF]'
+                      : 'text-[#334155] border-transparent hover:text-[#1E75FF]'
+                  }`}
+                >
+                  <Icon size={16} />
+                  <span>{tab.label}</span>
+                  {badge}
+                </button>
+              );
             })}
             </div>
           </div>
@@ -1346,7 +1429,7 @@ export const AppointmentAndConsultationModule = ({
                               <div className="flex items-start justify-between mb-4">
                                 <div>
                                   <h5 className="font-semibold text-[#0F172A]">
-                                    Cuộc khám ngày {formatDate(record.createdAt)}
+                                    Cuộc khám ngày {formatDate(record.appointmentDate || record.createdAt)}
                                   </h5>
                                   <p className="text-sm text-[#334155]">BS. {record.doctorName} - {record.serviceName}</p>
                                 </div>
@@ -1607,10 +1690,16 @@ export const AppointmentAndConsultationModule = ({
                         <table className="w-full">
                           <thead className="bg-gray-50">
                             <tr>
-                              <th className="px-4 py-3 text-left text-sm font-medium text-[#334155]">Tên thuốc</th>
-                              <th className="px-4 py-3 text-left text-sm font-medium text-[#334155]">Liều lượng</th>
+                              <th className="px-4 py-3 text-left text-sm font-medium text-[#334155]">
+                                Tên thuốc <span className="text-red-500">*</span>
+                              </th>
+                              <th className="px-4 py-3 text-left text-sm font-medium text-[#334155]">
+                                Liều lượng <span className="text-red-500">*</span>
+                              </th>
                               <th className="px-4 py-3 text-left text-sm font-medium text-[#334155]">Số lượng</th>
-                              <th className="px-4 py-3 text-left text-sm font-medium text-[#334155]">Cách dùng</th>
+                              <th className="px-4 py-3 text-left text-sm font-medium text-[#334155]">
+                                Cách dùng <span className="text-red-500">*</span>
+                              </th>
                               <th className="px-4 py-3 text-left text-sm font-medium text-[#334155]">Ngày bắt đầu</th>
                               <th className="px-4 py-3 text-left text-sm font-medium text-[#334155]">Ngày kết thúc</th>
                               <th className="px-4 py-3 text-left text-sm font-medium text-[#334155]">Ghi chú</th>
@@ -1618,46 +1707,77 @@ export const AppointmentAndConsultationModule = ({
                             </tr>
                           </thead>
                           <tbody>
-                            {prescriptionRows.map((row, index) => <tr key={index} className="border-t border-gray-100">
-                                <td className="px-4 py-3">
-                                  <select value={row.drug} onChange={e => updatePrescriptionRow(index, 'drug', e.target.value)} className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent text-sm">
-                                    <option value="">Tìm thuốc...</option>
-                                    {drugDatabase.map(drug => <option key={drug.id} value={drug.name}>{drug.name}</option>)}
-                                  </select>
-                                </td>
-                                <td className="px-4 py-3">
-                                  <input type="text" placeholder="10mg" value={row.dosage} onChange={e => updatePrescriptionRow(index, 'dosage', e.target.value)} className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent text-sm" />
-                                </td>
-                                <td className="px-4 py-3">
-                                  <input type="number" placeholder="30" value={row.quantity} onChange={e => updatePrescriptionRow(index, 'quantity', e.target.value)} className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent text-sm" />
-                                </td>
-                                <td className="px-4 py-3">
-                                  <select value={row.usage} onChange={e => updatePrescriptionRow(index, 'usage', e.target.value)} className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent text-sm">
-                                    <option value="">Chọn cách dùng</option>
-                                    <option value="MORNING">Sáng</option>
-                                    <option value="AFTERNOON">Chiều</option>
-                                    <option value="EVENING">Tối</option>
-                                    <option value="MORNING,AFTERNOON">Sáng & Chiều</option>
-                                    <option value="MORNING,EVENING">Sáng & Tối</option>
-                                    <option value="AFTERNOON,EVENING">Chiều & Tối</option>
-                                    <option value="MORNING,AFTERNOON,EVENING">Sáng, Chiều & Tối</option>
-                                  </select>
-                                </td>
-                                <td className="px-4 py-3">
-                                  <input type="date" value={row.startDate} onChange={e => updatePrescriptionRow(index, 'startDate', e.target.value)} className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent text-sm" />
-                                </td>
-                                <td className="px-4 py-3">
-                                  <input type="date" value={row.endDate} onChange={e => updatePrescriptionRow(index, 'endDate', e.target.value)} className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent text-sm" />
-                                </td>
-                                <td className="px-4 py-3">
-                                  <input type="text" placeholder="Uống sau ăn" value={row.notes} onChange={e => updatePrescriptionRow(index, 'notes', e.target.value)} className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent text-sm" />
-                                </td>
-                                <td className="px-4 py-3 text-center">
-                                  <button onClick={() => removePrescriptionRow(index)} className="text-[#EF4444] hover:bg-[#EF4444]/10 p-1 rounded transition-colors">
-                                    <X size={16} />
-                                  </button>
-                                </td>
-                              </tr>)}
+                            {prescriptionRows.map((row, index) => {
+                              // Kiểm tra xem row có ít nhất 1 field được điền không
+                              const hasAnyData = row.drug || row.dosage || row.usage;
+                              // Nếu có data, kiểm tra required fields
+                              const missingDrug = hasAnyData && (!row.drug || row.drug.trim() === '');
+                              const missingDosage = hasAnyData && (!row.dosage || row.dosage.trim() === '');
+                              const missingUsage = hasAnyData && (!row.usage || row.usage.trim() === '');
+
+                              return (
+                                <tr key={index} className="border-t border-gray-100">
+                                  <td className="px-4 py-3">
+                                    <select
+                                      value={row.drug}
+                                      onChange={e => updatePrescriptionRow(index, 'drug', e.target.value)}
+                                      className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent text-sm ${
+                                        missingDrug ? 'border-red-300 bg-red-50' : 'border-gray-200'
+                                      }`}
+                                    >
+                                      <option value="">Tìm thuốc...</option>
+                                      {drugDatabase.map(drug => <option key={drug.id} value={drug.name}>{drug.name}</option>)}
+                                    </select>
+                                  </td>
+                                  <td className="px-4 py-3">
+                                    <input
+                                      type="text"
+                                      placeholder="10mg"
+                                      value={row.dosage}
+                                      onChange={e => updatePrescriptionRow(index, 'dosage', e.target.value)}
+                                      className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent text-sm ${
+                                        missingDosage ? 'border-red-300 bg-red-50' : 'border-gray-200'
+                                      }`}
+                                    />
+                                  </td>
+                                  <td className="px-4 py-3">
+                                    <input type="number" placeholder="30" value={row.quantity} onChange={e => updatePrescriptionRow(index, 'quantity', e.target.value)} className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent text-sm" />
+                                  </td>
+                                  <td className="px-4 py-3">
+                                    <select
+                                      value={row.usage}
+                                      onChange={e => updatePrescriptionRow(index, 'usage', e.target.value)}
+                                      className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent text-sm ${
+                                        missingUsage ? 'border-red-300 bg-red-50' : 'border-gray-200'
+                                      }`}
+                                    >
+                                      <option value="">Chọn cách dùng</option>
+                                      <option value="MORNING">Sáng</option>
+                                      <option value="AFTERNOON">Chiều</option>
+                                      <option value="EVENING">Tối</option>
+                                      <option value="MORNING,AFTERNOON">Sáng & Chiều</option>
+                                      <option value="MORNING,EVENING">Sáng & Tối</option>
+                                      <option value="AFTERNOON,EVENING">Chiều & Tối</option>
+                                      <option value="MORNING,AFTERNOON,EVENING">Sáng, Chiều & Tối</option>
+                                    </select>
+                                  </td>
+                                  <td className="px-4 py-3">
+                                    <input type="date" value={row.startDate} onChange={e => updatePrescriptionRow(index, 'startDate', e.target.value)} className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent text-sm" />
+                                  </td>
+                                  <td className="px-4 py-3">
+                                    <input type="date" value={row.endDate} onChange={e => updatePrescriptionRow(index, 'endDate', e.target.value)} className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent text-sm" />
+                                  </td>
+                                  <td className="px-4 py-3">
+                                    <input type="text" placeholder="Uống sau ăn" value={row.notes} onChange={e => updatePrescriptionRow(index, 'notes', e.target.value)} className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent text-sm" />
+                                  </td>
+                                  <td className="px-4 py-3 text-center">
+                                    <button onClick={() => removePrescriptionRow(index)} className="text-[#EF4444] hover:bg-[#EF4444]/10 p-1 rounded transition-colors">
+                                      <X size={16} />
+                                    </button>
+                                  </td>
+                                </tr>
+                              );
+                            })}
                           </tbody>
                         </table>
                       </div>

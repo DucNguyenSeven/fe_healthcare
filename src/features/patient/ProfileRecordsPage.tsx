@@ -9,9 +9,7 @@ import { usePatientHealthPanels } from '@/hooks/health-metrics/usePatientPanels'
 import { useUpdateUser } from '@/hooks/auth/useUpdateUser';
 import { useUpdateAvatar } from '@/hooks/auth/useUpdateAvatar';
 import { useGetMedicalRecords } from '@/hooks/medical-records';
-import { getMedicalRecordTimeline } from '@/lib/api/medical-records';
-import type { MedicalRecordTimelineResponse } from '@/lib/api/medical-records';
-import { MedicalRecordTimeline } from '@/components/medical-records/MedicalRecordTimeline';
+import { MedicalResultModal } from '@/components/MedicalResultModal';
 import { useSearchParams } from 'next/navigation';
 import type { GetMeResponse } from '@/types/auth';
 import type { UpdateUserRequest } from '@/lib/api/types';
@@ -119,11 +117,11 @@ export function ProfileRecordsPage(_props: ProfileRecordsPageProps = {}) {
   const [selectedRecord, setSelectedRecord] = useState<MedicalRecordWithPrescriptions | null>(null);
   const [showRecordDetailModal, setShowRecordDetailModal] = useState(false);
 
-  // Timeline state
-  const [recordDetailTab, setRecordDetailTab] = useState<'current' | 'timeline'>('current');
-  const [recordTimeline, setRecordTimeline] = useState<MedicalRecordTimelineResponse | null>(null);
-  const [loadingRecordTimeline, setLoadingRecordTimeline] = useState(false);
-  const [recordTimelineError, setRecordTimelineError] = useState<string | null>(null);
+  // NOTE: Timeline states removed - now handled by MedicalResultModal
+  // const [recordDetailTab, setRecordDetailTab] = useState<'current' | 'timeline'>('current');
+  // const [allPatientRecords, setAllPatientRecords] = useState<MedicalRecordWithEpisode[]>([]);
+  // const [loadingRecordTimeline, setLoadingRecordTimeline] = useState(false);
+  // const [recordTimelineError, setRecordTimelineError] = useState<string | null>(null);
 
   // New test result form data
   const [newTestData, setNewTestData] = useState<NewTestResult>({
@@ -955,30 +953,11 @@ export function ProfileRecordsPage(_props: ProfileRecordsPageProps = {}) {
       </div>
     </div>;
   const renderMedicalHistory = () => {
-    const handleViewDetail = async (record: MedicalRecordWithPrescriptions) => {
+    // Simplified handler - MedicalResultModal will handle timeline fetching
+    const handleViewDetail = (record: MedicalRecordWithPrescriptions) => {
+      console.log('🔍 [ProfileRecordsPage] Opening detail modal for record:', record.recordId);
       setSelectedRecord(record);
       setShowRecordDetailModal(true);
-      setRecordDetailTab('current'); // Reset to current tab
-      setRecordTimeline(null); // Reset timeline data
-      setRecordTimelineError(null); // Reset error
-
-      // Fetch timeline
-      if (record.recordId) {
-        setLoadingRecordTimeline(true);
-        try {
-          const response = await getMedicalRecordTimeline(record.recordId);
-          if (response.success && response.data) {
-            setRecordTimeline(response.data);
-          } else {
-            setRecordTimelineError(response.message || 'Không thể tải lịch sử khám');
-          }
-        } catch (err) {
-          console.error('Error fetching timeline:', err);
-          setRecordTimelineError('Có lỗi xảy ra khi tải lịch sử khám');
-        } finally {
-          setLoadingRecordTimeline(false);
-        }
-      }
     };
 
     return (
@@ -1031,7 +1010,7 @@ export function ProfileRecordsPage(_props: ProfileRecordsPageProps = {}) {
                       </div>
                       <div>
                         <h4 className="font-semibold text-[#0F172A] text-lg mb-2">
-                          Cuộc khám ngày {formatDate(record.createdAt)}
+                          Cuộc khám ngày {formatDate(record.appointmentDate || record.createdAt)}
                         </h4>
                         <div className="grid grid-cols-2 gap-4 mb-3">
                           <div className="flex items-center gap-2 text-sm text-gray-600">
@@ -1438,361 +1417,27 @@ export function ProfileRecordsPage(_props: ProfileRecordsPageProps = {}) {
   };
 
   return <div className="p-6 max-w-7xl mx-auto">
-      {/* Medical Record Detail Modal */}
-      <AnimatePresence>
-        {showRecordDetailModal && selectedRecord && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/60 flex items-center justify-center z-[9999] p-4"
-            onClick={(e) => {
-              if (e.target === e.currentTarget) {
-                setShowRecordDetailModal(false);
-                setSelectedRecord(null);
-              }
-            }}
-          >
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-white rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden relative z-[10000]"
-            >
-              {/* Appointment Info Header - Full width with rounded top corners */}
-              <div className="bg-gradient-to-r from-[#1E75FF] to-[#1659C9] p-6 text-white relative">
-                {/* Close button */}
-                <button
-                  onClick={() => {
-                    setShowRecordDetailModal(false);
-                    setSelectedRecord(null);
-                  }}
-                  className="absolute top-4 right-4 p-2 hover:bg-white/20 rounded-xl transition-colors"
-                >
-                  <X size={20} className="text-white" />
-                </button>
-
-                {/* Title */}
-                <h2 className="text-2xl font-semibold mb-6 pr-12">
-                  Chi tiết hồ sơ khám - {formatDate(selectedRecord.createdAt)}
-                </h2>
-
-                {/* Appointment Details */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-white/80 text-sm mb-1">Bác sĩ</p>
-                    <p className="font-medium">BS. {selectedRecord.doctorName}</p>
-                  </div>
-                  <div>
-                    <p className="text-white/80 text-sm mb-1">Dịch vụ</p>
-                    <p className="font-medium">{selectedRecord.serviceName}</p>
-                  </div>
-                  <div>
-                    <p className="text-white/80 text-sm mb-1">Ngày khám</p>
-                    <p className="font-medium">{formatDate(selectedRecord.createdAt)}</p>
-                  </div>
-                  {selectedRecord.followUpDate && (
-                    <div>
-                      <p className="text-white/80 text-sm mb-1">Ngày tái khám</p>
-                      <p className="font-medium">{formatDate(selectedRecord.followUpDate)}</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Tabs */}
-              <div className="px-8 pt-6 pb-0">
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => setRecordDetailTab('current')}
-                    className={`flex-1 py-3 px-4 rounded-xl font-medium transition-all ${
-                      recordDetailTab === 'current'
-                        ? 'bg-blue-600 text-white shadow-md'
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                    }`}
-                  >
-                    <span className="flex items-center justify-center gap-2">
-                      <FileText className="w-4 h-4" />
-                      Kết quả lần này
-                    </span>
-                  </button>
-                  <button
-                    onClick={() => setRecordDetailTab('timeline')}
-                    className={`flex-1 py-3 px-4 rounded-xl font-medium transition-all ${
-                      recordDetailTab === 'timeline'
-                        ? 'bg-blue-600 text-white shadow-md'
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                    }`}
-                  >
-                    <span className="flex items-center justify-center gap-2">
-                      <Calendar className="w-4 h-4" />
-                      Lịch sử khám đầy đủ
-                    </span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Scrollable Content Area */}
-              <div className="p-8 overflow-y-auto max-h-[calc(90vh-280px)]">
-                {/* Current Tab Content */}
-                {recordDetailTab === 'current' && (
-                  <div className="space-y-6">
-                {/* Patient Information */}
-                {selectedRecord.patient && (
-                  <div className="bg-blue-50 border border-blue-200 p-6 rounded-2xl mb-6">
-                    <h4 className="font-semibold text-[#0F172A] mb-4 flex items-center gap-2">
-                      <UserIcon className="w-5 h-5 text-blue-600" />
-                      Thông tin bệnh nhân
-                    </h4>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div>
-                        <p className="text-sm text-gray-600 mb-1">Họ và tên</p>
-                        <p className="font-semibold text-gray-900">{selectedRecord.patient.fullName}</p>
-                      </div>
-                      
-                      {selectedRecord.patient.email && (
-                        <div>
-                          <p className="text-sm text-gray-600 mb-1 flex items-center gap-1">
-                            <Mail className="w-4 h-4" />
-                            Email
-                          </p>
-                          <p className="font-medium text-gray-900">{selectedRecord.patient.email}</p>
-                        </div>
-                      )}
-                      
-                      {selectedRecord.patient.phone && (
-                        <div>
-                          <p className="text-sm text-gray-600 mb-1 flex items-center gap-1">
-                            <Phone className="w-4 h-4" />
-                            Số điện thoại
-                          </p>
-                          <p className="font-medium text-gray-900">{selectedRecord.patient.phone}</p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {/* Medical Details */}
-                <div className="space-y-6">
-                {/* Diagnosis */}
-                <div className="bg-gray-50 p-6 rounded-2xl">
-                  <h4 className="font-semibold text-[#0F172A] mb-3 flex items-center gap-2">
-                    <ClipboardList className="w-5 h-5 text-blue-600" />
-                    Chẩn đoán
-                  </h4>
-                  <p className="text-gray-700">{selectedRecord.diagnosis}</p>
-                </div>
-
-                {/* Symptoms */}
-                <div className="bg-gray-50 p-6 rounded-2xl">
-                  <h4 className="font-semibold text-[#0F172A] mb-3 flex items-center gap-2">
-                    <AlertTriangle className="w-5 h-5 text-orange-600" />
-                    Triệu chứng
-                  </h4>
-                  <p className="text-gray-700 whitespace-pre-line">{selectedRecord.symptoms}</p>
-                </div>
-
-                {/* Treatment */}
-                <div className="bg-gray-50 p-6 rounded-2xl">
-                  <h4 className="font-semibold text-[#0F172A] mb-3 flex items-center gap-2">
-                    <Activity className="w-5 h-5 text-green-600" />
-                    Điều trị
-                  </h4>
-                  <p className="text-gray-700">{selectedRecord.treatment}</p>
-                </div>
-
-                {/* Doctor Notes */}
-                {selectedRecord.doctorNote && (
-                  <div className="bg-amber-50 border border-amber-200 p-6 rounded-2xl">
-                    <h4 className="font-semibold text-[#0F172A] mb-3 flex items-center gap-2">
-                      <FileText className="w-5 h-5 text-amber-600" />
-                      Ghi chú của bác sĩ
-                    </h4>
-                    <p className="text-gray-700">{selectedRecord.doctorNote}</p>
-                  </div>
-                )}
-
-                {/* Prescriptions */}
-                {selectedRecord.prescriptions.length > 0 && (
-                  <div className="bg-blue-50 p-6 rounded-2xl">
-                    <h4 className="font-semibold text-[#0F172A] mb-4 flex items-center gap-2">
-                      <Pill className="w-5 h-5 text-blue-600" />
-                      Đơn thuốc ({selectedRecord.prescriptions.length} loại thuốc)
-                    </h4>
-                    <div className="space-y-3">
-                      {selectedRecord.prescriptions.map((prescription, index) => {
-                        const frequencies = parseFrequency(prescription.frequency);
-                        return (
-                          <div
-                            key={prescription.prescriptionId}
-                            className="bg-white p-4 rounded-xl border border-blue-200"
-                          >
-                            <div className="flex items-start justify-between mb-3">
-                              <div className="flex items-start gap-3">
-                                <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
-                                  <span className="text-sm font-medium text-blue-600">
-                                    {index + 1}
-                                  </span>
-                                </div>
-                                <div>
-                                  <h5 className="font-semibold text-gray-900 mb-1">
-                                    {prescription.medicationName}
-                                  </h5>
-                                  <p className="text-sm text-gray-600">
-                                    Liều lượng: <span className="font-medium">{prescription.dosage}</span>
-                                  </p>
-                                </div>
-                              </div>
-                            </div>
-                            <div className="grid grid-cols-2 gap-4 text-sm">
-                              <div>
-                                <p className="text-gray-600 mb-1">Tần suất:</p>
-                                <div className="flex flex-wrap gap-1">
-                                  {frequencies.map((freq, idx) => (
-                                    <span
-                                      key={idx}
-                                      className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full font-medium"
-                                    >
-                                      {frequencyMap[freq] || freq}
-                                    </span>
-                                  ))}
-                                </div>
-                              </div>
-                              <div>
-                                <p className="text-gray-600 mb-1">Thời gian:</p>
-                                <p className="font-medium text-gray-900">
-                                  {formatDate(prescription.startDate)} - {formatDate(prescription.endDate)}
-                                </p>
-                              </div>
-                            </div>
-                            {prescription.notes && (
-                              <div className="mt-3 pt-3 border-t border-gray-200">
-                                <p className="text-sm text-gray-600">
-                                  <span className="font-medium">Ghi chú:</span> {prescription.notes}
-                                </p>
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-
-                {/* Doctor Signature */}
-                {selectedRecord.signatureUrl && (
-                  <div className="bg-indigo-50 border border-indigo-200 p-6 rounded-2xl">
-                    <h4 className="font-semibold text-[#0F172A] mb-4 flex items-center gap-2">
-                      <FileText className="w-5 h-5 text-indigo-600" />
-                      Chữ ký bác sĩ
-                    </h4>
-                    <div className="flex justify-center">
-                      <img
-                        src={selectedRecord.signatureUrl}
-                        alt="Chữ ký bác sĩ"
-                        className="max-w-[300px] h-auto border border-indigo-300 rounded-xl bg-white p-4"
-                      />
-                    </div>
-                  </div>
-                )}
-                </div>
-
-                {/* Close Button for Current Tab */}
-                <div className="mt-6 flex justify-end">
-                  <button
-                    onClick={() => {
-                      setShowRecordDetailModal(false);
-                      setSelectedRecord(null);
-                    }}
-                    className="px-6 py-3 bg-gray-200 text-gray-700 rounded-2xl hover:bg-gray-300 transition-colors font-medium"
-                  >
-                    Đóng
-                  </button>
-                </div>
-                  </div>
-                )}
-
-                {/* Timeline Tab Content */}
-                {recordDetailTab === 'timeline' && (
-                  <div className="space-y-6">
-                    {/* Loading State for Timeline */}
-                    {loadingRecordTimeline && (
-                      <div className="flex items-center justify-center py-12">
-                        <Loader2 className="w-8 h-8 animate-spin text-blue-500 mr-3" />
-                        <span className="text-gray-600">Đang tải lịch sử khám...</span>
-                      </div>
-                    )}
-
-                    {/* Timeline Error State */}
-                    {recordTimelineError && !loadingRecordTimeline && (
-                      <div className="bg-red-50 border border-red-200 rounded-xl p-6">
-                        <div className="flex items-center">
-                          <AlertTriangle className="w-6 h-6 text-red-500 mr-3" />
-                          <div>
-                            <h3 className="font-medium text-red-800">Không thể tải lịch sử khám</h3>
-                            <p className="text-red-600 mt-1">{recordTimelineError}</p>
-                          </div>
-                        </div>
-                        <button
-                          onClick={async () => {
-                            if (selectedRecord?.recordId) {
-                              setLoadingRecordTimeline(true);
-                              setRecordTimelineError(null);
-                              try {
-                                const response = await getMedicalRecordTimeline(selectedRecord.recordId);
-                                if (response.success && response.data) {
-                                  setRecordTimeline(response.data);
-                                } else {
-                                  setRecordTimelineError(response.message || 'Không thể tải lịch sử khám');
-                                }
-                              } catch (err) {
-                                setRecordTimelineError('Có lỗi xảy ra khi tải lịch sử khám');
-                              } finally {
-                                setLoadingRecordTimeline(false);
-                              }
-                            }
-                          }}
-                          className="mt-3 px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors text-sm"
-                        >
-                          Thử lại
-                        </button>
-                      </div>
-                    )}
-
-                    {/* Timeline Component */}
-                    {recordTimeline && !loadingRecordTimeline && !recordTimelineError && (
-                      <div className="bg-gray-50 p-6 rounded-2xl">
-                        <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                          <Calendar className="w-5 h-5 text-blue-600" />
-                          Lịch sử khám bệnh đầy đủ
-                        </h3>
-                        <MedicalRecordTimeline
-                          rootRecord={recordTimeline.rootRecord}
-                          followUpRecords={recordTimeline.followUpRecords}
-                        />
-                      </div>
-                    )}
-
-                    {/* Close Button for Timeline Tab */}
-                    <div className="mt-6 flex justify-end">
-                      <button
-                        onClick={() => {
-                          setShowRecordDetailModal(false);
-                          setSelectedRecord(null);
-                        }}
-                        className="px-6 py-3 bg-gray-200 text-gray-700 rounded-2xl hover:bg-gray-300 transition-colors font-medium"
-                      >
-                        Đóng
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* Medical Record Detail Modal - Using shared MedicalResultModal component */}
+      {/* Only render modal when selectedRecord exists to avoid console error */}
+      {showRecordDetailModal && selectedRecord && (
+        <MedicalResultModal
+          isOpen={showRecordDetailModal}
+          onClose={() => {
+            setShowRecordDetailModal(false);
+            setSelectedRecord(null);
+          }}
+          record={selectedRecord}
+          patientInfo={{
+            name: user?.fullName || 'Bệnh nhân',
+            id: user?.userId || '',
+            phone: user?.phone || '',
+            email: user?.email || ''
+          }}
+          doctorInfo={{
+            name: selectedRecord.doctorName || 'Bác sĩ'
+          }}
+        />
+      )}
 
       {/* Success Notification */}
       <AnimatePresence>

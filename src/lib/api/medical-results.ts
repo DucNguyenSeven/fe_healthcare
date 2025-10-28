@@ -9,6 +9,7 @@ export interface MedicalRecord {
   treatment?: string;
   doctorNote?: string;
   followUpDate?: string;
+  appointmentDate?: string; // The actual appointment date (added by backend)
   serviceName?: string;
   statusHealth?: string;
   signatureUrl?: string;

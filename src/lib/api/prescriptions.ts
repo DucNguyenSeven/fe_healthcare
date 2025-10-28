@@ -4,7 +4,7 @@ import type { GetPrescriptionGroupsResponse } from '@/types/dashboard';
 // Types
 export interface CreatePrescriptionRequest {
   medicalRecordId: string;
-  medicationName: string;  // Changed from medicalName to match backend API
+  medicalName: string;  // Backend DTO field is camelCase (matches Java naming)
   dosage: string;
   frequency: string[];
   startDate?: string;
@@ -15,7 +15,7 @@ export interface CreatePrescriptionRequest {
 export interface CreatePrescriptionResponse {
   prescriptionId: string;
   medicalRecordId: string;
-  medicationName: string;  // Changed from medicalName to match backend API
+  medicalName: string;  // Backend DTO field is camelCase
   dosage: string;
   frequency: string[];
   startDate?: string;
@@ -36,12 +36,26 @@ export const createPrescription = async (
   data: CreatePrescriptionRequest
 ): Promise<ApiResponse<CreatePrescriptionResponse>> => {
   try {
+    console.log('🔍 [API - createPrescription] Request data:', data);
+    console.log('🔍 [API - createPrescription] Field check:', {
+      has_medical_name: 'medical_name' in data,
+      medical_name_value: (data as any).medical_name,
+      has_medicationName: 'medicationName' in data,
+      medicationName_value: (data as any).medicationName,
+      all_keys: Object.keys(data)
+    });
     const response = await api.post('/api/v1/prescriptions/create', data);
+    console.log('✅ [API - createPrescription] Response:', response.data);
     return {
       success: true,
       data: response.data.data, // Lấy data.data thay vì data
     };
   } catch (error: any) {
+    console.error('❌ [API - createPrescription] Error:', {
+      message: error.response?.data?.message || error.message,
+      status: error.response?.status,
+      data: error.response?.data
+    });
     return {
       success: false,
       message: error.response?.data?.message || error.message || 'Có lỗi xảy ra khi tạo đơn thuốc',

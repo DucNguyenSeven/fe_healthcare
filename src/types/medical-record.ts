@@ -12,6 +12,7 @@ export interface MedicalRecord {
   treatment?: string;
   doctorNote?: string;
   followUpDate?: string | null;
+  appointmentDate?: string; // The actual appointment date (added by backend)
   imageAttachments?: string[];
   signatureUrl?: string | null; // Contains doctor's full name (not an image URL)
   stage?: number;

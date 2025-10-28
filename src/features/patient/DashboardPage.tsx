@@ -471,7 +471,7 @@ export function DashboardPage({
                       <div className="flex-1 min-w-0">
                         <p className="font-medium text-gray-900">{record.doctorName}</p>
                         <p className="text-sm text-gray-600 truncate">
-                          {record.serviceName} - {format(new Date(record.createdAt), 'dd/MM/yyyy', { locale: vi })}
+                          {record.serviceName} - {format(new Date(record.appointmentDate || record.createdAt), 'dd/MM/yyyy', { locale: vi })}
                         </p>
                       </div>
                       <button className="text-blue-600 hover:text-blue-700 text-sm font-medium whitespace-nowrap">

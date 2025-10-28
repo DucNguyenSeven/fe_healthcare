@@ -85,6 +85,17 @@ export const getMedicalRecordsByPatientId = async (
       `/api/v1/medical-records/patient/${patientId}?${queryParams.toString()}`
     );
 
+    // Log để kiểm tra xem backend có trả về appointmentDate không
+    console.log('🔍 [API - getMedicalRecordsByPatientId] Response:', {
+      totalRecords: response.data.data?.records?.length || 0,
+      firstRecord: response.data.data?.records?.[0] ? {
+        recordId: response.data.data.records[0].recordId,
+        appointmentDate: response.data.data.records[0].appointmentDate,
+        createdAt: response.data.data.records[0].createdAt,
+        hasAppointmentDate: !!response.data.data.records[0].appointmentDate
+      } : 'No records'
+    });
+
     return {
       success: true,
       data: response.data.data,
@@ -108,6 +119,14 @@ export const getMedicalRecordById = async (
     const response = await api.get<ApiResponse<MedicalRecordWithPrescriptions>>(
       `/api/v1/medical-records/${recordId}`
     );
+
+    // Log để kiểm tra xem backend có trả về appointmentDate không
+    console.log('🔍 [API - getMedicalRecordById] Response:', {
+      recordId: response.data.data?.recordId,
+      appointmentDate: response.data.data?.appointmentDate,
+      createdAt: response.data.data?.createdAt,
+      hasAppointmentDate: !!response.data.data?.appointmentDate
+    });
 
     return {
       success: true,

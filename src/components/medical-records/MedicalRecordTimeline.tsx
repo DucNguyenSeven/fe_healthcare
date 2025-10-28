@@ -5,17 +5,15 @@ import { Calendar, Pill, FileText, User, TrendingUp, TrendingDown, Minus } from 
 import type { MedicalRecordWithEpisode } from '@/lib/api/medical-records';
 
 interface MedicalRecordTimelineProps {
-  rootRecord: MedicalRecordWithEpisode;
-  followUpRecords: MedicalRecordWithEpisode[];
+  allRecords: MedicalRecordWithEpisode[];
 }
 
 /**
  * Component hiển thị timeline lịch sử khám bệnh
- * Bao gồm record gốc (INITIAL) và tất cả các lần tái khám (FOLLOW_UP)
+ * Hiển thị TẤT CẢ các record của bệnh nhân theo thứ tự thời gian (cũ → mới)
  */
 export const MedicalRecordTimeline: React.FC<MedicalRecordTimelineProps> = ({
-  rootRecord,
-  followUpRecords,
+  allRecords,
 }) => {
   const formatDate = (dateString: string) => {
     try {
@@ -40,8 +38,9 @@ export const MedicalRecordTimeline: React.FC<MedicalRecordTimelineProps> = ({
     }
   };
 
-  const renderRecord = (record: MedicalRecordWithEpisode, index: number, isRoot: boolean) => {
-    const isLast = !isRoot && index === followUpRecords.length - 1;
+  const renderRecord = (record: MedicalRecordWithEpisode, index: number, totalRecords: number) => {
+    const isLast = index === totalRecords - 1;
+    const isFirst = index === 0;
 
     return (
       <div key={record.recordId} className="relative pb-8 last:pb-0">
@@ -55,12 +54,12 @@ export const MedicalRecordTimeline: React.FC<MedicalRecordTimelineProps> = ({
           {/* Icon Circle */}
           <div
             className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center z-10 ${
-              isRoot
+              isFirst
                 ? 'bg-blue-500 text-white'
                 : 'bg-green-500 text-white'
             }`}
           >
-            {isRoot ? (
+            {isFirst ? (
               <FileText className="w-4 h-4" />
             ) : (
               <TrendingUp className="w-4 h-4" />
@@ -74,17 +73,17 @@ export const MedicalRecordTimeline: React.FC<MedicalRecordTimelineProps> = ({
               <div>
                 <span
                   className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                    isRoot
+                    isFirst
                       ? 'bg-blue-100 text-blue-800'
                       : 'bg-green-100 text-green-800'
                   }`}
                 >
-                  {isRoot ? 'Khám đầu' : `Tái khám lần ${index + 1}`}
+                  Lần khám {index + 1}
                 </span>
                 <div className="mt-1 flex items-center gap-2 text-sm text-gray-500">
                   <Calendar className="w-3.5 h-3.5" />
                   <span>
-                    {formatDate(record.createdAt)} • {formatTime(record.createdAt)}
+                    {formatDate(record.appointmentDate || record.createdAt)} • {formatTime(record.appointmentDate || record.createdAt)}
                   </span>
                 </div>
               </div>
@@ -142,7 +141,7 @@ export const MedicalRecordTimeline: React.FC<MedicalRecordTimelineProps> = ({
                             {prescription.medicationName}
                           </p>
                           <p className="text-gray-600">
-                            {prescription.dosage} - {prescription.frequency?.join(', ')}
+                            {prescription.dosage} - {Array.isArray(prescription.frequency) ? prescription.frequency.join(', ') : prescription.frequency}
                           </p>
                           {prescription.notes && (
                             <p className="text-gray-500 italic">{prescription.notes}</p>
@@ -182,7 +181,7 @@ export const MedicalRecordTimeline: React.FC<MedicalRecordTimelineProps> = ({
     );
   };
 
-  if (!rootRecord) {
+  if (!allRecords || allRecords.length === 0) {
     return (
       <div className="text-center py-8 text-gray-500">
         Không có dữ liệu lịch sử khám
@@ -192,18 +191,9 @@ export const MedicalRecordTimeline: React.FC<MedicalRecordTimelineProps> = ({
 
   return (
     <div className="space-y-0">
-      {/* Root Record */}
-      {renderRecord(rootRecord, 0, true)}
-
-      {/* Follow-up Records */}
-      {followUpRecords && followUpRecords.length > 0 ? (
-        followUpRecords.map((record, index) => renderRecord(record, index, false))
-      ) : (
-        <div className="relative pl-12 pt-4">
-          <div className="text-sm text-gray-500 bg-gray-50 rounded-lg p-4 border border-gray-200">
-            <p className="font-medium">Chưa có lần tái khám nào</p>
-          </div>
-        </div>
+      {/* Render tất cả records theo thứ tự thời gian */}
+      {allRecords.map((record, index) =>
+        renderRecord(record, index, allRecords.length)
       )}
     </div>
   );
