@@ -1426,7 +1426,7 @@ export function ProfileRecordsPage(_props: ProfileRecordsPageProps = {}) {
             setShowRecordDetailModal(false);
             setSelectedRecord(null);
           }}
-          record={selectedRecord}
+          appointmentId={selectedRecord.appointmentId}
           patientInfo={{
             name: user?.fullName || 'Bệnh nhân',
             id: user?.userId || '',
