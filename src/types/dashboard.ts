@@ -92,7 +92,7 @@ export type MedicationFrequency = 'MORNING' | 'AFTERNOON' | 'EVENING';
  */
 export interface PrescriptionItem {
   prescriptionId: string;
-  medicationName: string;  // Changed from medicalName to match backend API
+  medicalName: string;  // Backend DTO field (matches CreatePrescriptionRequest and response)
   dosage: string;
   frequency: MedicationFrequency[];
   notes?: string;

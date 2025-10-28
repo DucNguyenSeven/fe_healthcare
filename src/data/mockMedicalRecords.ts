@@ -16,7 +16,7 @@ export const mockMedicalRecords: MockMedicalRecord[] = [
     prescriptions: [
       {
         prescriptionId: '211e4b06-fadc-49c2-9b6a-49020a08dcb3',
-        medicationName: 'Furosemide 40mg',
+        medicalName: 'Furosemide 40mg',
         dosage: '12',
         frequency: '{EVENING}',
         startDate: '2025-09-30',
@@ -25,7 +25,7 @@ export const mockMedicalRecords: MockMedicalRecord[] = [
       },
       {
         prescriptionId: '351bba33-e55a-4a4f-b666-e442b34533b3',
-        medicationName: 'Furosemide 40mg',
+        medicalName: 'Furosemide 40mg',
         dosage: '40',
         frequency: '{MORNING, AFTERNOON}',
         startDate: '2025-09-23',
@@ -34,7 +34,7 @@ export const mockMedicalRecords: MockMedicalRecord[] = [
       },
       {
         prescriptionId: '5acc5326-7dc0-439a-82bb-e8184ecd57a3',
-        medicationName: 'Metformin 500mg',
+        medicalName: 'Metformin 500mg',
         dosage: '12',
         frequency: '{MORNING, EVENING}',
         startDate: '2025-09-30',
@@ -43,7 +43,7 @@ export const mockMedicalRecords: MockMedicalRecord[] = [
       },
       {
         prescriptionId: '9c95ad4f-9b69-4d77-af33-795ec093ec46',
-        medicationName: 'Lisinopril 10mg',
+        medicalName: 'Lisinopril 10mg',
         dosage: '23',
         frequency: '{MORNING, AFTERNOON, EVENING}',
         startDate: '2025-09-30',
@@ -52,7 +52,7 @@ export const mockMedicalRecords: MockMedicalRecord[] = [
       },
       {
         prescriptionId: 'aa019be8-482c-45bf-824c-5ece2474fa02',
-        medicationName: 'Amlodipine 5mg',
+        medicalName: 'Amlodipine 5mg',
         dosage: '12',
         frequency: '{EVENING}',
         startDate: '2025-09-30',
@@ -61,7 +61,7 @@ export const mockMedicalRecords: MockMedicalRecord[] = [
       },
       {
         prescriptionId: 'e6813a28-0241-4378-b04f-66d592643266',
-        medicationName: 'Amlodipine 5mg',
+        medicalName: 'Amlodipine 5mg',
         dosage: '1',
         frequency: '{AFTERNOON}',
         startDate: '2025-09-30',
@@ -85,7 +85,7 @@ export const mockMedicalRecords: MockMedicalRecord[] = [
     prescriptions: [
       {
         prescriptionId: 'a36baa24-71fb-4ff0-9f95-d8fee69a4bd4',
-        medicationName: 'Lisinopril 10mg',
+        medicalName: 'Lisinopril 10mg',
         dosage: '10',
         frequency: '{AFTERNOON, EVENING}',
         startDate: '2025-09-23',
@@ -94,7 +94,7 @@ export const mockMedicalRecords: MockMedicalRecord[] = [
       },
       {
         prescriptionId: 'afb616f2-c92c-45f4-b8bd-4e0807fb1c7f7',
-        medicationName: 'Atorvastatin 20mg',
+        medicalName: 'Atorvastatin 20mg',
         dosage: '20',
         frequency: '{AFTERNOON, EVENING}',
         startDate: '2025-09-23',
@@ -118,7 +118,7 @@ export const mockMedicalRecords: MockMedicalRecord[] = [
     prescriptions: [
       {
         prescriptionId: '4bf27457-7607-443d-a546-04657167361',
-        medicationName: 'Metformin 500mg',
+        medicalName: 'Metformin 500mg',
         dosage: '12',
         frequency: '{AFTERNOON, MORNING, EVENING}',
         startDate: '2025-09-30',
@@ -127,7 +127,7 @@ export const mockMedicalRecords: MockMedicalRecord[] = [
       },
       {
         prescriptionId: '51f20a8b-cfa1-4619-93d1-50965527ea7b',
-        medicationName: 'Amlodipine 5mg',
+        medicalName: 'Amlodipine 5mg',
         dosage: '12',
         frequency: '{MORNING, EVENING}',
         startDate: '2025-09-30',

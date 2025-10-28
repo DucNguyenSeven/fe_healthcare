@@ -20,7 +20,7 @@ export interface MedicalRecord {
 export interface Prescription {
   prescriptionId: string;
   medicalRecordId: string;
-  medicationName: string;  // Changed from medicalName to match backend API
+  medicalName: string;  // Backend DTO field (matches CreatePrescriptionRequest and response)
   dosage: string;
   frequency: string[];
   startDate: string;

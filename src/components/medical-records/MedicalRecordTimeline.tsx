@@ -138,7 +138,7 @@ export const MedicalRecordTimeline: React.FC<MedicalRecordTimelineProps> = ({
                         <span className="text-gray-500">{idx + 1}.</span>
                         <div className="flex-1">
                           <p className="font-medium text-gray-900">
-                            {prescription.medicationName}
+                            {prescription.medicalName}
                           </p>
                           <p className="text-gray-600">
                             {prescription.dosage} - {Array.isArray(prescription.frequency) ? prescription.frequency.join(', ') : prescription.frequency}

@@ -112,7 +112,7 @@ export function PrescriptionGroupModal({
                         </div>
                         <div>
                           <h4 className="font-semibold text-gray-900 text-lg">
-                            {prescription.medicationName}
+                            {prescription.medicalName}
                           </h4>
                           <p className="text-gray-600 text-sm mt-1">
                             <span className="font-medium">Liều lượng:</span> {prescription.dosage}

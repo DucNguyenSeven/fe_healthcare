@@ -1483,7 +1483,7 @@ export const AppointmentAndConsultationModule = ({
                                             className="bg-blue-50 p-3 rounded-xl border border-blue-200"
                                           >
                                             <p className="font-medium text-[#0F172A] text-sm mb-1">
-                                              {prescription.medicationName}
+                                              {prescription.medicalName}
                                             </p>
                                             <p className="text-xs text-[#334155] mb-2">
                                               Liều: {prescription.dosage}

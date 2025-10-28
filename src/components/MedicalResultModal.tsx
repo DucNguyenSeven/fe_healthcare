@@ -401,7 +401,7 @@ export function MedicalResultModal({ isOpen, onClose, appointmentId, patientInfo
                             </div>
                             <div>
                               <h5 className="font-semibold text-gray-900 mb-1">
-                                {prescription.medicationName}
+                                {prescription.medicalName}
                               </h5>
                               <p className="text-sm text-gray-600">
                                 Liều lượng: <span className="font-medium">{prescription.dosage}</span>

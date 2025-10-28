@@ -1079,13 +1079,13 @@ export function ProfileRecordsPage(_props: ProfileRecordsPageProps = {}) {
                               className="bg-blue-50 p-3 rounded-xl"
                             >
                               <div className="flex items-start justify-between">
-                                <div>
-                                  <p className="font-medium text-gray-900 text-sm">
-                                    {prescription.medicationName}
-                                  </p>
-                                  <p className="text-xs text-gray-600 mt-1">
-                                    Liều: {prescription.dosage}
-                                  </p>
+                              <div>
+                                <p className="font-medium text-gray-900 text-sm">
+                                  {prescription.medicalName}
+                                </p>
+                                <p className="text-xs text-gray-600 mt-1">
+                                  Liều: {prescription.dosage}
+                                </p>
                                   <div className="flex items-center gap-1 mt-1">
                                     {frequencies.map((freq, idx) => (
                                       <span
