@@ -70,33 +70,39 @@ export function MonitoringPage() {
     error
   } = useHealthPanelComparison(patientId, selectedPanelId);
 
-  // Transform panel data to chart format
+  // Transform panel data to chart format - include all panels for timeline visualization
   const chartData = useMemo<ChartDataPoint[]>(() => {
-    if (!currentPanel) return [];
+    if (panels.length === 0) return [];
 
-    const dataPoint: ChartDataPoint = {
-      date: currentPanel.measuredAt,
-      timestamp: new Date(currentPanel.measuredAt).getTime()
-    };
+    // Convert all panels to chart data points
+    const dataPoints = panels.map(panel => {
+      const dataPoint: ChartDataPoint = {
+        date: panel.measuredAt,
+        timestamp: new Date(panel.measuredAt).getTime()
+      };
 
-    // Add metric values
-    Object.keys(currentPanel.metrics).forEach(metricKey => {
-      const metric = currentPanel.metrics[metricKey];
-      const value = typeof metric.value === 'string' ? parseFloat(metric.value) : metric.value;
+      // Add metric values
+      Object.keys(panel.metrics).forEach(metricKey => {
+        const metric = panel.metrics[metricKey];
+        const value = typeof metric.value === 'string' ? parseFloat(metric.value) : metric.value;
 
-      if (!isNaN(value)) {
-        dataPoint[metricKey] = value;
+        if (!isNaN(value)) {
+          dataPoint[metricKey] = value;
 
-        // Add alert level
-        const alert = getMetricAlert(metricKey, value);
-        if (alert) {
-          dataPoint[`${metricKey}Alert`] = alert;
+          // Add alert level
+          const alert = getMetricAlert(metricKey, value);
+          if (alert) {
+            dataPoint[`${metricKey}Alert`] = alert;
+          }
         }
-      }
+      });
+
+      return dataPoint;
     });
 
-    return [dataPoint];
-  }, [currentPanel]);
+    // Sort by timestamp ascending (oldest to newest) for proper line chart rendering
+    return dataPoints.sort((a, b) => a.timestamp - b.timestamp);
+  }, [panels]);
 
   // Previous panel chart data
   const previousChartData = useMemo<ChartDataPoint[]>(() => {

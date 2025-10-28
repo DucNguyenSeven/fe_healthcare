@@ -24,14 +24,19 @@ export function TestHistoryTimeline({
     return null;
   }
 
-  // Find current panel index
+  // panels is sorted newest first, but we need to display oldest to newest (left to right)
+  const oldestToNewest = [...panels].reverse();
+
+  // Find current panel index in original array (newest first)
   const currentIndex = selectedPanelId
     ? panels.findIndex(p => p.id === selectedPanelId)
     : 0;
 
   const currentPanel = panels[currentIndex] || panels[0];
-  const hasNext = currentIndex > 0; // Newer
-  const hasPrevious = currentIndex < panels.length - 1; // Older
+  const previousPanel = panels[currentIndex + 1] || null; // Panel for comparison (older)
+  
+  const hasNext = currentIndex > 0; // Newer panel available
+  const hasPrevious = currentIndex < panels.length - 1; // Older panel available
 
   const handleNext = () => {
     if (hasNext) {
@@ -52,9 +57,9 @@ export function TestHistoryTimeline({
       {/* Timeline visualization */}
       <div className="relative mb-6">
         <div className="flex items-center justify-between">
-          {panels.slice(0, Math.min(5, panels.length)).map((panel, index) => {
+          {oldestToNewest.slice(0, Math.min(5, oldestToNewest.length)).map((panel, index) => {
             const isSelected = panel.id === currentPanel.id;
-            const isComparing = index === currentIndex + 1; // Next panel is comparison
+            const isComparing = previousPanel ? panel.id === previousPanel.id : false;
 
             return (
               <button
@@ -94,16 +99,16 @@ export function TestHistoryTimeline({
                 </div>
 
                 {/* Connector line */}
-                {index < Math.min(4, panels.length - 1) && (
+                {index < Math.min(4, oldestToNewest.length - 1) && (
                   <div className="absolute top-2 left-6 w-full h-0.5 bg-gray-300" style={{ width: 'calc(100% - 1.5rem)' }} />
                 )}
               </button>
             );
           })}
 
-          {panels.length > 5 && (
+          {oldestToNewest.length > 5 && (
             <div className="text-xs text-gray-500 ml-2">
-              +{panels.length - 5} xét nghiệm
+              +{oldestToNewest.length - 5} xét nghiệm
             </div>
           )}
         </div>
