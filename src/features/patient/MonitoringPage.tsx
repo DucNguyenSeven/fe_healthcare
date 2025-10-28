@@ -37,6 +37,26 @@ export function MonitoringPage() {
   const allMetricKeys = getAllMetricKeys();
   const [selectedMetrics, setSelectedMetrics] = useState<string[]>(PRIORITY_METRICS);
 
+  // Get alert level for metric (defined before useMemo to avoid TDZ)
+  const getMetricAlert = (metricName: string, value: number) => {
+    const normalized = metricName.toLowerCase();
+
+    if (normalized.includes('gfr')) {
+      return getEGFRAlert(value).level;
+    }
+    if (normalized.includes('creatinine')) {
+      return getCreatinineAlert(value).level;
+    }
+    if (normalized.includes('bun')) {
+      return getBUNAlert(value).level;
+    }
+    if (normalized.includes('calcium') || normalized.includes('canxi')) {
+      return getCalciumAlert(value).level;
+    }
+
+    return 'NORMAL';
+  };
+
   // Fetch comparison data
   const {
     panels,
@@ -112,26 +132,6 @@ export function MonitoringPage() {
         return [...prev, metricKey];
       }
     });
-  };
-
-  // Get alert level for metric
-  const getMetricAlert = (metricName: string, value: number) => {
-    const normalized = metricName.toLowerCase();
-
-    if (normalized.includes('gfr')) {
-      return getEGFRAlert(value).level;
-    }
-    if (normalized.includes('creatinine')) {
-      return getCreatinineAlert(value).level;
-    }
-    if (normalized.includes('bun')) {
-      return getBUNAlert(value).level;
-    }
-    if (normalized.includes('calcium') || normalized.includes('canxi')) {
-      return getCalciumAlert(value).level;
-    }
-
-    return 'NORMAL';
   };
 
   // Loading state
