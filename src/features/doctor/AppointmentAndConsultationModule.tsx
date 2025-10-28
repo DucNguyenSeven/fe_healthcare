@@ -975,96 +975,46 @@ export const AppointmentAndConsultationModule = ({
     return [...weekAppointments, ...completedAppointmentsNormalized];
   }, [doctorWeekAppointments, completedAppointments]);
 
-  // Helper: Categorize pending appointments by urgency
-  const categorizePendingAppointments = (appointments: any[]) => {
+  // Helper: Categorize appointments by time - UNIFIED for all tabs (similar to patient page)
+  const categorizeAppointmentsByTime = (appointments: any[]) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const upcoming: any[] = []; // Hôm nay & Ngày mai
-    const thisWeek: any[] = []; // 2-7 ngày tới
-    const later: any[] = []; // > 7 ngày
+    const futureAppointments: any[] = [];
+    const todayAppointments: any[] = [];
+    const pastAppointments: any[] = [];
 
     appointments.forEach(apt => {
       const aptDate = new Date(apt.date);
       aptDate.setHours(0, 0, 0, 0);
-      const daysDiff = Math.ceil((aptDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 
-      if (daysDiff >= 0 && daysDiff <= 1) {
-        upcoming.push(apt);
-      } else if (daysDiff > 1 && daysDiff <= 7) {
-        thisWeek.push(apt);
-      } else if (daysDiff > 7) {
-        later.push(apt);
+      if (aptDate.getTime() === today.getTime()) {
+        todayAppointments.push(apt);
+      } else if (aptDate.getTime() > today.getTime()) {
+        futureAppointments.push(apt);
+      } else {
+        pastAppointments.push(apt);
       }
     });
 
-    // Sort each category by: date ASC (earlier first), then createdAt ASC (FIFO within same date)
-    const sortByDateThenCreated = (a: any, b: any) => {
-      const dateCompare = new Date(a.date).getTime() - new Date(b.date).getTime();
-      if (dateCompare !== 0) return dateCompare;
-
-      // If same date, sort by time
-      const timeCompare = a.time.localeCompare(b.time);
-      if (timeCompare !== 0) return timeCompare;
-
-      // If same date+time, FIFO by creation time (if available)
-      if (a.createdAt && b.createdAt) {
-        return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
-      }
-      return 0;
-    };
-
-    upcoming.sort(sortByDateThenCreated);
-    thisWeek.sort(sortByDateThenCreated);
-    later.sort(sortByDateThenCreated);
-
-    return { upcoming, thisWeek, later };
-  };
-
-  // Helper: Categorize confirmed appointments
-  const categorizeConfirmedAppointments = (appointments: any[]) => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    const todayAppts: any[] = [];
-    const thisWeekAppts: any[] = [];
-    const futureAppts: any[] = [];
-
-    appointments.forEach(apt => {
-      const aptDate = new Date(apt.date);
-      aptDate.setHours(0, 0, 0, 0);
-      const daysDiff = Math.ceil((aptDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-
-      if (daysDiff === 0) {
-        todayAppts.push(apt);
-      } else if (daysDiff > 0 && daysDiff <= 7) {
-        thisWeekAppts.push(apt);
-      } else if (daysDiff > 7) {
-        futureAppts.push(apt);
-      }
-    });
-
-    // Sort by date + time ASC
-    const sortByDateTime = (a: any, b: any) => {
+    // Sort future by date ASC (nearest first), then by time ASC
+    futureAppointments.sort((a, b) => {
       const dateCompare = new Date(a.date).getTime() - new Date(b.date).getTime();
       if (dateCompare !== 0) return dateCompare;
       return a.time.localeCompare(b.time);
-    };
+    });
 
-    todayAppts.sort((a: any, b: any) => a.time.localeCompare(b.time)); // Today: only time matters
-    thisWeekAppts.sort(sortByDateTime);
-    futureAppts.sort(sortByDateTime);
+    // Sort today by time ASC
+    todayAppointments.sort((a, b) => a.time.localeCompare(b.time));
 
-    return { today: todayAppts, thisWeek: thisWeekAppts, future: futureAppts };
-  };
-
-  // Helper: Sort completed appointments (recent first)
-  const sortCompletedAppointments = (appointments: any[]) => {
-    return appointments.sort((a, b) => {
+    // Sort past by date DESC (most recent first), then by time DESC
+    pastAppointments.sort((a, b) => {
       const dateCompare = new Date(b.date).getTime() - new Date(a.date).getTime();
       if (dateCompare !== 0) return dateCompare;
       return b.time.localeCompare(a.time);
     });
+
+    return { futureAppointments, todayAppointments, pastAppointments };
   };
 
   const filterAppointments = (appointments: any[]) => {
@@ -1976,16 +1926,8 @@ export const AppointmentAndConsultationModule = ({
     // Apply search and filter
     const filteredAppointments = filterAppointments(currentAppointments);
 
-    // Categorize and sort based on tab
-    let categorizedData: any = null;
-    if (appointmentTab === 'pending') {
-      categorizedData = categorizePendingAppointments(filteredAppointments);
-    } else if (appointmentTab === 'confirmed') {
-      categorizedData = categorizeConfirmedAppointments(filteredAppointments);
-    } else if (appointmentTab === 'completed') {
-      const sorted = sortCompletedAppointments([...filteredAppointments]);
-      categorizedData = { all: sorted };
-    }
+    // Categorize appointments by time (same for all tabs)
+    const categorizedData = categorizeAppointmentsByTime(filteredAppointments);
     return <div className="p-6 space-y-6">
         <div className="flex items-center justify-between" style={{
         display: "none"
@@ -2081,90 +2023,47 @@ export const AppointmentAndConsultationModule = ({
               </div>
             ) : (
               <div className="space-y-6">
-                {/* TAB 1: Pending - Categorized */}
-                {appointmentTab === 'pending' && categorizedData && (
-                  <>
-                    {categorizedData.upcoming.length > 0 && (
-                      <div>
-                        <h3 className="text-sm font-semibold text-gray-600 mb-3 flex items-center gap-2">
-                          <span className="w-1 h-4 bg-orange-500 rounded"></span>
-                          SẮP TỚI ({categorizedData.upcoming.length})
-                        </h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                          {categorizedData.upcoming.map((apt: any, idx: number) => renderAppointmentCard(apt, idx))}
-                        </div>
+                {/* Unified structure for all tabs - same as patient page */}
+                <>
+                  {/* 1. Lịch hẹn sắp tới */}
+                  {categorizedData.futureAppointments.length > 0 && (
+                    <div>
+                      <h3 className="text-sm font-semibold text-gray-600 mb-3 flex items-center gap-2">
+                        <span className="w-1 h-4 bg-blue-500 rounded"></span>
+                        LỊCH HẸN SẮP TỚI ({categorizedData.futureAppointments.length})
+                      </h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {categorizedData.futureAppointments.map((apt: any, idx: number) => renderAppointmentCard(apt, idx))}
                       </div>
-                    )}
-                    {categorizedData.thisWeek.length > 0 && (
-                      <div>
-                        <h3 className="text-sm font-semibold text-gray-600 mb-3 flex items-center gap-2">
-                          <span className="w-1 h-4 bg-blue-500 rounded"></span>
-                          TRONG TUẦN ({categorizedData.thisWeek.length})
-                        </h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                          {categorizedData.thisWeek.map((apt: any, idx: number) => renderAppointmentCard(apt, idx))}
-                        </div>
-                      </div>
-                    )}
-                    {categorizedData.later.length > 0 && (
-                      <div>
-                        <h3 className="text-sm font-semibold text-gray-600 mb-3 flex items-center gap-2">
-                          <span className="w-1 h-4 bg-gray-400 rounded"></span>
-                          CÁC NGÀY KHÁC ({categorizedData.later.length})
-                        </h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                          {categorizedData.later.map((apt: any, idx: number) => renderAppointmentCard(apt, idx))}
-                        </div>
-                      </div>
-                    )}
-                  </>
-                )}
+                    </div>
+                  )}
 
-                {/* TAB 2: Confirmed - Categorized */}
-                {appointmentTab === 'confirmed' && categorizedData && (
-                  <>
-                    {categorizedData.today.length > 0 && (
-                      <div>
-                        <h3 className="text-sm font-semibold text-gray-600 mb-3 flex items-center gap-2">
-                          <span className="w-1 h-4 bg-red-500 rounded"></span>
-                          HÔM NAY ({categorizedData.today.length})
-                        </h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                          {categorizedData.today.map((apt: any, idx: number) => renderAppointmentCard(apt, idx))}
-                        </div>
+                  {/* 2. Cuộc hẹn hôm nay */}
+                  {categorizedData.todayAppointments.length > 0 && (
+                    <div>
+                      <h3 className="text-sm font-semibold text-gray-600 mb-3 flex items-center gap-2">
+                        <span className="w-1 h-4 bg-orange-500 rounded"></span>
+                        CUỘC HẸN HÔM NAY ({categorizedData.todayAppointments.length})
+                      </h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {categorizedData.todayAppointments.map((apt: any, idx: number) => renderAppointmentCard(apt, idx))}
                       </div>
-                    )}
-                    {categorizedData.thisWeek.length > 0 && (
-                      <div>
-                        <h3 className="text-sm font-semibold text-gray-600 mb-3 flex items-center gap-2">
-                          <span className="w-1 h-4 bg-blue-500 rounded"></span>
-                          TUẦN NÀY ({categorizedData.thisWeek.length})
-                        </h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                          {categorizedData.thisWeek.map((apt: any, idx: number) => renderAppointmentCard(apt, idx))}
-                        </div>
-                      </div>
-                    )}
-                    {categorizedData.future.length > 0 && (
-                      <div>
-                        <h3 className="text-sm font-semibold text-gray-600 mb-3 flex items-center gap-2">
-                          <span className="w-1 h-4 bg-gray-400 rounded"></span>
-                          TƯƠNG LAI ({categorizedData.future.length})
-                        </h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                          {categorizedData.future.map((apt: any, idx: number) => renderAppointmentCard(apt, idx))}
-                        </div>
-                      </div>
-                    )}
-                  </>
-                )}
+                    </div>
+                  )}
 
-                {/* TAB 3: Completed - Flat list sorted DESC */}
-                {appointmentTab === 'completed' && categorizedData && categorizedData.all && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {categorizedData.all.map((apt: any, idx: number) => renderAppointmentCard(apt, idx))}
-                  </div>
-                )}
+                  {/* 3. Lịch sử khám bệnh */}
+                  {categorizedData.pastAppointments.length > 0 && (
+                    <div>
+                      <h3 className="text-sm font-semibold text-gray-600 mb-3 flex items-center gap-2">
+                        <span className="w-1 h-4 bg-gray-400 rounded"></span>
+                        LỊCH SỬ KHÁM BỆNH ({categorizedData.pastAppointments.length})
+                      </h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {categorizedData.pastAppointments.map((apt: any, idx: number) => renderAppointmentCard(apt, idx))}
+                      </div>
+                    </div>
+                  )}
+                </>
               </div>
             )}
           </div>
