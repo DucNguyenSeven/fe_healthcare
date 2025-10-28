@@ -25,12 +25,6 @@ export const VisitCard: React.FC<VisitCardProps> = ({ visit, visitNumber, isLast
     ? format(new Date(visit.appointmentDate), 'dd/MM/yyyy • HH:mm', { locale: vi })
     : format(new Date(visit.createdAt), 'dd/MM/yyyy', { locale: vi });
 
-  const getVisitIcon = () => {
-    if (visit.isCurrentVisit) return '🔵';
-    if (visit.episodeType === 'FOLLOW_UP') return '🟢';
-    return '📍';
-  };
-
   const getVisitLabel = () => {
     if (visit.episodeType === 'FOLLOW_UP') {
       return `Tái khám lần ${visitNumber - 1}`;
@@ -70,7 +64,6 @@ export const VisitCard: React.FC<VisitCardProps> = ({ visit, visitNumber, isLast
           }}
         >
           <div className="flex items-center gap-2">
-            <span className="text-lg">{getVisitIcon()}</span>
             <span className="text-base font-semibold text-gray-900">Lần khám {visitNumber}</span>
             {visit.isCurrentVisit && (
               <span className="ml-2 px-2.5 py-0.5 bg-blue-600 text-white rounded-full text-xs font-medium">

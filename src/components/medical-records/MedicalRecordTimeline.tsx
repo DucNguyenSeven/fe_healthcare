@@ -10,11 +10,20 @@ interface MedicalRecordTimelineProps {
 
 /**
  * Component hiển thị timeline lịch sử khám bệnh
- * Hiển thị TẤT CẢ các record của bệnh nhân theo thứ tự thời gian (cũ → mới)
+ * Hiển thị TẤT CẢ các record của bệnh nhân theo thứ tự thời gian (mới → cũ)
  */
 export const MedicalRecordTimeline: React.FC<MedicalRecordTimelineProps> = ({
   allRecords,
 }) => {
+  // Sort records từ mới đến cũ (DESC)
+  const sortedRecords = React.useMemo(() => {
+    return [...allRecords].sort((a, b) => {
+      const dateA = new Date(a.appointmentDate || a.createdAt).getTime();
+      const dateB = new Date(b.appointmentDate || b.createdAt).getTime();
+      return dateB - dateA; // Mới nhất trước (DESC)
+    });
+  }, [allRecords]);
+
   const formatDate = (dateString: string) => {
     try {
       return new Date(dateString).toLocaleDateString('vi-VN', {
@@ -40,7 +49,7 @@ export const MedicalRecordTimeline: React.FC<MedicalRecordTimelineProps> = ({
 
   const renderRecord = (record: MedicalRecordWithEpisode, index: number, totalRecords: number) => {
     const isLast = index === totalRecords - 1;
-    const isFirst = index === 0;
+    const isFirst = index === 0; // isFirst giờ là record mới nhất
 
     return (
       <div key={record.recordId} className="relative pb-8 last:pb-0">
@@ -78,7 +87,7 @@ export const MedicalRecordTimeline: React.FC<MedicalRecordTimelineProps> = ({
                       : 'bg-green-100 text-green-800'
                   }`}
                 >
-                  Lần khám {index + 1}
+                  {isFirst ? 'Khám gần nhất' : `Lần khám ${totalRecords - index}`}
                 </span>
                 <div className="mt-1 flex items-center gap-2 text-sm text-gray-500">
                   <Calendar className="w-3.5 h-3.5" />
@@ -89,19 +98,24 @@ export const MedicalRecordTimeline: React.FC<MedicalRecordTimelineProps> = ({
               </div>
             </div>
 
-            {/* Diagnosis */}
-            <div className="mb-3">
-              <h4 className="text-base font-semibold text-gray-900 mb-1">
-                {record.diagnosis}
-              </h4>
-            </div>
-
             {/* Details Grid */}
             <div className="grid grid-cols-1 gap-3 text-sm">
+              {/* Diagnosis */}
+              {record.diagnosis && (
+                <div>
+                  <p className="text-gray-600 font-medium flex items-center gap-1">
+                    <span>🩺</span> Chẩn đoán:
+                  </p>
+                  <p className="text-gray-800">{record.diagnosis}</p>
+                </div>
+              )}
+
               {/* Symptoms */}
               {record.symptoms && (
                 <div>
-                  <p className="text-gray-600 font-medium">Triệu chứng:</p>
+                  <p className="text-gray-600 font-medium flex items-center gap-1">
+                    <span>⚡</span> Triệu chứng:
+                  </p>
                   <p className="text-gray-800">{record.symptoms}</p>
                 </div>
               )}
@@ -109,16 +123,20 @@ export const MedicalRecordTimeline: React.FC<MedicalRecordTimelineProps> = ({
               {/* Treatment */}
               {record.treatment && (
                 <div>
-                  <p className="text-gray-600 font-medium">Điều trị:</p>
+                  <p className="text-gray-600 font-medium flex items-center gap-1">
+                    <span>💉</span> Điều trị:
+                  </p>
                   <p className="text-gray-800">{record.treatment}</p>
                 </div>
               )}
 
               {/* Doctor Note */}
               {record.doctorNote && (
-                <div>
-                  <p className="text-gray-600 font-medium">Ghi chú bác sĩ:</p>
-                  <p className="text-gray-800 italic">{record.doctorNote}</p>
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                  <p className="text-gray-600 font-medium flex items-center gap-1 mb-1">
+                    <span>📝</span> Ghi chú của bác sĩ:
+                  </p>
+                  <p className="text-gray-800">{record.doctorNote}</p>
                 </div>
               )}
 
@@ -130,25 +148,86 @@ export const MedicalRecordTimeline: React.FC<MedicalRecordTimelineProps> = ({
                     Toa thuốc ({record.prescriptions.length} loại):
                   </p>
                   <div className="bg-gray-50 rounded-lg p-3 space-y-2">
-                    {record.prescriptions.map((prescription, idx) => (
-                      <div
-                        key={prescription.prescriptionId || idx}
-                        className="flex items-start gap-2 text-xs"
-                      >
-                        <span className="text-gray-500">{idx + 1}.</span>
-                        <div className="flex-1">
-                          <p className="font-medium text-gray-900">
-                            {prescription.medicalName}
-                          </p>
-                          <p className="text-gray-600">
-                            {prescription.dosage} - {Array.isArray(prescription.frequency) ? prescription.frequency.join(', ') : prescription.frequency}
-                          </p>
-                          {prescription.notes && (
-                            <p className="text-gray-500 italic">{prescription.notes}</p>
-                          )}
+                    {record.prescriptions.map((prescription, idx) => {
+                      // Parse frequency từ backend
+                      const parseFrequency = (freq: string | string[]): string[] => {
+                        try {
+                          if (Array.isArray(freq)) return freq;
+                          // Remove braces and split by comma
+                          const cleaned = String(freq).replace(/[{}]/g, '');
+                          return cleaned.split(',').map(f => f.trim());
+                        } catch {
+                          return [];
+                        }
+                      };
+
+                      // Map frequency sang tiếng Việt
+                      const frequencyMap: Record<string, string> = {
+                        'MORNING': 'Sáng',
+                        'AFTERNOON': 'Chiều',
+                        'EVENING': 'Tối'
+                      };
+
+                      const frequencies = parseFrequency(prescription.frequency);
+
+                      // Format dates
+                      const formatPrescriptionDate = (dateStr: string | null | undefined) => {
+                        if (!dateStr) return null;
+                        try {
+                          return new Date(dateStr).toLocaleDateString('vi-VN');
+                        } catch {
+                          return null;
+                        }
+                      };
+
+                      const startDate = formatPrescriptionDate(prescription.startDate);
+                      const endDate = formatPrescriptionDate(prescription.endDate);
+
+                      return (
+                        <div
+                          key={prescription.prescriptionId || idx}
+                          className="flex items-start gap-2 text-xs"
+                        >
+                          <span className="text-gray-500">{idx + 1}.</span>
+                          <div className="flex-1">
+                            <p className="font-medium text-gray-900 mb-1">
+                              {prescription.medicalName}
+                            </p>
+                            <p className="text-gray-600 mb-1">
+                              Liều lượng: {prescription.dosage}
+                            </p>
+                            
+                            {/* Frequency section with label */}
+                            {frequencies.length > 0 && (
+                              <div className="mb-1">
+                                <span className="text-gray-600">Tần suất:</span>
+                                <div className="inline-flex flex-wrap gap-1 ml-1">
+                                  {frequencies.map((freq, freqIdx) => (
+                                    <span
+                                      key={freqIdx}
+                                      className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700"
+                                    >
+                                      {frequencyMap[freq] || freq}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Time period */}
+                            {(startDate || endDate) && (
+                              <p className="text-gray-600 mb-1">
+                                Thời gian: {startDate || '--'} - {endDate || '--'}
+                              </p>
+                            )}
+
+                            {prescription.notes && (
+                              <p className="text-gray-500 italic mt-1">{prescription.notes}</p>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -181,7 +260,7 @@ export const MedicalRecordTimeline: React.FC<MedicalRecordTimelineProps> = ({
     );
   };
 
-  if (!allRecords || allRecords.length === 0) {
+  if (!sortedRecords || sortedRecords.length === 0) {
     return (
       <div className="text-center py-8 text-gray-500">
         Không có dữ liệu lịch sử khám
@@ -191,9 +270,9 @@ export const MedicalRecordTimeline: React.FC<MedicalRecordTimelineProps> = ({
 
   return (
     <div className="space-y-0">
-      {/* Render tất cả records theo thứ tự thời gian */}
-      {allRecords.map((record, index) =>
-        renderRecord(record, index, allRecords.length)
+      {/* Render tất cả records theo thứ tự thời gian (mới → cũ) */}
+      {sortedRecords.map((record, index) =>
+        renderRecord(record, index, sortedRecords.length)
       )}
     </div>
   );
