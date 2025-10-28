@@ -253,10 +253,6 @@ export function MonitoringPage() {
             // Navigate to appointments
             window.location.href = '/patient/appointments';
           }}
-          onViewPrescription={() => {
-            // Navigate to dashboard prescriptions
-            window.location.href = '/patient/dashboard';
-          }}
           onAIConsult={() => {
             // Navigate to AI assistant
             window.location.href = '/patient/ai-assistant';

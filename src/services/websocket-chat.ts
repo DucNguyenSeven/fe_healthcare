@@ -270,25 +270,13 @@ class WebSocketChatService {
    * Handle incoming WebSocket messages
    */
   private handleIncomingMessage(response: WebSocketResponse): void {
-    // 🔍 DEBUG: Log all incoming messages to see what backend sends
-    console.log('🔍 [WebSocketChat] RAW MESSAGE RECEIVED:', {
-      action: response.action,
-      status: response.status,
-      dataType: typeof response.data,
-      data: response.data,
-      fullResponse: response
-    });
-
     // Backend sends 'connection' action on successful connection - wait for authenticate
     if ((response.action === 'welcome' || response.action === 'hello' || response.action === 'connection') && this.connectionState === 'handshaking') {
-      console.log('WebSocket handshake complete, waiting for authentication');
       // DO NOT set to 'ready' yet - wait for authenticate to be called by context
     }
 
     // Handle authenticate response - với nhiều format khả thi
     if (response.action === 'authenticate' || response.action === 'authenticated') {
-      console.log('🔍 [WebSocket] Processing authenticate response:', response);
-      
       // Kiểm tra nhiều format response từ backend
       const isSuccess = 
         response.status === 'success' || 
@@ -300,13 +288,11 @@ class WebSocketChatService {
       if (isSuccess) {
         this.isAuthenticated = true;
         this.connectionState = 'ready';
-        console.log('✅ WebSocket authenticated, connection is ready');
 
         setTimeout(() => {
           this.flushMessageQueue();
         }, 50);
       } else {
-        console.error('❌ WebSocket authentication failed:', response);
         this.isAuthenticated = false;
       }
     }
@@ -315,17 +301,11 @@ class WebSocketChatService {
       return;
     }
 
-    // 🔍 DEBUG: Log before forwarding to handlers
-    console.log(`🔍 [WebSocketChat] Forwarding message to ${this.messageHandlers.size} handler(s)`, {
-      action: response.action,
-      handlerCount: this.messageHandlers.size
-    });
-
     this.messageHandlers.forEach(handler => {
       try {
         handler(response);
       } catch (error) {
-        console.error('🔍 [WebSocketChat] Handler error:', error);
+        console.error('Handler error:', error);
       }
     });
   }
@@ -412,7 +392,6 @@ class WebSocketChatService {
    * This method BYPASSES the isReady() check to avoid deadlock
    */
   authenticate(userId: string): void {
-    console.log('🔐 Sending authenticate request for userId:', userId);
     this.currentUserId = userId;
     this.connectionState = 'authenticating';
     
@@ -426,13 +405,11 @@ class WebSocketChatService {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
       try {
         this.ws.send(JSON.stringify(message));
-        console.log('✅ Authenticate message sent directly to backend');
       } catch (error) {
-        console.error('❌ Failed to send authenticate message:', error);
+        console.error('Failed to send authenticate message:', error);
         this.connectionState = 'disconnected';
       }
     } else {
-      console.error('❌ WebSocket not open, cannot authenticate. State:', this.ws?.readyState);
       this.connectionState = 'disconnected';
     }
   }

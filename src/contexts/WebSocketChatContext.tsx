@@ -115,13 +115,10 @@ function mapMessageToChatMessage(message: any): ChatMessage {
     isRead: message.isRead !== undefined ? message.isRead : (message.is_read !== undefined ? message.is_read : true)
   };
 
-  // Validate and warn only on errors
-  if (!mapped.senderId) {
-    console.error('[mapMessageToChatMessage] ❌ Missing senderId:', message);
-  }
-  if (!mapped.id || mapped.id.startsWith('fallback-')) {
-    console.error('[mapMessageToChatMessage] ❌ Missing messageId:', message);
-  }
+      // Validate required fields
+      if (!mapped.senderId || !mapped.id || mapped.id.startsWith('fallback-')) {
+        console.error('Invalid message data:', message);
+      }
 
   return mapped;
 }
@@ -355,7 +352,6 @@ export function WebSocketChatProvider({ children }: WebSocketChatProviderProps) 
       case 'authenticated':
         // Authentication successful, now we can load conversations
         if (response.status === 'success' || response.status === 'ok') {
-          console.log('✅ WebSocket authenticated successfully');
           // Load conversations after successful authentication
           if (user && loadConversationsRef.current) {
             loadConversationsRef.current();
@@ -465,7 +461,6 @@ export function WebSocketChatProvider({ children }: WebSocketChatProviderProps) 
       case 'hello':
         // After welcome, send authenticate request
         if (user?.userId) {
-          console.log('📡 Received welcome, sending authenticate request...');
           webSocketChatService.authenticate(user.userId);
         }
         break;

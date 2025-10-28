@@ -4,14 +4,13 @@
  */
 
 import React from 'react';
-import { AlertTriangle, CheckCircle, Info, TrendingDown, TrendingUp, Calendar, MessageCircle, Pill } from 'lucide-react';
+import { AlertTriangle, CheckCircle, Info, TrendingDown, TrendingUp, Calendar, MessageCircle } from 'lucide-react';
 import type { HealthStatusAssessment } from '@/lib/health-assessment/healthAssessment';
 import { getUrgencyDescription } from '@/lib/health-assessment/recommendations';
 
 interface HealthStatusCardProps {
   assessment: HealthStatusAssessment | null;
   onBookAppointment?: () => void;
-  onViewPrescription?: () => void;
   onAIConsult?: () => void;
 }
 
@@ -94,7 +93,6 @@ const getStatusTitle = (status: string) => {
 export function HealthStatusCard({
   assessment,
   onBookAppointment,
-  onViewPrescription,
   onAIConsult
 }: HealthStatusCardProps) {
   if (!assessment) {
@@ -204,16 +202,6 @@ export function HealthStatusCard({
           >
             <Calendar className="w-4 h-4" />
             Đặt lịch khám
-          </button>
-        )}
-
-        {onViewPrescription && (
-          <button
-            onClick={onViewPrescription}
-            className="flex items-center gap-2 px-4 py-2 bg-white border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium text-sm"
-          >
-            <Pill className="w-4 h-4" />
-            Xem đơn thuốc
           </button>
         )}
 

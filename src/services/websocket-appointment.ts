@@ -69,20 +69,8 @@ class WebSocketAppointmentService {
    */
   private setupMessageHandler(): void {
     webSocketChatService.addMessageHandler((response: WebSocketResponse) => {
-      // 🔍 ENHANCED DEBUG: Log every incoming WS message with full details
-      console.log('🔍 [AppointmentSocket] Received WebSocket message:', {
-        action: (response as any)?.action,
-        status: (response as any)?.status,
-        type: (response as any)?.type,
-        dataType: typeof response?.data,
-        dataKeys: response?.data ? Object.keys(response.data) : [],
-        hasEventType: !!(response as any)?.data?.eventType,
-        fullData: response?.data
-      });
-
       // Primary path: expected action name from backend contract
       if (response.action === 'schedule_appointment_response') {
-        console.log('✅ [AppointmentSocket] MATCHED schedule_appointment_response!', response.data);
         const appointmentResponse = response as AppointmentSocketResponse;
         this.handleAppointmentEvent(appointmentResponse.data);
         return;
@@ -91,24 +79,14 @@ class WebSocketAppointmentService {
       // Fallbacks: some environments may send different action/type labels
       // 1) Same payload but with action 'schedule_appointment'
       if (response.action === 'schedule_appointment' && (response as any)?.data?.eventType) {
-        console.log('✅ [AppointmentSocket] FALLBACK 1: Matched schedule_appointment with eventType');
         this.handleAppointmentEvent((response as any).data);
         return;
       }
 
       // 2) Wrapped with a type field
       if ((response as any)?.type === 'APPOINTMENT_SOCKET_LIST' && (response as any)?.data?.eventType) {
-        console.log('✅ [AppointmentSocket] FALLBACK 2: Matched APPOINTMENT_SOCKET_LIST');
         this.handleAppointmentEvent((response as any).data);
         return;
-      }
-
-      // 🔍 DEBUG: Log when message doesn't match any pattern
-      if (response.action && response.action.includes('appointment') || response.action === 'schedule_appointment') {
-        console.warn('⚠️ [AppointmentSocket] Message contains "appointment" but did not match any handler:', {
-          action: response.action,
-          data: response.data
-        });
       }
     });
   }
@@ -117,32 +95,23 @@ class WebSocketAppointmentService {
    * Handle incoming appointment event and notify subscribers
    */
   private handleAppointmentEvent(data: AppointmentSocketData): void {
-    console.log('🔍 [AppointmentSocket] handleAppointmentEvent called with:', data);
-
     const { eventType } = data;
 
     if (!eventType) {
-      console.error('❌ [AppointmentSocket] Missing eventType in appointment data:', data);
       return;
     }
 
     // Get all handlers for this event type
     const handlers = this.eventHandlers.get(eventType);
 
-    console.log(`🔍 [AppointmentSocket] Found ${handlers?.size || 0} handler(s) for eventType: ${eventType}`);
-
     if (handlers && handlers.size > 0) {
-      console.log(`✅ [AppointmentSocket] Notifying ${handlers.size} handler(s) for ${eventType}`);
       handlers.forEach(handler => {
         try {
           handler(data);
-          console.log(`✅ [AppointmentSocket] Handler executed successfully for ${eventType}`);
         } catch (error) {
-          console.error(`❌ [AppointmentSocket] Error in handler for ${eventType}:`, error);
+          console.error(`Error in handler for ${eventType}:`, error);
         }
       });
-    } else {
-      console.warn(`⚠️ [AppointmentSocket] No handlers registered for event: ${eventType}`);
     }
   }
 
@@ -208,16 +177,7 @@ class WebSocketAppointmentService {
     createAppointmentRequest?: any;
     skipRefetchForUserId?: string; // Optional: User ID that should skip refetch
   }): void {
-    // 🔍 DEBUG: Check WebSocket status before sending
-    console.log('🔍 [AppointmentSocket] Checking WebSocket status:', {
-      isReady: webSocketChatService.isReady(),
-      isConnected: webSocketChatService.isConnected(),
-      isAuthenticated: webSocketChatService.isUserAuthenticated(),
-      status: webSocketChatService.getStatus()
-    });
-
     if (!webSocketChatService.isReady()) {
-      console.warn('⚠️ [AppointmentSocket] WebSocket not ready, cannot send event');
       return;
     }
 
@@ -235,15 +195,10 @@ class WebSocketAppointmentService {
         }
       };
 
-      // 🔍 DEBUG: Log message before sending
-      console.log('📤 [AppointmentSocket] Sending message to backend:', JSON.stringify(message, null, 2));
-
       // Send via underlying WebSocket service
       (webSocketChatService as any).sendMessage('schedule_appointment', message.data);
-
-      console.log('✅ [AppointmentSocket] Successfully sent schedule event:', eventData.event);
     } catch (error) {
-      console.error('❌ [AppointmentSocket] Failed to send schedule event:', error);
+      console.error('Failed to send schedule event:', error);
     }
   }
 }
