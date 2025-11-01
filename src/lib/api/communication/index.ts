@@ -84,6 +84,26 @@ async function ensureConnection(): Promise<void> {
 }
 
 /**
+ * Waits for WebSocket to be ready (connected and authenticated)
+ * Mobile-compatible: ensures WebSocket is ready before operations
+ */
+async function waitForWebSocketReady(timeout: number = 5000): Promise<void> {
+  console.log('[waitForWebSocketReady] Waiting for WebSocket to be ready...');
+  const startTime = Date.now();
+
+  while (!webSocketChatService.isReady()) {
+    if (Date.now() - startTime > timeout) {
+      const error = new Error(`WebSocket not ready after ${timeout}ms timeout`);
+      console.error('[waitForWebSocketReady] Timeout:', error);
+      throw error;
+    }
+    await new Promise(resolve => setTimeout(resolve, 100));
+  }
+
+  console.log('[waitForWebSocketReady] WebSocket is ready!');
+}
+
+/**
  * Auto-generates group name based on existing groups count
  */
 function generateGroupName(existingGroups: Group[]): string {
@@ -197,13 +217,16 @@ export async function createGroupViaREST(
 }
 
 /**
- * Create a new group - prioritizes WebSocket, falls back to REST API
+ * Create a new group - MOBILE-COMPATIBLE: WebSocket only (no REST fallback)
+ * Ensures FE Web behaves exactly like Mobile app
  */
 export async function createGroup(
   members: ChatMember[],
   appointmentId?: string,
   customGroupName?: string
 ): Promise<Group> {
+  console.log('[createGroup] 🚀 Starting group creation (Mobile-compatible: WebSocket only)');
+
   // Get existing groups to generate name if not provided
   let groupName = customGroupName;
   if (!groupName) {
@@ -217,19 +240,15 @@ export async function createGroup(
     }
   }
 
-  // Strategy: WebSocket first (receives targeted events), fallback to REST
-  if (webSocketChatService.isReady()) {
-    try {
-      console.log('[createGroup] Using WebSocket (receives targeted group_created event)');
-      return await createGroupViaWebSocket(members, appointmentId, groupName);
-    } catch (error) {
-      console.warn('[createGroup] WebSocket failed, falling back to REST API:', error);
-      return await createGroupViaREST(members, appointmentId, groupName);
-    }
-  } else {
-    console.log('[createGroup] WebSocket not ready, using REST API');
-    return await createGroupViaREST(members, appointmentId, groupName);
+  // ✅ FORCE WebSocket ONLY - giống Mobile (no REST fallback)
+  console.log('[createGroup] Checking WebSocket status...');
+  if (!webSocketChatService.isReady()) {
+    console.warn('[createGroup] ⚠️ WebSocket not ready, waiting...');
+    await waitForWebSocketReady(10000); // Wait up to 10s
   }
+
+  console.log('[createGroup] ✅ WebSocket ready! Creating group via WebSocket');
+  return await createGroupViaWebSocket(members, appointmentId, groupName);
 }
 
 

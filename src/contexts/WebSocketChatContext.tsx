@@ -361,7 +361,24 @@ export function WebSocketChatProvider({ children }: WebSocketChatProviderProps) 
 
       case 'message_received': {
         const message = response.data;
+        console.log('📨 [WS-RECV] ========== RECEIVED MESSAGE ==========');
+        console.log('📨 [WS-RECV] Message details:', {
+          messageId: message.messageId,
+          senderId: message.senderId,
+          groupId: message.groupId,
+          messageType: message.messageType,
+          contentLength: message.content?.length,
+          timestamp: message.sendAt || message.createdAt
+        });
+        console.log('📨 [WS-RECV] Content preview:', message.content?.substring(0, 100));
+
+        if (message.senderId === 'AI') {
+          console.log('🤖 [WS-RECV] *** AI MESSAGE RECEIVED! ***');
+        }
+
         dispatch({ type: 'ADD_MESSAGE', payload: { ...message, currentUserId: user?.userId } });
+        console.log('✅ [WS-RECV] Message added to state');
+        console.log('📨 [WS-RECV] =====================================\n');
 
         // Check if message is from another user (not from current user)
         const isFromOtherUser = user && message.senderId !== user.userId;
@@ -513,13 +530,54 @@ export function WebSocketChatProvider({ children }: WebSocketChatProviderProps) 
     try {
       dispatch({ type: 'SET_LOADING', payload: true });
 
-      const messages = await getGroupMessagesViaREST(groupId);
+      // ✅ MOBILE-COMPATIBLE: Use WebSocket get_messages event instead of REST
+      console.log('[loadMessages] 🚀 Loading messages via WebSocket (Mobile-compatible)');
+
+      if (!webSocketChatService.isReady()) {
+        console.warn('[loadMessages] ⚠️ WebSocket not ready, waiting...');
+
+        const maxWait = 10000;
+        const startTime = Date.now();
+
+        while (!webSocketChatService.isReady() && (Date.now() - startTime) < maxWait) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+
+        if (!webSocketChatService.isReady()) {
+          throw new Error('WebSocket not ready - cannot load messages');
+        }
+      }
+
+      // Send get_messages event via WebSocket
+      const messagesPromise = new Promise<Message[]>((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          reject(new Error('Get messages timeout'));
+        }, 10000);
+
+        const handler = (response: WebSocketResponse) => {
+          if (response.action === 'messages' && response.data?.groupId === groupId) {
+            clearTimeout(timeout);
+            webSocketChatService.removeMessageHandler(handler);
+
+            const messages = Array.isArray(response.data.messages) ? response.data.messages : [];
+            console.log('[loadMessages] ✅ Received', messages.length, 'messages via WebSocket');
+            resolve(messages);
+          }
+        };
+
+        webSocketChatService.addMessageHandler(handler);
+        webSocketChatService.getMessages({ groupId, page: 0, size: 100 });
+        console.log('[loadMessages] 📤 Sent get_messages event for group:', groupId);
+      });
+
+      const messages = await messagesPromise;
       dispatch({ type: 'SET_MESSAGES', payload: { groupId, messages } });
+
     } catch (error: any) {
-      console.error('Failed to load messages:', error);
+      console.error('[loadMessages] ❌ Failed to load messages via WebSocket:', error);
 
       // For new groups with no messages, don't show error - just set empty messages
-      if (error?.message?.includes('404') || error?.message?.includes('not found') || error?.message?.includes('No messages')) {
+      if (error?.message?.includes('404') || error?.message?.includes('not found') || error?.message?.includes('No messages') || error?.message?.includes('timeout')) {
         dispatch({ type: 'SET_MESSAGES', payload: { groupId, messages: [] } });
       } else {
         dispatch({ type: 'SET_ERROR', payload: 'Không thể tải tin nhắn' });
@@ -694,10 +752,32 @@ export function WebSocketChatProvider({ children }: WebSocketChatProviderProps) 
   /**
    * Initialize AI Group (tự động tạo hoặc load từ storage)
    * Lazy initialization - chỉ gọi khi user gửi message đầu tiên
+   * MOBILE-COMPATIBLE: Ensures WebSocket is ready before operations
    */
   const initializeAIGroup = useCallback(async (): Promise<string> => {
     if (!user?.userId) {
       throw new Error('User not authenticated');
+    }
+
+    // ✅ Ensure WebSocket is ready before proceeding (Mobile-compatible)
+    console.log('[AI-GROUP] 🔍 Checking WebSocket status...');
+    if (!webSocketChatService.isReady()) {
+      console.log('[AI-GROUP] ⏳ Waiting for WebSocket to be ready...');
+
+      const maxWait = 10000;
+      const startTime = Date.now();
+
+      while (!webSocketChatService.isReady() && (Date.now() - startTime) < maxWait) {
+        await new Promise(resolve => setTimeout(resolve, 200));
+      }
+
+      if (!webSocketChatService.isReady()) {
+        const error = new Error('WebSocket not ready - cannot initialize AI group');
+        console.error('[AI-GROUP] ❌', error);
+        throw error;
+      }
+
+      console.log('[AI-GROUP] ✅ WebSocket ready!');
     }
 
     // 1. Check localStorage first
@@ -719,10 +799,9 @@ export function WebSocketChatProvider({ children }: WebSocketChatProviderProps) 
         }
 
         // Re-join group to receive AI broadcasts
-        if (webSocketChatService.isReady()) {
-          webSocketChatService.joinGroup(storedGroupId);
-          console.log('🚪 Re-joined existing AI group:', storedGroupId);
-        }
+        console.log('🚪 [AI-GROUP] Re-joining existing AI group:', storedGroupId);
+        webSocketChatService.joinGroup(storedGroupId);
+        console.log('✅ [AI-GROUP] Join command sent for group:', storedGroupId);
 
         return storedGroupId;
       }
@@ -750,12 +829,12 @@ export function WebSocketChatProvider({ children }: WebSocketChatProviderProps) 
     dispatch({ type: 'SET_AI_GROUP', payload: groupId });
 
     // Ensure joined (safety check in case createNewConversation didn't join)
-    if (webSocketChatService.isReady()) {
-      webSocketChatService.joinGroup(groupId);
-      console.log('🚪 Ensured join for new AI group:', groupId);
-      // Small delay to ensure join completes
-      await new Promise(resolve => setTimeout(resolve, 200));
-    }
+    console.log('🚪 [AI-GROUP] Ensuring join for new AI group:', groupId);
+    webSocketChatService.joinGroup(groupId);
+    console.log('✅ [AI-GROUP] Join command sent, waiting 200ms...');
+    // Small delay to ensure join completes
+    await new Promise(resolve => setTimeout(resolve, 200));
+    console.log('✅ [AI-GROUP] Join wait completed');
 
     return groupId;
   }, [user, state.conversations, loadConversations, loadMessages, createNewConversation]);
@@ -765,24 +844,42 @@ export function WebSocketChatProvider({ children }: WebSocketChatProviderProps) 
    * Flow: User message → WebSocket → AI API → AI response → WebSocket
    */
   const sendAIMessage = useCallback(async (content: string) => {
+    console.log('🤖 [AI-CHAT] ========== START AI MESSAGE FLOW ==========');
+    console.log('🤖 [AI-CHAT] User input:', content?.trim());
+
     if (!user?.userId || !content.trim()) {
+      console.error('❌ [AI-CHAT] Missing userId or content');
       return;
     }
 
     try {
       // 1. Ensure AI group exists (lazy initialization)
       let aiGroupId = state.currentAIGroupId;
+      console.log('📋 [AI-CHAT] Current AI group ID:', aiGroupId);
+
       if (!aiGroupId) {
+        console.log('🔄 [AI-CHAT] No AI group found, initializing...');
         aiGroupId = await initializeAIGroup();
+        console.log('✅ [AI-CHAT] AI group initialized:', aiGroupId);
       }
 
       // 2. Send user message via WebSocket (optimistic update already handled in sendChatMessage)
+      console.log('📤 [AI-CHAT] Sending user message to group:', aiGroupId);
       await sendChatMessage(aiGroupId, content.trim());
+      console.log('✅ [AI-CHAT] User message sent');
 
       // 3. Set AI responding state
       dispatch({ type: 'SET_AI_RESPONDING', payload: true });
+      console.log('⏳ [AI-CHAT] AI responding state set to true');
 
       // 4. Import and call AI API to get response
+      console.log('📞 [AI-CHAT] Calling AI API...');
+      console.log('📞 [AI-CHAT] Request:', {
+        group_id: aiGroupId,
+        user_id: user.userId,
+        message_length: content.trim().length
+      });
+
       const { askAI } = await import('@/lib/api/ai');
       const aiResponse = await askAI({
         group_id: aiGroupId,
@@ -790,13 +887,28 @@ export function WebSocketChatProvider({ children }: WebSocketChatProviderProps) 
         user_id: user.userId
       });
 
+      console.log('✅ [AI-CHAT] AI API response received');
+      console.log('📄 [AI-CHAT] Response length:', aiResponse.response.length);
+      console.log('📄 [AI-CHAT] Response preview:', aiResponse.response.substring(0, 100));
+
       // 5. Generate tempMessageId for AI response
       const aiTempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+      console.log('🆔 [AI-CHAT] Generated temp ID for AI message:', aiTempId);
 
       // 6. Send AI response via WebSocket
+      console.log('🔌 [AI-CHAT] WebSocket ready?', webSocketChatService.isReady());
+
       if (webSocketChatService.isReady()) {
         // Ensure we're joined to this group before sending AI response
+        console.log('🚪 [AI-CHAT] Ensuring joined to group before sending:', aiGroupId);
         webSocketChatService.joinGroup(aiGroupId);
+
+        console.log('📤 [AI-CHAT] Sending AI response via WebSocket:', {
+          groupId: aiGroupId,
+          senderId: 'AI',
+          contentLength: aiResponse.response.length,
+          tempMessageId: aiTempId
+        });
 
         webSocketChatService.sendChatMessage({
           groupId: aiGroupId,
@@ -806,8 +918,10 @@ export function WebSocketChatProvider({ children }: WebSocketChatProviderProps) 
           tempMessageId: aiTempId
         });
 
-        console.log('📤 Sent AI response via WebSocket');
+        console.log('✅ [AI-CHAT] AI response sent via WebSocket');
+        console.log('⏳ [AI-CHAT] Waiting for message_received event...');
       } else {
+        console.warn('⚠️ [AI-CHAT] WebSocket not ready, using fallback');
         // Fallback: Add directly to state if WebSocket not ready
         const aiMessage: Message = {
           messageId: aiTempId,
@@ -818,14 +932,21 @@ export function WebSocketChatProvider({ children }: WebSocketChatProviderProps) 
           createdAt: new Date().toISOString()
         };
         dispatch({ type: 'ADD_MESSAGE', payload: { ...aiMessage, currentUserId: user.userId } });
+        console.log('✅ [AI-CHAT] AI message added directly to state (fallback)');
       }
 
     } catch (error) {
-      console.error('Failed to send AI message:', error);
+      console.error('❌ [AI-CHAT] Error in AI message flow:', error);
+      console.error('❌ [AI-CHAT] Error details:', {
+        name: (error as Error)?.name,
+        message: (error as Error)?.message,
+        stack: (error as Error)?.stack
+      });
       dispatch({ type: 'SET_ERROR', payload: 'Không thể gửi tin nhắn đến AI' });
       toast.error('Không thể kết nối đến AI. Vui lòng thử lại.');
     } finally {
       dispatch({ type: 'SET_AI_RESPONDING', payload: false });
+      console.log('🤖 [AI-CHAT] ========== END AI MESSAGE FLOW ==========\n');
     }
   }, [user, state.currentAIGroupId, initializeAIGroup, sendChatMessage]);
 

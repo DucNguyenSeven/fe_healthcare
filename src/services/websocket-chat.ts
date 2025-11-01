@@ -277,23 +277,28 @@ class WebSocketChatService {
 
     // Handle authenticate response - với nhiều format khả thi
     if (response.action === 'authenticate' || response.action === 'authenticated') {
+      console.log('📨 [WS-RECV] Received authentication response:', response);
+
       // Kiểm tra nhiều format response từ backend
-      const isSuccess = 
-        response.status === 'success' || 
-        response.status === 'ok' || 
+      const isSuccess =
+        response.status === 'success' ||
+        response.status === 'ok' ||
         response.status === 'SUCCESS' ||
         response.data?.includes('authenticated') ||
         response.data?.includes('User authenticated');
-      
+
       if (isSuccess) {
         this.isAuthenticated = true;
         this.connectionState = 'ready';
+        console.log('✅ [WS-AUTH] Authentication successful! Connection ready.');
+        console.log('✅ [WS-AUTH] Flushing queued messages...');
 
         setTimeout(() => {
           this.flushMessageQueue();
         }, 50);
       } else {
         this.isAuthenticated = false;
+        console.error('❌ [WS-AUTH] Authentication failed:', response);
       }
     }
 
@@ -392,24 +397,27 @@ class WebSocketChatService {
    * This method BYPASSES the isReady() check to avoid deadlock
    */
   authenticate(userId: string): void {
+    console.log('🔐 [WS-AUTH] Starting authentication for userId:', userId);
     this.currentUserId = userId;
     this.connectionState = 'authenticating';
-    
+
     // CRITICAL FIX: Send authenticate directly, bypassing isReady() check
     // The authenticate message MUST be sent before isReady() can return true
     const message = {
       action: 'authenticate',
       data: { userId }
     };
-    
+
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
       try {
         this.ws.send(JSON.stringify(message));
+        console.log('✅ [WS-AUTH] Authentication message sent:', message);
       } catch (error) {
-        console.error('Failed to send authenticate message:', error);
+        console.error('❌ [WS-AUTH] Failed to send authenticate:', error);
         this.connectionState = 'disconnected';
       }
     } else {
+      console.error('❌ [WS-AUTH] WebSocket not open, state:', this.ws?.readyState);
       this.connectionState = 'disconnected';
     }
   }
@@ -432,11 +440,21 @@ class WebSocketChatService {
    * Send a chat message
    */
   sendChatMessage(data: SendMessageData): void {
+    console.log('📤 [WS-SEND] Sending chat message:', {
+      groupId: data.groupId,
+      senderId: data.senderId,
+      messageType: data.messageType || 'TEXT',
+      contentLength: data.content?.length,
+      tempMessageId: data.tempMessageId
+    });
+
     const messageData = {
       ...data,
       messageType: data.messageType || 'TEXT'
     };
+
     this.sendMessage('send_message', messageData);
+    console.log('✅ [WS-SEND] Message sent via WebSocket');
   }
 
   /**
@@ -467,7 +485,16 @@ class WebSocketChatService {
    * Join a group
    */
   joinGroup(groupId: string): void {
+    console.log('🚪 [WS-JOIN] Joining group:', groupId);
+    console.log('🚪 [WS-JOIN] WebSocket state:', {
+      connected: this.isConnected(),
+      authenticated: this.isAuthenticated,
+      connectionState: this.connectionState,
+      readyState: this.ws?.readyState
+    });
+
     this.sendMessage('join_group', { groupId });
+    console.log('✅ [WS-JOIN] Join group message sent');
   }
 
   /**
