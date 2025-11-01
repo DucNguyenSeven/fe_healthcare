@@ -1736,24 +1736,24 @@ export function AIAssistantPage({
           <button onClick={() => setCurrentView('chat')} className={`py-4 px-2 border-b-2 font-medium text-sm ${currentView === 'chat' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
             Trò chuyện
           </button>
-          <button onClick={() => setCurrentView('upload')} className={`py-4 px-2 border-b-2 font-medium text-sm ${currentView === 'upload' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
+          {/* <button onClick={() => setCurrentView('upload')} className={`py-4 px-2 border-b-2 font-medium text-sm ${currentView === 'upload' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
             Phân tích file
-          </button>
+          </button> */}
           <button onClick={() => setCurrentView('ckd-prediction')} className={`py-4 px-2 border-b-2 font-medium text-sm ${currentView === 'ckd-prediction' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
             Dự đoán CKD
           </button>
-          <button onClick={() => setCurrentView('history')} className={`py-4 px-2 border-b-2 font-medium text-sm ${currentView === 'history' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
+          {/* <button onClick={() => setCurrentView('history')} className={`py-4 px-2 border-b-2 font-medium text-sm ${currentView === 'history' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
             Lịch sử
-          </button>
+          </button> */}
         </div>
       </div>
 
       {/* Content */}
       <div className={`flex-1 ${currentView === 'chat' ? '' : 'p-4 lg:p-6'} ${currentView === 'chat' ? 'overflow-hidden' : 'overflow-auto'}`}>
         {currentView === 'chat' && renderChat()}
-        {currentView === 'upload' && renderUpload()}
+        {/* {currentView === 'upload' && renderUpload()} */}
         {currentView === 'ckd-prediction' && renderCKDPrediction()}
-        {currentView === 'history' && renderHistory()}
+        {/* {currentView === 'history' && renderHistory()} */}
       </div>
     </div>;
 }

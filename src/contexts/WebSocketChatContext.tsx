@@ -459,10 +459,9 @@ export function WebSocketChatProvider({ children }: WebSocketChatProviderProps) 
       case 'connection':
       case 'welcome':
       case 'hello':
-        // After welcome, send authenticate request
-        if (user?.userId) {
-          webSocketChatService.authenticate(user.userId);
-        }
+        // ✅ FIX: Welcome message is now optional (for backward compatibility)
+        // Authentication is already called proactively after connection
+        console.log('📨 [WebSocketChat] Received welcome message (authentication already sent)');
         break;
 
       case 'schedule_appointment_response':
@@ -719,6 +718,12 @@ export function WebSocketChatProvider({ children }: WebSocketChatProviderProps) 
           console.error('Failed to load AI group messages:', error);
         }
 
+        // Re-join group to receive AI broadcasts
+        if (webSocketChatService.isReady()) {
+          webSocketChatService.joinGroup(storedGroupId);
+          console.log('🚪 Re-joined existing AI group:', storedGroupId);
+        }
+
         return storedGroupId;
       }
     }
@@ -743,6 +748,14 @@ export function WebSocketChatProvider({ children }: WebSocketChatProviderProps) 
     // 3. Save to localStorage and state
     localStorage.setItem(AI_GROUP_STORAGE_KEY, groupId);
     dispatch({ type: 'SET_AI_GROUP', payload: groupId });
+
+    // Ensure joined (safety check in case createNewConversation didn't join)
+    if (webSocketChatService.isReady()) {
+      webSocketChatService.joinGroup(groupId);
+      console.log('🚪 Ensured join for new AI group:', groupId);
+      // Small delay to ensure join completes
+      await new Promise(resolve => setTimeout(resolve, 200));
+    }
 
     return groupId;
   }, [user, state.conversations, loadConversations, loadMessages, createNewConversation]);
@@ -782,6 +795,9 @@ export function WebSocketChatProvider({ children }: WebSocketChatProviderProps) 
 
       // 6. Send AI response via WebSocket
       if (webSocketChatService.isReady()) {
+        // Ensure we're joined to this group before sending AI response
+        webSocketChatService.joinGroup(aiGroupId);
+
         webSocketChatService.sendChatMessage({
           groupId: aiGroupId,
           senderId: 'AI',
@@ -789,6 +805,8 @@ export function WebSocketChatProvider({ children }: WebSocketChatProviderProps) 
           messageType: 'TEXT',
           tempMessageId: aiTempId
         });
+
+        console.log('📤 Sent AI response via WebSocket');
       } else {
         // Fallback: Add directly to state if WebSocket not ready
         const aiMessage: Message = {
@@ -840,6 +858,13 @@ export function WebSocketChatProvider({ children }: WebSocketChatProviderProps) 
 
         if (!isInitializing) {
           return;
+        }
+
+        // ✅ FIX: Authenticate immediately after connection (like mobile app)
+        // Don't wait for 'welcome' message - proactively authenticate
+        if (user?.userId) {
+          console.log('🔐 [WebSocketChat] Authenticating user immediately:', user.userId);
+          webSocketChatService.authenticate(user.userId);
         }
 
         dispatch({ type: 'SET_CONNECTION_STATUS', payload: 'connected' });
