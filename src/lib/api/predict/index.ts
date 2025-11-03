@@ -2,11 +2,13 @@
  * Prediction API Service
  * Backend endpoints:
  * - POST /api/v1/analysis/ckd-prediction (AI Service - Direct connection port 8086)
+ * - GET /api/v1/analysis/predict-current-trends/{patientId} (AI Service - Trend comparison port 8086)
  * - POST /api/v1/predicts/create-predict (Gateway - Save history to DB port 8080)
  */
 
 import { api } from '../client';  // Gateway client for saving history
 import { createAIClient } from '../createAIClient';  // AI Service client for predictions
+import type { PredictCurrentTrendsResponse } from '@/types/predict';
 
 const aiClient = createAIClient();
 
@@ -142,8 +144,24 @@ export async function getPredict(patientId: string): Promise<GetPredictResponse>
   return response.data;
 }
 
+/**
+ * Lấy so sánh xu hướng giữa dự đoán hiện tại và lần trước (trực tiếp đến AI Service)
+ * Endpoint: GET /api/v1/analysis/predict-current-trends/{patientId}
+ *
+ * @param patientId - ID của bệnh nhân
+ * @returns Response chứa thông tin xu hướng và so sánh metrics
+ * @throws Error nếu chưa có đủ dữ liệu lịch sử (< 2 predictions)
+ */
+export async function getPredictCurrentTrends(patientId: string): Promise<PredictCurrentTrendsResponse> {
+  const response = await aiClient.get<PredictCurrentTrendsResponse>(
+    `/api/v1/analysis/predict-current-trends/${patientId}`
+  );
+  return response.data;
+}
+
 export default {
   predictCKD,
   savePredictHistory,
-  getPredict
+  getPredict,
+  getPredictCurrentTrends
 };

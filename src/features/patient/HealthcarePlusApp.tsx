@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState } from 'react';
+import { useAuth } from '@/hooks/auth/useAuth';
 import { AppLayout } from './AppLayout';
 import { DashboardPage } from './DashboardPage';
 import { ProfileRecordsPage } from './ProfileRecordsPage';
@@ -63,15 +64,43 @@ export function HealthcarePlusApp() {
   const [currentPage, setCurrentPage] = useState<NavigationItem>('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-  // Mock user data
+  // Get authenticated user from auth context
+  const { user: authUser, loading, isAuthenticated } = useAuth();
+
+  // Handle loading state
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
+          <p className="text-gray-600">Đang tải thông tin người dùng...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Handle not authenticated
+  if (!isAuthenticated || !authUser) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <p className="text-gray-900 font-semibold text-lg mb-2">Chưa đăng nhập</p>
+          <p className="text-gray-600">Vui lòng đăng nhập để tiếp tục</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Map authenticated user to app User interface
   const user: User = {
-    id: '1',
-    name: 'Nguyễn Văn An',
-    email: 'nguyenvanan@email.com',
-    phone: '0123456789',
-    avatar: '/api/placeholder/40/40',
-    ckdStage: 3,
-    lastEgfr: 45,
+    id: authUser.userId,
+    name: authUser.fullName || authUser.name || 'User',
+    fullName: authUser.fullName,
+    email: authUser.email,
+    phone: authUser.phone || '',
+    avatar: authUser.avatarUrl || '/api/placeholder/40/40',
+    ckdStage: 3,        // Default values (CKD fields not available from auth API)
+    lastEgfr: 45,       // TODO: Fetch from health metrics API if needed
     lastCreatinine: 1.8,
     lastBp: '140/90'
   };

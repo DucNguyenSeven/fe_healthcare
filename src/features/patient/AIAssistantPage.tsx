@@ -1,13 +1,19 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Send, Bot, User, Upload, FileText, Clock, Trash2, MessageCircle, AlertTriangle, Activity, Droplets, Heart, Calculator, TrendingUp, Shield, AlertCircle, ChevronRight, ChevronLeft, BarChart3, Calendar, ChevronDown } from 'lucide-react';
 import { User as UserType } from './HealthcarePlusApp';
 import { getAccessToken } from '@/utils/auth/token';
 import { useWebSocketChat } from '@/contexts/WebSocketChatContext';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { predictCKD, savePredictHistory, CreateHealthMetricRequest } from '@/lib/api/predict';
+import { predictCKD, savePredictHistory, CreateHealthMetricRequest, getPredictCurrentTrends } from '@/lib/api/predict';
+import type { PredictCurrentTrendsResponse } from '@/types/predict';
+import { FirstPredictionBanner } from '@/components/predict/FirstPredictionBanner';
+import { PredictionTrendCard } from '@/components/predict/PredictionTrendCard';
+import { usePatientHealthPanels } from '@/hooks/health-metrics/usePatientPanels';
+import { usePanelByDate } from '@/hooks/health-metrics/usePanelByDate';
+import { format } from 'date-fns';
 interface AIAssistantPageProps {
   user: UserType;
   onNavigate?: (page: 'appointments') => void;
@@ -71,74 +77,41 @@ export function AIAssistantPage({
   const [currentView, setCurrentView] = useState<AIView>('chat');
   const [currentTab, setCurrentTab] = useState(1);
 
-  // Mock data for 3 fixed dates (updated with real data from table)
-  const mockTestDates = [
-    {
-      id: '20/9/2025',
-      date: '20/9/2025',
-      apiDate: '2025-09-20',
-      preview: 'Creatinin: 8 mg/dL • eGFR: 12 ml/min',
-      // Mock API response structure for testing
-      mockData: {
-        measuredAt: '2025-09-20',
-        metrics: [
-          { name: 'serum_creatinine', value: 8, unit: 'mg/dL' },
-          { name: 'gfr', value: 12, unit: 'ml/min' },
-          { name: 'bun', value: 80, unit: 'mg/dL' },
-          { name: 'serum_calcium', value: 8, unit: 'mg/dL' },
-          { name: 'ana', value: 1, unit: '0|1' },
-          { name: 'c3_c4', value: 90, unit: 'mg/dL' },
-          { name: 'hematuria', value: 1, unit: '0|1' },
-          { name: 'oxalate_levels', value: 5, unit: 'mg/day' },
-          { name: 'urine_ph', value: 5.5, unit: 'pH' }
-        ]
-      }
-    },
-    {
-      id: '18/9/2025',
-      date: '18/9/2025',
-      apiDate: '2025-09-18',
-      preview: 'Creatinin: 1 mg/dL • eGFR: 10 ml/min',
-      mockData: {
-        measuredAt: '2025-09-18',
-        metrics: [
-          { name: 'serum_creatinine', value: 1, unit: 'mg/dL' },
-          { name: 'gfr', value: 10, unit: 'ml/min' },
-          { name: 'bun', value: 15, unit: 'mg/dL' },
-          { name: 'serum_calcium', value: 1, unit: 'mg/dL' },
-          { name: 'ana', value: 1, unit: '0|1' },
-          { name: 'c3_c4', value: 142, unit: 'mg/dL' },
-          { name: 'hematuria', value: 1, unit: '0|1' },
-          { name: 'oxalate_levels', value: 42, unit: 'mg/day' },
-          { name: 'urine_ph', value: 7, unit: 'pH' }
-        ]
-      }
-    },
-    {
-      id: '17/9/2025',
-      date: '17/9/2025',
-      apiDate: '2025-09-17',
-      preview: 'Creatinin: 1 mg/dL • eGFR: 95 ml/min',
-      mockData: {
-        measuredAt: '2025-09-17',
-        metrics: [
-          { name: 'serum_creatinine', value: 1, unit: 'mg/dL' },
-          { name: 'gfr', value: 95, unit: 'ml/min' },
-          { name: 'bun', value: 15, unit: 'mg/dL' },
-          { name: 'serum_calcium', value: 10, unit: 'mg/dL' },
-          { name: 'ana', value: 0, unit: '0|1' },
-          { name: 'c3_c4', value: 129.8, unit: 'mg/dL' },
-          { name: 'hematuria', value: 0, unit: '0|1' },
-          { name: 'oxalate_levels', value: 2, unit: 'mg/day' },
-          { name: 'urine_ph', value: 7, unit: 'pH' }
-        ]
-      }
-    }
-  ];
+  // Fetch real health metrics panels
+  const { panels, loading: panelsLoading } = usePatientHealthPanels(user.id);
+
+  // State for selected date
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+
+  // Fetch panel data for selected date
+  const { data: selectedPanelData, isLoading: isLoadingPanel } = usePanelByDate(user.id, selectedDate);
+
+  // Create dropdown options from real panels
+  const availableDates = useMemo(() => {
+    if (!panels || panels.length === 0) return [];
+
+    return panels
+      .map(panel => {
+        const creatinineValue = panel.metrics.serum_creatinine?.value || panel.metrics.Serum_Creatinine?.value || 'N/A';
+        const gfrValue = panel.metrics.gfr?.value || panel.metrics.GFR?.value || 'N/A';
+
+        return {
+          id: panel.id,
+          date: panel.measuredAt,
+          displayDate: format(new Date(panel.measuredAt), 'dd/MM/yyyy'),
+          preview: `Creatinin: ${creatinineValue} mg/dL • eGFR: ${gfrValue} ml/min`,
+          timestamp: new Date(panel.measuredAt).getTime()
+        };
+      })
+      .sort((a, b) => b.timestamp - a.timestamp) // Newest first
+      .map((item, index) => ({
+        ...item,
+        isLatest: index === 0
+      }));
+  }, [panels]);
 
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const [selectedPanel, setSelectedPanel] = useState<string>('');
-  const [isLoadingData, setIsLoadingData] = useState(false);
+  const [selectedPanel, setSelectedPanel] = useState<string>('manual');
 
   // CKD Prediction state with exact 21 features
   const [ckdFormData, setCkdFormData] = useState<CKDFormData>({
@@ -175,14 +148,12 @@ export function AIAssistantPage({
     recommendations: string[];
   } | null>(null);
 
-  // Store raw AI result and form data for later saving (after appointment booking)
-  const [rawPredictionData, setRawPredictionData] = useState<{
-    aiResult: any;
-    formData: any;
-    timestamp: string;
-  } | null>(null);
-
   const [isCalculatingPrediction, setIsCalculatingPrediction] = useState(false);
+
+  // Trend comparison state
+  const [trendData, setTrendData] = useState<PredictCurrentTrendsResponse | null>(null);
+  const [isLoadingTrend, setIsLoadingTrend] = useState(false);
+
   // Get WebSocket chat context for AI messaging
   const {
     messages: allMessages,
@@ -249,56 +220,31 @@ export function AIAssistantPage({
     abnormalities: []
   }];
 
-  // API service function to get health metrics by date
-  const getHealthMetricsByDate = async (patientId: string, measuredAt: string) => {
-    try {
-      const token = getAccessToken();
-      const response = await fetch(
-        `http://localhost:8080/api/v1/health-metrics/by-patient-and-date?patientId=${patientId}&measuredAt=${measuredAt}`,
-        {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          }
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const result = await response.json();
-      return result.data || []; // Return array of panels
-    } catch (error) {
-      throw error;
-    }
-  };
-
-  // Function to map API panel data to CKD form (new format from API)
+  // Function to map API panel data to CKD form
   const mapApiPanelToCKDForm = (panel: any) => {
-    console.log('🧮 Mapping panel data for date:', panel.measuredAt);
+    console.log('🧮 Mapping panel data for date:', panel?.measuredAt);
 
-    // panel.metrics is now an array: [{ name, value, unit }, ...]
-    const metricsArray = panel.metrics || [];
+    // panel.metrics is now a Record<string, { value, unit }>
+    const metrics = panel?.metrics || {};
 
-    // Convert array to object for easier access
-    const metricsMap: Record<string, any> = {};
-    metricsArray.forEach((metric: any) => {
-      metricsMap[metric.name] = metric;
-    });
+    // Helper function to get metric value
+    const getMetricValue = (key: string) => {
+      // Try both lowercase and original case
+      const lowerKey = key.toLowerCase();
+      return metrics[lowerKey]?.value || metrics[key]?.value;
+    };
 
     // Create the mapped object
     const mappedResult = {
-      serum_creatinine: metricsMap.serum_creatinine?.value || ckdFormData.serum_creatinine,
-      gfr: metricsMap.gfr?.value || ckdFormData.gfr,
-      bun: metricsMap.bun?.value || ckdFormData.bun,
-      serum_calcium: metricsMap.serum_calcium?.value || ckdFormData.serum_calcium,
-      c3_c4: metricsMap.c3_c4?.value || ckdFormData.c3_c4,
-      oxalate_levels: metricsMap.oxalate_levels?.value || ckdFormData.oxalate_levels,
-      urine_ph: metricsMap.urine_ph?.value || ckdFormData.urine_ph,
-      ana: metricsMap.ana?.value === 1 || metricsMap.ana?.value === true,
-      hematuria: metricsMap.hematuria?.value === 1 || metricsMap.hematuria?.value === true,
+      serum_creatinine: getMetricValue('serum_creatinine') || ckdFormData.serum_creatinine,
+      gfr: getMetricValue('gfr') || ckdFormData.gfr,
+      bun: getMetricValue('bun') || ckdFormData.bun,
+      serum_calcium: getMetricValue('serum_calcium') || ckdFormData.serum_calcium,
+      c3_c4: getMetricValue('c3_c4') || ckdFormData.c3_c4,
+      oxalate_levels: getMetricValue('oxalate_levels') || ckdFormData.oxalate_levels,
+      urine_ph: getMetricValue('urine_ph') || ckdFormData.urine_ph,
+      ana: getMetricValue('ana') === 1 || getMetricValue('ana') === true,
+      hematuria: getMetricValue('hematuria') === 1 || getMetricValue('hematuria') === true,
       // Keep other values unchanged
       blood_pressure_systolic: ckdFormData.blood_pressure_systolic,
       blood_pressure_diastolic: ckdFormData.blood_pressure_diastolic,
@@ -327,8 +273,8 @@ export function AIAssistantPage({
   };
 
   // Function to handle test selection from dropdown
-  const handleTestSelection = async (panelId: string) => {
-    console.log('🔄 Selecting test data for:', panelId);
+  const handleTestSelection = (panelId: string) => {
+    console.log('🔄 Selecting test data for panel ID:', panelId);
 
     if (panelId === 'manual') {
       // Reset to default values for manual input
@@ -358,54 +304,17 @@ export function AIAssistantPage({
       };
       setCkdFormData(manualData);
       setSelectedPanel('manual');
+      setSelectedDate(null);
       console.log('✅ Manual input selected');
     } else {
-      // Find selected date from mockTestDates
-      const selectedDate = mockTestDates.find(date => date.id === panelId);
-
-      if (selectedDate) {
-        setIsLoadingData(true);
-        try {
-          // Use mock data for now (API integration can be enabled later)
-          console.log('📡 Using mock data for date:', selectedDate.date);
-          const mockApiData = [selectedDate.mockData];
-          console.log('📊 Mock data loaded:', mockApiData);
-
-          if (mockApiData && mockApiData.length > 0) {
-            const panel = mockApiData[0];
-            const mappedData = mapApiPanelToCKDForm(panel);
-
-            setCkdFormData(mappedData);
-            setSelectedPanel(panelId);
-            console.log('✅ Form data updated from mock data');
-          } else {
-            alert(`Không thể tải dữ liệu cho ngày ${selectedDate.date}.`);
-          }
-
-          // TODO: Enable API integration when ready
-          /*
-          const apiData = await getHealthMetricsByDate(user.id, selectedDate.apiDate);
-          console.log('📊 API response received:', apiData ? 'Success' : 'No data');
-
-          if (apiData && apiData.length > 0) {
-            const panel = apiData[0];
-            const mappedData = mapApiPanelToCKDForm(panel);
-            setCkdFormData(mappedData);
-            setSelectedPanel(panelId);
-            console.log('✅ Form data updated from API');
-          } else {
-            console.warn(`No data found for date: ${selectedDate.apiDate}`);
-            alert(`Không tìm thấy dữ liệu cho ngày ${selectedDate.date}.`);
-          }
-          */
-        } catch (error) {
-          console.error('❌ Error loading mock data:', error);
-          alert(`Lỗi khi tải dữ liệu ngày ${selectedDate.date}.`);
-        } finally {
-          setIsLoadingData(false);
-        }
+      // Find the selected panel to get its measuredAt date
+      const selectedPanelInfo = availableDates.find(d => d.id === panelId);
+      if (selectedPanelInfo) {
+        setSelectedPanel(panelId);
+        setSelectedDate(selectedPanelInfo.date); // Use measuredAt for API query
+        console.log('✅ Selected panel:', panelId, 'Date:', selectedPanelInfo.date);
       } else {
-        console.error('❌ Date not found for panelId:', panelId);
+        console.error('❌ Panel not found:', panelId);
       }
     }
     setIsDropdownOpen(false);
@@ -415,18 +324,15 @@ export function AIAssistantPage({
     scrollToBottom();
   }, [messages]);
 
-  // Debug: Track when form data changes (can be removed in production)
+  // Auto-fill form when panel data is loaded
   useEffect(() => {
-    if (selectedPanel && selectedPanel !== 'manual') {
-      console.log('✅ Form data updated for panel:', selectedPanel, {
-        serum_creatinine: ckdFormData.serum_creatinine,
-        gfr: ckdFormData.gfr,
-        bun: ckdFormData.bun,
-        ana: ckdFormData.ana,
-        hematuria: ckdFormData.hematuria
-      });
+    if (selectedPanelData && selectedPanel !== 'manual') {
+      console.log('📊 Panel data loaded, updating form:', selectedPanelData);
+      const mappedData = mapApiPanelToCKDForm(selectedPanelData);
+      setCkdFormData(mappedData);
+      console.log('✅ Form data updated from API');
     }
-  }, [ckdFormData, selectedPanel]);
+  }, [selectedPanelData, selectedPanel]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -522,45 +428,8 @@ export function AIAssistantPage({
     );
   };
   const handleBookAppointment = () => {
-    // Store FULL prediction data (raw AI result + form data) for saving after booking
-    if (rawPredictionData) {
-      const fullPredictionData = {
-        // Raw AI result for database save
-        stage: rawPredictionData.aiResult.predicted_stage,
-        confidence: rawPredictionData.aiResult.confidence,
-        recommendations: rawPredictionData.aiResult.recommendations || [],
-
-        // Form data (21 fields) for health metrics transformation
-        healthMetrics: rawPredictionData.formData,
-
-        // Metadata
-        timestamp: rawPredictionData.timestamp,
-        userId: user.id
-      };
-
-      localStorage.setItem('pending_ckd_prediction', JSON.stringify(fullPredictionData));
-
-      console.log('💾 Stored prediction data in localStorage for later save:', {
-        stage: fullPredictionData.stage,
-        confidence: fullPredictionData.confidence,
-        recommendationsCount: fullPredictionData.recommendations.length,
-        healthMetricsFields: Object.keys(fullPredictionData.healthMetrics).length
-      });
-    } else {
-      console.warn('⚠️ No raw prediction data available to store');
-    }
-
-    // Also keep the old format for UI reference (backward compatibility)
-    const uiPredictionData = {
-      result: predictionResult?.risk === 'low' ? 'Nguy cơ Thấp' : predictionResult?.risk === 'moderate' ? 'Nguy cơ Trung bình' : 'Nguy cơ Cao',
-      stage: predictionResult?.stage || '',
-      confidence: `${predictionResult?.percentage || 0}%`,
-      date: new Date().toISOString(),
-      recommendations: predictionResult?.recommendations || []
-    };
-    localStorage.setItem('ckd_prediction_result', JSON.stringify(uiPredictionData));
-
     // Navigate to appointments page
+    // Note: Prediction is already saved to database in calculateCKDRisk()
     if (onNavigate) {
       onNavigate('appointments');
     }
@@ -710,6 +579,41 @@ export function AIAssistantPage({
     };
   };
 
+  // Fetch trend comparison data after successful prediction
+  const fetchTrendComparison = async () => {
+    setIsLoadingTrend(true);
+    setTrendData(null); // Reset previous data
+
+    try {
+      console.log('📊 Fetching trend comparison for patient:', user.id);
+      const trends = await getPredictCurrentTrends(user.id);
+      console.log('✅ Received trend data:', trends);
+      setTrendData(trends);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.log('⚠️ Trend comparison not available:', message);
+
+      // Set INSUFFICIENT_HISTORY state if no previous prediction exists
+      // This is not an error, just means first prediction
+      setTrendData({
+        trend: {
+          classification: 'INSUFFICIENT_HISTORY',
+          stagePrevious: null,
+          stageCurrent: null,
+          confidenceChange: null,
+          metricPrevious: null,
+          metricCurrent: null,
+          metricChangePct: null,
+          metricName: null,
+          summary: 'Chưa có dữ liệu lịch sử để so sánh.'
+        },
+        metricComparisons: []
+      });
+    } finally {
+      setIsLoadingTrend(false);
+    }
+  };
+
   const calculateCKDRisk = async () => {
     // First validate the complete form data
     const validation = validateCompleteFormData();
@@ -735,26 +639,41 @@ export function AIAssistantPage({
       // Parse AI service response and format for UI
       const aiPredictionResult = parseAIServiceResponse(aiResult);
 
-      // Store raw data for later saving (after appointment booking)
-      setRawPredictionData({
-        aiResult: aiResult,
-        formData: backendData,
-        timestamp: new Date().toISOString()
-      });
-
-      // ⏸️ NOTE: Prediction data will be saved AFTER user books appointment
-      // This ensures we only save when user actually needs medical consultation
-      console.log('⏸️ Prediction ready, waiting for appointment booking to save');
-      console.log('📊 Prediction will be saved with:', {
-        stage: aiResult.predicted_stage,
-        confidence: aiResult.confidence,
-        recommendationsCount: aiResult.recommendations?.length || 0,
-        userId: user.id
-      });
-
       // Display result to user
       setPredictionResult(aiPredictionResult);
       setCurrentTab(5); // Move to results tab
+
+      // ✅ Step 2: SAVE TO DATABASE immediately (follow Mobile flow)
+      try {
+        console.log('💾 Saving prediction to database...');
+
+        // Transform 9 lab test metrics to array format
+        const healthMetrics = transformHealthMetricsToArray(backendData, user.id);
+
+        // Prepare save request
+        const saveRequest = {
+          patientId: user.id,
+          stage: aiResult.predicted_stage,
+          confidence: aiResult.confidence,
+          recommendations: aiResult.recommendations || [],
+          healthMetrics: healthMetrics
+        };
+
+        await savePredictHistory(saveRequest);
+
+        console.log('✅ Prediction saved successfully:', {
+          stage: saveRequest.stage,
+          confidence: saveRequest.confidence,
+          metricsCount: healthMetrics.length
+        });
+      } catch (saveError) {
+        console.error('⚠️ Failed to save prediction:', saveError);
+        // Don't block user flow, but show warning
+        alert('⚠️ Không thể lưu kết quả dự đoán. Dữ liệu có thể không được lưu vào hệ thống.');
+      }
+
+      // ✅ Step 3: Fetch trend comparison AFTER save (correct order)
+      await fetchTrendComparison();
 
     } catch (error: unknown) {
       // Show error message to user - NO local fallback calculation
@@ -854,6 +773,7 @@ export function AIAssistantPage({
   };
   const resetPrediction = () => {
     setPredictionResult(null);
+    setTrendData(null); // Reset trend data
     setCurrentTab(1);
   };
   const validateCurrentTab = (): boolean => {
@@ -1156,13 +1076,14 @@ export function AIAssistantPage({
                   <button
                     onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                     className="flex items-center space-x-2 px-4 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg border border-blue-200 transition-colors"
-                    disabled={isLoadingData}
+                    disabled={panelsLoading || isLoadingPanel}
                   >
                     <Calendar className="w-4 h-4" />
                     <span className="text-sm font-medium">
-                      {isLoadingData ? 'Đang tải...' :
+                      {panelsLoading ? 'Đang tải...' :
+                       isLoadingPanel ? 'Đang tải dữ liệu...' :
                        selectedPanel === 'manual' ? 'Nhập thủ công' :
-                       selectedPanel ? `${mockTestDates.find(date => date.id === selectedPanel)?.date || selectedPanel}` :
+                       selectedPanel ? `${availableDates.find(date => date.id === selectedPanel)?.displayDate || selectedPanel}` :
                        'Chọn từ lịch sử'}
                     </span>
                     <ChevronDown className={`w-4 h-4 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
@@ -1189,24 +1110,31 @@ export function AIAssistantPage({
                         </button>
 
                         {/* Historical Data Options */}
-                        {mockTestDates && mockTestDates.length > 0 ? (
+                        {panelsLoading ? (
+                          <div className="px-3 py-2 text-sm text-gray-500 text-center">
+                            Đang tải lịch sử...
+                          </div>
+                        ) : availableDates && availableDates.length > 0 ? (
                           <>
                             <div className="border-t border-gray-100 my-2"></div>
-                            {mockTestDates.map((testDate) => (
+                            {availableDates.map((dateOption) => (
                               <button
-                                key={testDate.id}
-                                onClick={() => handleTestSelection(testDate.id)}
+                                key={dateOption.id}
+                                onClick={() => handleTestSelection(dateOption.id)}
                                 className={`w-full text-left px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors ${
-                                  selectedPanel === testDate.id ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
+                                  selectedPanel === dateOption.id ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
                                 }`}
-                                disabled={isLoadingData}
+                                disabled={isLoadingPanel}
                               >
                                 <div className="flex items-center space-x-2">
                                   <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                                   <div>
-                                    <div className="font-medium">{testDate.date}</div>
+                                    <div className="font-medium">
+                                      {dateOption.displayDate}
+                                      {dateOption.isLatest && ' (Mới nhất)'}
+                                    </div>
                                     <div className="text-xs text-gray-500">
-                                      {testDate.preview}
+                                      {dateOption.preview}
                                     </div>
                                   </div>
                                 </div>
@@ -1668,6 +1596,25 @@ export function AIAssistantPage({
                   </ul>
                 </div>
               </div>
+
+              {/* Trend Comparison Section */}
+              {isLoadingTrend ? (
+                <div className="mt-6 bg-gray-50 border-2 border-gray-200 rounded-xl p-6 animate-pulse">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-gray-200 rounded-lg"></div>
+                    <div className="flex-1">
+                      <div className="h-5 bg-gray-200 rounded w-48 mb-2"></div>
+                      <div className="h-4 bg-gray-200 rounded w-full"></div>
+                    </div>
+                  </div>
+                </div>
+              ) : trendData ? (
+                trendData.trend.classification === 'INSUFFICIENT_HISTORY' ? (
+                  <FirstPredictionBanner />
+                ) : (
+                  <PredictionTrendCard trendData={trendData} />
+                )
+              ) : null}
 
               {/* Action Buttons */}
               <div className="flex flex-col sm:flex-row justify-center items-center gap-4 pt-6">
