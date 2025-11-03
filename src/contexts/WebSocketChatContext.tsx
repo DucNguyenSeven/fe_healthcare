@@ -115,10 +115,10 @@ function mapMessageToChatMessage(message: any): ChatMessage {
     isRead: message.isRead !== undefined ? message.isRead : (message.is_read !== undefined ? message.is_read : true)
   };
 
-      // Validate required fields
-      if (!mapped.senderId || !mapped.id || mapped.id.startsWith('fallback-')) {
-        console.error('Invalid message data:', message);
-      }
+  // Validate required fields
+  if (!mapped.senderId || !mapped.id || mapped.id.startsWith('fallback-')) {
+    console.error('Invalid message data:', message);
+  }
 
   return mapped;
 }
@@ -237,13 +237,13 @@ function webSocketChatReducer(state: WebSocketChatState, action: WebSocketChatAc
         conversations: state.conversations.map(conv =>
           conv.id === action.payload.groupId
             ? {
-                ...conv,
-                lastMessage: message,
-                updatedAt: message.timestamp,
-                unreadCount: shouldIncrementUnread
-                  ? (conv.unreadCount || 0) + 1
-                  : conv.unreadCount
-              }
+              ...conv,
+              lastMessage: message,
+              updatedAt: message.timestamp,
+              unreadCount: shouldIncrementUnread
+                ? (conv.unreadCount || 0) + 1
+                : conv.unreadCount
+            }
             : conv
         )
       };

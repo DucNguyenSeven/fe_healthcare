@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const aiServiceURL = process.env.NEXT_PUBLIC_AI_SERVICE_URL || 'http://localhost:8086';
+const aiServiceURL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080';
 const timeout = Number(process.env.NEXT_PUBLIC_API_TIMEOUT ?? 15000);
 
 /**
