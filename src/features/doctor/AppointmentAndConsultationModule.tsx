@@ -862,16 +862,8 @@ export const AppointmentAndConsultationModule = ({
         }
       }
 
-      // BƯỚC 4: Cập nhật appointment status (using hook instead of direct API call to optimize)
-      await updateStatus(
-        selectedPatient.appointment.id || selectedPatient.appointment.appointmentId,
-        'COMPLETED',
-        undefined, // no reject reason
-        {
-          patientId: patientId,
-          doctorId: me.userId
-        }
-      );
+      // Lưu ý: Backend tự động cập nhật appointment status thành COMPLETED khi tạo medical record
+      // Không cần gọi API update status riêng để tránh duplicate
 
       // SUCCESS: Đóng modal, reset form và refresh data
       toast.success('Đã hoàn thành khám bệnh!', {
