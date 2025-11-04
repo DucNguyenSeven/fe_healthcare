@@ -131,6 +131,7 @@ const enrichAppointmentsWithDoctorInfo = async (appointments: AppointmentRespons
         if (doctorInfo) {
           return {
             ...appointment,
+            doctorId: doctorId, // Đảm bảo doctorId được set ở top level
             doctor: {
               id: doctorId,
               fullName: doctorInfo.fullName || doctorInfo.name || appointment.doctor?.fullName || 'Chưa có thông tin bác sĩ',
@@ -143,6 +144,21 @@ const enrichAppointmentsWithDoctorInfo = async (appointments: AppointmentRespons
             }
           };
         }
+      }
+      
+      // Nếu không tìm thấy doctor info nhưng có doctorId, vẫn giữ doctorId
+      if (appointment.doctorId) {
+        return {
+          ...appointment,
+          doctor: appointment.doctor ? {
+            ...appointment.doctor,
+            id: appointment.doctorId // Đảm bảo doctor.id = doctorId
+          } : {
+            id: appointment.doctorId,
+            fullName: 'Chưa có thông tin bác sĩ',
+            specialty: 'Chưa rõ chuyên khoa'
+          }
+        };
       }
 
       // Fallback: nếu không có thông tin chi tiết, sử dụng dữ liệu có sẵn
@@ -306,11 +322,23 @@ export const transformAppointmentToTimelineFormat = (appointment: AppointmentRes
     return 'Chưa có thông tin bác sĩ';
   };
 
+  // Lấy doctorId từ nhiều nguồn - ưu tiên doctorId ở top level, sau đó doctor.id
+  // Đảm bảo luôn lấy được doctorId nếu có trong appointment
+  const doctorId = appointment.doctorId 
+    || appointment.doctor?.id 
+    || (appointment.doctor as any)?.doctorId; // Fallback cho trường hợp đặc biệt
+
   const result = {
     id: appointment.appointmentId,
     service: getServiceName(appointment.consultationType, appointment.note),
     doctor: getDoctorName(), // String for display
-    doctorInfo: appointment.doctor, // Preserve full object for chat functionality
+    doctorInfo: appointment.doctor ? {
+      ...appointment.doctor,
+      // Đảm bảo doctorInfo có doctorId
+      doctorId: appointment.doctor.id || appointment.doctorId,
+      id: appointment.doctor.id || appointment.doctorId
+    } : null, // Preserve full object for chat functionality
+    doctorId: doctorId, // Lưu doctorId để dễ dàng truy cập
     date: appointment.appointmentDate,
     time: appointment.timeSlot.startTime,
     status: (statusMapping[appointment.status] || 'upcoming') as 'upcoming' | 'completed' | 'cancelled',

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Calendar, Clock, Video, User, Phone, MessageSquare, FileText, Check, X, RotateCcw, ChevronLeft, ChevronRight, Plus, Send, Download, Mic, MicOff, VideoIcon, VideoOff, Search, Filter, CalendarDays, Repeat, Stethoscope, History, Brain, Activity, AlertTriangle, TrendingUp, TrendingDown, Minus, Eye, Save, UserCheck, Pill, ClipboardList, Heart, Thermometer, Weight, Zap } from 'lucide-react';
+import { Calendar, Clock, Video, User, Phone, MessageSquare, FileText, Check, X, RotateCcw, ChevronLeft, ChevronRight, Plus, Send, Download, Mic, MicOff, VideoIcon, VideoOff, Search, Filter, CalendarDays, Repeat, Stethoscope, History, Brain, Activity, AlertTriangle, TrendingUp, TrendingDown, Minus, Eye, Save, UserCheck, Pill, ClipboardList, Heart, Thermometer, Weight, Zap, XCircle, Loader2 } from 'lucide-react';
 import DoctorScheduleRegistrationModal from './DoctorScheduleRegistrationModal';
 import type { AppointmentWeekFilterResponse } from '@/lib/api/appointments';
 import { useDoctorAppointments } from '@/hooks/appointments';
@@ -19,6 +19,7 @@ import { useAppointmentSocket } from '@/hooks/appointments/useAppointmentSocket'
 import { useGetPredict } from '@/hooks/predict';
 import type { PredictData } from '@/lib/api/predict';
 import { toast } from 'sonner';
+import { webSocketAppointmentService } from '@/services/websocket-appointment';
 import { MedicalResultModal } from '@/components/MedicalResultModal';
 import { SignaturePad } from '@/components/SignaturePad';
 import type { MedicalRecordWithPrescriptions } from '@/types/medical-record';
@@ -181,6 +182,7 @@ export const AppointmentAndConsultationModule = ({
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [selectedAppointmentForAction, setSelectedAppointmentForAction] = useState<any>(null);
   const [rejectReason, setRejectReason] = useState('');
+  const [isRejecting, setIsRejecting] = useState(false);
 
   // Hook to listen to appointment socket events and auto-refetch
   useAppointmentSocket(() => {
@@ -252,7 +254,6 @@ export const AppointmentAndConsultationModule = ({
   // Handlers for confirm/reject appointments
   const handleOpenRejectModal = (appointment: any) => {
     setSelectedAppointmentForAction(appointment);
-    setRejectReason('');
     setShowRejectModal(true);
   };
 
@@ -280,28 +281,76 @@ export const AppointmentAndConsultationModule = ({
   };
 
   const handleRejectAppointment = async () => {
-    if (!selectedAppointmentForAction) return;
+    if (!selectedAppointmentForAction || !me?.userId) {
+      return;
+    }
 
-    const success = await updateStatus(
-      selectedAppointmentForAction.appointmentId || selectedAppointmentForAction.id,
-      'REJECTED',
-      rejectReason || 'Lịch đầy, vui lòng chọn khung giờ khác',
-      {
-        patientId: selectedAppointmentForAction.patientId,
-        doctorId: me?.userId
+    // Kiểm tra WebSocket connection
+    if (!webSocketAppointmentService.isConnected()) {
+      toast.error('WebSocket chưa kết nối', {
+        description: 'Vui lòng kiểm tra kết nối internet và thử lại',
+        duration: 4000,
+      });
+      return;
+    }
+
+    setIsRejecting(true);
+
+    try {
+      const appointmentId = selectedAppointmentForAction.appointmentId || selectedAppointmentForAction.id;
+      
+      if (!appointmentId) {
+        throw new Error('Không tìm thấy ID lịch hẹn');
       }
-    );
 
-    if (success) {
+      // Lấy patientId từ appointment
+      const patientId = selectedAppointmentForAction.patientId;
+      
+      if (!patientId) {
+        console.error('❌ [Reject Appointment] Patient ID not found:', {
+          selectedAppointment: selectedAppointmentForAction
+        });
+        throw new Error('Không tìm thấy thông tin bệnh nhân. Vui lòng thử lại sau.');
+      }
+
+      // Gửi WebSocket event để từ chối lịch hẹn
+      webSocketAppointmentService.sendScheduleEvent({
+        appointmentId: appointmentId,
+        patientId: patientId,
+        doctorId: me.userId,
+        event: 'REJECT_APPOINTMENT',
+        skipRefetchForUserId: me.userId, // Skip refetch cho doctor vì họ đã biết
+      });
+
+      // Đóng modal
       setShowRejectModal(false);
       setSelectedAppointmentForAction(null);
-      setRejectReason('');
 
-      // Refetch appointments
-      if (me?.userId) {
-        const { start, end } = getWeekStartEnd(currentWeek);
-        fetchDoctorAppointments({ doctorId: me.userId, startTime: start, endTime: end });
+      // Hiển thị toast loading với ID để có thể dismiss khi nhận response
+      const toastId = `reject-${appointmentId}`;
+      toast.loading('Đang từ chối lịch hẹn...', {
+        description: 'Vui lòng chờ trong giây lát',
+        duration: Infinity, // Không tự động dismiss, sẽ dismiss khi nhận response
+        id: toastId,
+      });
+
+      // Note: WebSocket response sẽ được handle bởi WebSocketAppointmentContext
+      // và sẽ tự động refetch appointments và hiển thị toast success/error
+    } catch (error: any) {
+      console.error('Failed to reject appointment:', error);
+      
+      // Dismiss loading toast nếu có lỗi
+      const appointmentId = selectedAppointmentForAction?.appointmentId || selectedAppointmentForAction?.id;
+      if (appointmentId) {
+        toast.dismiss(`reject-${appointmentId}`);
       }
+      
+      toast.error('Không thể từ chối lịch hẹn', {
+        description: error.message || 'Có lỗi xảy ra. Vui lòng thử lại.',
+        duration: 4000,
+      });
+    } finally {
+      setIsRejecting(false);
     }
   };
 
@@ -924,6 +973,7 @@ export const AppointmentAndConsultationModule = ({
     const weekAppointments = (doctorWeekAppointments ?? [])
       .map((apt: AppointmentWeekFilterResponse, idx: number) => ({
         id: apt.appointmentId || idx,
+        appointmentId: apt.appointmentId, // Preserve original appointmentId
         patient: apt.patientName,
         time: apt.timeSlot?.startTime || '',
         date: typeof apt.date === 'string' ? apt.date : new Date(apt.date as any).toISOString().split('T')[0],
@@ -931,10 +981,12 @@ export const AppointmentAndConsultationModule = ({
         status: (apt.status || 'CONFIRMED').toString().toLowerCase(),
         type: 'offline',
         hasAIPrediction: apt.hasPredict || false,
-        patientId: apt.patientId || '',
+        patientId: apt.patientId, // Preserve original patientId (không fallback về empty string)
         // Preserve original data for examination modal
         note: apt.note,
-        symptoms: apt.symptoms
+        symptoms: apt.symptoms,
+        // Preserve original appointment data để có thể lấy thông tin đầy đủ
+        originalAppointment: apt
       }))
       // Loại bỏ các lịch đã hoàn thành khỏi nguồn tuần để tránh trùng khi gộp với completed
       .filter(apt => apt.status !== 'completed');
@@ -942,17 +994,21 @@ export const AppointmentAndConsultationModule = ({
     // Transform completed appointments (cho tab completed)
     const completedAppointmentsNormalized = (completedAppointments ?? []).map((apt: any, idx: number) => ({
       id: apt.appointmentId || `completed-${idx}`,
-      patient: apt.patient?.fullName || apt.patient?.name || 'Bệnh nhân',
+      appointmentId: apt.appointmentId, // Preserve original appointmentId
+      patient: apt.patient?.fullName || apt.patient?.name || 'Bệnh nhân', // Patient name for display
       time: apt.timeSlot?.startTime || '',
       date: apt.appointmentDate || '',
       service: apt.note || 'Khám trực tiếp',
       status: 'completed',
       type: apt.consultationType === 'ONLINE_CONSULTATION' ? 'online' : 'offline',
       hasAIPrediction: apt.hasPredict || false,
-      patientId: apt.patient?.id || '',
+      patientId: apt.patient?.id || apt.patientId, // Ưu tiên patient.id, fallback về patientId nếu có
+      patientInfo: apt.patient, // Preserve full patient object with different name
       // Preserve original data for examination modal
       note: apt.note,
-      symptoms: apt.symptoms
+      symptoms: apt.symptoms,
+      // Preserve original appointment data
+      originalAppointment: apt
     }));
 
     // Merge cả 2 sources
@@ -2569,66 +2625,86 @@ export const AppointmentAndConsultationModule = ({
       />
 
       {/* Reject Appointment Modal */}
-      {showRejectModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            className="bg-white rounded-2xl p-6 max-w-md w-full mx-4"
-          >
-            <h3 className="text-xl font-bold text-gray-900 mb-4">Từ chối lịch hẹn</h3>
-            {selectedAppointmentForAction && (
-              <div className="space-y-3 mb-4">
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Bệnh nhân:</span>
-                  <span className="font-medium text-gray-900">{selectedAppointmentForAction.patientName}</span>
+      <AnimatePresence>
+        {showRejectModal && selectedAppointmentForAction && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white rounded-2xl p-6 max-w-md w-full mx-4 shadow-2xl"
+            >
+              <div className="text-center">
+                <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <XCircle className="w-8 h-8 text-red-600" />
                 </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Thời gian:</span>
-                  <span className="font-medium text-gray-900">
-                    {new Date(selectedAppointmentForAction.date).toLocaleDateString('vi-VN')} - {selectedAppointmentForAction.timeSlot?.startTime}
-                  </span>
+                <h3 className="text-xl font-semibold text-gray-900 mb-2">Xác nhận từ chối lịch hẹn</h3>
+                <p className="text-gray-600 mb-6">
+                  Bạn có chắc chắn muốn từ chối lịch hẹn này không? Bệnh nhân sẽ nhận được thông báo về việc từ chối lịch hẹn.
+                </p>
+
+                {/* Thông tin lịch hẹn */}
+                <div className="bg-gray-50 rounded-lg p-4 mb-6 text-left">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm text-gray-600">Bệnh nhân:</span>
+                    <span className="text-sm font-medium text-gray-900">
+                      {selectedAppointmentForAction.patient || selectedAppointmentForAction.patientName || 'Chưa có thông tin'}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm text-gray-600">Dịch vụ:</span>
+                    <span className="text-sm font-medium text-gray-900">
+                      {selectedAppointmentForAction.service || 'Khám trực tiếp'}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm text-gray-600">Ngày:</span>
+                    <span className="text-sm font-medium text-gray-900">
+                      {selectedAppointmentForAction.date 
+                        ? new Date(selectedAppointmentForAction.date).toLocaleDateString('vi-VN')
+                        : 'Chưa có thông tin'}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-600">Giờ:</span>
+                    <span className="text-sm font-medium text-gray-900">
+                      {selectedAppointmentForAction.time || selectedAppointmentForAction.timeSlot?.startTime || 'Chưa có thông tin'}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => {
+                      if (!isRejecting) {
+                        setShowRejectModal(false);
+                        setSelectedAppointmentForAction(null);
+                      }
+                    }}
+                    disabled={isRejecting}
+                    className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Hủy
+                  </button>
+                  <button
+                    onClick={handleRejectAppointment}
+                    disabled={isRejecting}
+                    className="flex-1 px-4 py-2 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  >
+                    {isRejecting ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>Đang xử lý...</span>
+                      </>
+                    ) : (
+                      <span>Xác nhận từ chối</span>
+                    )}
+                  </button>
                 </div>
               </div>
-            )}
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Lý do từ chối <span className="text-gray-400">(Tùy chọn)</span>
-              </label>
-              <textarea
-                value={rejectReason}
-                onChange={(e) => setRejectReason(e.target.value)}
-                placeholder="Ví dụ: Lịch đầy, vui lòng chọn khung giờ khác..."
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent resize-none"
-                rows={3}
-                maxLength={200}
-              />
-              <div className="text-right text-xs text-gray-400 mt-1">
-                {rejectReason.length}/200 ký tự
-              </div>
-            </div>
-            <div className="flex gap-3">
-              <button
-                onClick={() => {
-                  setShowRejectModal(false);
-                  setRejectReason('');
-                }}
-                disabled={updateStatusLoading}
-                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors disabled:opacity-50"
-              >
-                Hủy
-              </button>
-              <button
-                onClick={handleRejectAppointment}
-                disabled={updateStatusLoading}
-                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {updateStatusLoading ? 'Đang xử lý...' : 'Xác nhận từ chối'}
-              </button>
-            </div>
-          </motion.div>
-        </div>
-      )}
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>;
 };

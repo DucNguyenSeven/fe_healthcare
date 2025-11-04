@@ -191,19 +191,29 @@ export function WebSocketAppointmentProvider({ children }: WebSocketAppointmentP
         });
       }
     } else if (user.role === 'DOCTOR' && doctorId === user.userId) {
-      // Only trigger refetch if this user is not the one who initiated the action
-      const shouldSkipRefetch = skipRefetchForUserId === user.userId;
+      // Always trigger refetch for doctor to update UI
+      // Even if they initiated the action, refetch to get updated status from backend
+      updateCallbacksRef.current.forEach(callback => callback());
 
-      if (!shouldSkipRefetch) {
-        // Trigger refetch callbacks for doctor
-        updateCallbacksRef.current.forEach(callback => callback());
-      }
-
-      // Doctor receives notification (for completed status from system)
+      // Doctor receives notification based on status
       if (status === 'CANCELED') {
         toast.warning('Lịch hẹn bị hủy', {
           description: 'Bệnh nhân đã hủy lịch khám',
           duration: 5000
+        });
+      } else if (status === 'REJECTED') {
+        // Dismiss loading toast if exists
+        toast.dismiss(`reject-${appointmentId}`);
+        toast.success('Đã từ chối lịch hẹn', {
+          description: 'Bệnh nhân sẽ nhận được thông báo',
+          duration: 4000
+        });
+      } else if (status === 'CONFIRMED') {
+        // Dismiss loading toast if exists
+        toast.dismiss(`confirm-${appointmentId}`);
+        toast.success('Đã xác nhận lịch hẹn', {
+          description: 'Bệnh nhân sẽ nhận được thông báo',
+          duration: 4000
         });
       }
     }
@@ -259,6 +269,8 @@ export function WebSocketAppointmentProvider({ children }: WebSocketAppointmentP
 
     // Trigger callbacks and show notification ONLY for relevant user
     if (user.role === 'PATIENT' && patientId === user.userId) {
+      // Dismiss loading toast if exists
+      toast.dismiss(`cancel-${appointmentId}`);
       updateCallbacksRef.current.forEach(callback => callback());
       toast.success('Hủy lịch thành công', {
         description: 'Lịch hẹn đã được hủy',
@@ -269,6 +281,48 @@ export function WebSocketAppointmentProvider({ children }: WebSocketAppointmentP
       toast.warning('Lịch hẹn bị hủy', {
         description: 'Bệnh nhân đã hủy lịch khám',
         duration: 5000
+      });
+    }
+  }, [user]);
+
+  /**
+   * Handle REJECT_APPOINTMENT event
+   */
+  const handleReject = useCallback((data: AppointmentSocketData) => {
+    const { appointmentId, patientId, doctorId, success } = data;
+
+    if (!success || !user) return;
+
+    const toastKey = `reject-${appointmentId}`;
+    if (shownToastAppointmentsRef.current.has(toastKey)) return;
+    shownToastAppointmentsRef.current.add(toastKey);
+
+    setTimeout(() => {
+      shownToastAppointmentsRef.current.delete(toastKey);
+    }, 60000);
+
+    // Trigger callbacks and show notification ONLY for relevant user
+    if (user.role === 'PATIENT' && patientId === user.userId) {
+      // Dismiss loading toast if exists
+      toast.dismiss(`reject-${appointmentId}`);
+      updateCallbacksRef.current.forEach(callback => callback());
+      toast.error('Lịch hẹn bị từ chối', {
+        description: 'Bác sĩ không thể nhận lịch này. Vui lòng đặt lại.',
+        duration: 8000,
+        action: {
+          label: 'Đặt lại',
+          onClick: () => {
+            window.location.href = '/patient/appointments';
+          }
+        }
+      });
+    } else if (user.role === 'DOCTOR' && doctorId === user.userId) {
+      // Dismiss loading toast if exists
+      toast.dismiss(`reject-${appointmentId}`);
+      updateCallbacksRef.current.forEach(callback => callback());
+      toast.success('Đã từ chối lịch hẹn', {
+        description: 'Bệnh nhân sẽ nhận được thông báo',
+        duration: 4000
       });
     }
   }, [user]);
@@ -357,6 +411,12 @@ export function WebSocketAppointmentProvider({ children }: WebSocketAppointmentP
     // Show error notification and refetch ONLY for relevant user
     if ((user.role === 'PATIENT' && patientId === user.userId) ||
         (user.role === 'DOCTOR' && doctorId === user.userId)) {
+      // Dismiss loading toasts
+      if (appointmentId) {
+        toast.dismiss(`reject-${appointmentId}`);
+        toast.dismiss(`confirm-${appointmentId}`);
+      }
+
       // Trigger callbacks
       updateCallbacksRef.current.forEach(callback => callback());
 
@@ -416,11 +476,50 @@ export function WebSocketAppointmentProvider({ children }: WebSocketAppointmentP
     // Show error notification and refetch ONLY for relevant user
     if ((user.role === 'PATIENT' && patientId === user.userId) ||
         (user.role === 'DOCTOR' && doctorId === user.userId)) {
+      // Dismiss loading toasts
+      if (appointmentId) {
+        toast.dismiss(`cancel-${appointmentId}`);
+      }
+
       // Trigger callbacks
       updateCallbacksRef.current.forEach(callback => callback());
 
       toast.error('Không thể hủy lịch', {
         description: message || 'Có lỗi xảy ra khi hủy lịch hẹn.',
+        duration: 6000
+      });
+    }
+  }, [user]);
+
+  /**
+   * Handle REJECT_APPOINTMENT_FAILED event
+   */
+  const handleRejectFailed = useCallback((data: AppointmentSocketData) => {
+    const { appointmentId, patientId, doctorId, message } = data;
+
+    if (!user) return;
+
+    const toastKey = `reject-failed-${appointmentId}`;
+    if (shownToastAppointmentsRef.current.has(toastKey)) return;
+    shownToastAppointmentsRef.current.add(toastKey);
+
+    setTimeout(() => {
+      shownToastAppointmentsRef.current.delete(toastKey);
+    }, 60000);
+
+    // Show error notification and refetch ONLY for relevant user
+    if ((user.role === 'PATIENT' && patientId === user.userId) ||
+        (user.role === 'DOCTOR' && doctorId === user.userId)) {
+      // Dismiss loading toasts
+      if (appointmentId) {
+        toast.dismiss(`reject-${appointmentId}`);
+      }
+
+      // Trigger callbacks
+      updateCallbacksRef.current.forEach(callback => callback());
+
+      toast.error('Không thể từ chối lịch hẹn', {
+        description: message || 'Có lỗi xảy ra khi từ chối lịch hẹn.',
         duration: 6000
       });
     }
@@ -457,6 +556,11 @@ export function WebSocketAppointmentProvider({ children }: WebSocketAppointmentP
       handleCancel
     );
 
+    const unsubscribeReject = webSocketAppointmentService.subscribe(
+      'REJECT_APPOINTMENT',
+      handleReject
+    );
+
     // Subscribe to FAILED events
     const unsubscribeBookingFailed = webSocketAppointmentService.subscribe(
       'BOOKING_APPOINTMENT_FAILED',
@@ -478,6 +582,11 @@ export function WebSocketAppointmentProvider({ children }: WebSocketAppointmentP
       handleCancelFailed
     );
 
+    const unsubscribeRejectFailed = webSocketAppointmentService.subscribe(
+      'REJECT_APPOINTMENT_FAILED',
+      handleRejectFailed
+    );
+
     // Cleanup subscriptions on unmount
     return () => {
       // Unsubscribe success events
@@ -485,11 +594,13 @@ export function WebSocketAppointmentProvider({ children }: WebSocketAppointmentP
       unsubscribeStatus();
       unsubscribeReschedule();
       unsubscribeCancel();
+      unsubscribeReject();
       // Unsubscribe failed events
       unsubscribeBookingFailed();
       unsubscribeStatusFailed();
       unsubscribeRescheduleFailed();
       unsubscribeCancelFailed();
+      unsubscribeRejectFailed();
     };
   }, [
     isAuthenticated,
@@ -498,10 +609,12 @@ export function WebSocketAppointmentProvider({ children }: WebSocketAppointmentP
     handleUpdateStatus,
     handleReschedule,
     handleCancel,
+    handleReject,
     handleBookingAppointmentFailed,
     handleUpdateStatusFailed,
     handleRescheduleFailed,
-    handleCancelFailed
+    handleCancelFailed,
+    handleRejectFailed
   ]);
 
   // ============ Public Methods ============

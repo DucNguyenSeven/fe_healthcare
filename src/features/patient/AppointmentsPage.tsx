@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Calendar, Clock, User, Video, MapPin, CheckCircle, XCircle, AlertCircle, ChevronDown, ChevronUp, Stethoscope, Loader2, Star, Eye, MessageCircle } from 'lucide-react';
+import { Calendar, Clock, User, Video, MapPin, CheckCircle, XCircle, AlertCircle, ChevronDown, ChevronUp, Stethoscope, Loader2, Star, Eye, MessageCircle, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { Appointment } from './HealthcarePlusApp';
 import { useDoctorOfDate, useDoctorSchedule } from '@/hooks/doctor-schedules';
@@ -13,6 +13,8 @@ import { MedicalResultModal } from '@/components/MedicalResultModal';
 import { useWebSocketChat } from '@/contexts/WebSocketChatContext';
 import { useAppointmentSocket } from '@/hooks/appointments/useAppointmentSocket';
 import { savePredictHistory, CreateHealthMetricRequest } from '@/lib/api/predict';
+import { webSocketAppointmentService } from '@/services/websocket-appointment';
+import { motion, AnimatePresence } from 'framer-motion';
 
 
 
@@ -118,6 +120,11 @@ export function AppointmentsPage() {
 
   // State để prevent duplicate submissions
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // State cho modal hủy lịch
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [selectedAppointmentForCancel, setSelectedAppointmentForCancel] = useState<TimelineAppointment | null>(null);
+  const [isCanceling, setIsCanceling] = useState(false);
 
   // Danh sách chi nhánh
   const branches = [
@@ -317,6 +324,126 @@ export function AppointmentsPage() {
         return XCircle;
       default:
         return AlertCircle;
+    }
+  };
+
+  // Handler để mở modal hủy lịch
+  const handleOpenCancelModal = (appointment: TimelineAppointment) => {
+    setSelectedAppointmentForCancel(appointment);
+    setShowCancelModal(true);
+  };
+
+  // Handler để đóng modal hủy lịch
+  const handleCloseCancelModal = () => {
+    if (!isCanceling) {
+      setShowCancelModal(false);
+      setSelectedAppointmentForCancel(null);
+    }
+  };
+
+  // Handler để hủy lịch qua WebSocket
+  const handleCancelAppointment = async () => {
+    if (!selectedAppointmentForCancel || !currentUser) {
+      return;
+    }
+
+    // Kiểm tra WebSocket connection
+    if (!webSocketAppointmentService.isConnected()) {
+      toast.error('WebSocket chưa kết nối', {
+        description: 'Vui lòng kiểm tra kết nối internet và thử lại',
+        duration: 4000,
+      });
+      return;
+    }
+
+    setIsCanceling(true);
+
+    try {
+      // Lấy thông tin appointment từ API data để đảm bảo có đầy đủ thông tin
+      const appointmentData = apiAppointments.find(apt => apt.appointmentId === selectedAppointmentForCancel.id);
+      
+      // Debug log để kiểm tra dữ liệu
+      console.log('🔍 [Cancel Appointment] Debug info:', {
+        appointmentId: selectedAppointmentForCancel.id,
+        appointmentData: appointmentData ? {
+          doctorId: appointmentData.doctorId,
+          doctor: appointmentData.doctor,
+          patient: appointmentData.patient
+        } : null,
+        selectedAppointment: {
+          doctorId: (selectedAppointmentForCancel as any).doctorId,
+          doctorInfo: (selectedAppointmentForCancel as any).doctorInfo,
+          patientInfo: (selectedAppointmentForCancel as any).patientInfo
+        }
+      });
+      
+      // Fallback: nếu không tìm thấy từ API, thử lấy từ appointment đã transform
+      const patientId = appointmentData?.patient?.id 
+        || (selectedAppointmentForCancel as any).patientInfo?.id 
+        || currentUser.userId;
+      
+      // Ưu tiên lấy doctorId từ nhiều nguồn
+      // Quan trọng: ưu tiên lấy từ doctorInfo.doctorId trước (vì đã được enrich và có giá trị)
+      const doctorId = (selectedAppointmentForCancel as any).doctorInfo?.doctorId  // Ưu tiên từ doctorInfo.doctorId
+        || (selectedAppointmentForCancel as any).doctorInfo?.id  // Fallback từ doctorInfo.id
+        || (selectedAppointmentForCancel as any).doctorId  // Từ transform result
+        || appointmentData?.doctorId  // Từ API data
+        || appointmentData?.doctor?.id;  // Từ API data doctor object
+
+      if (!doctorId) {
+        console.error('❌ [Cancel Appointment] Doctor ID not found:', {
+          appointmentData,
+          selectedAppointment: selectedAppointmentForCancel
+        });
+        throw new Error('Không tìm thấy thông tin bác sĩ. Vui lòng thử lại sau.');
+      }
+
+      if (!patientId) {
+        console.error('❌ [Cancel Appointment] Patient ID not found:', {
+          appointmentData,
+          selectedAppointment: selectedAppointmentForCancel,
+          currentUser: currentUser?.userId
+        });
+        throw new Error('Không tìm thấy thông tin bệnh nhân. Vui lòng thử lại sau.');
+      }
+
+      // Gửi WebSocket event để hủy lịch
+      webSocketAppointmentService.sendScheduleEvent({
+        appointmentId: selectedAppointmentForCancel.id,
+        patientId: patientId,
+        doctorId: doctorId,
+        event: 'CANCEL_APPOINTMENT',
+        skipRefetchForUserId: currentUser.userId, // Skip refetch cho patient vì họ đã biết
+      });
+
+      // Đóng modal
+      setShowCancelModal(false);
+      setSelectedAppointmentForCancel(null);
+
+      // Hiển thị toast loading với ID để có thể dismiss khi nhận response
+      const toastId = `cancel-${selectedAppointmentForCancel.id}`;
+      toast.loading('Đang hủy lịch hẹn...', {
+        description: 'Vui lòng chờ trong giây lát',
+        duration: Infinity, // Không tự động dismiss, sẽ dismiss khi nhận response
+        id: toastId,
+      });
+
+      // Note: WebSocket response sẽ được handle bởi WebSocketAppointmentContext
+      // và sẽ tự động refetch appointments và hiển thị toast success/error
+    } catch (error: any) {
+      console.error('Failed to cancel appointment:', error);
+      
+      // Dismiss loading toast nếu có lỗi
+      if (selectedAppointmentForCancel?.id) {
+        toast.dismiss(`cancel-${selectedAppointmentForCancel.id}`);
+      }
+      
+      toast.error('Không thể hủy lịch hẹn', {
+        description: error.message || 'Có lỗi xảy ra. Vui lòng thử lại.',
+        duration: 4000,
+      });
+    } finally {
+      setIsCanceling(false);
     }
   };
 
@@ -804,7 +931,10 @@ export function AppointmentsPage() {
                       <button className="px-4 py-2 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors text-sm">
                         Đổi lịch
                       </button>
-                      <button className="px-4 py-2 border border-red-300 text-red-700 rounded-xl hover:bg-red-50 transition-colors text-sm">
+                      <button 
+                        onClick={() => handleOpenCancelModal(appointment)}
+                        className="px-4 py-2 border border-red-300 text-red-700 rounded-xl hover:bg-red-50 transition-colors text-sm"
+                      >
                         Hủy lịch
                       </button>
                     </>}
@@ -817,7 +947,10 @@ export function AppointmentsPage() {
                       <button className="px-4 py-2 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors text-sm">
                         Đổi lịch
                       </button>
-                      <button className="px-4 py-2 border border-red-300 text-red-700 rounded-xl hover:bg-red-50 transition-colors text-sm">
+                      <button 
+                        onClick={() => handleOpenCancelModal(appointment)}
+                        className="px-4 py-2 border border-red-300 text-red-700 rounded-xl hover:bg-red-50 transition-colors text-sm"
+                      >
                         Hủy lịch
                       </button>
                     </>}
@@ -1418,5 +1551,75 @@ export function AppointmentsPage() {
         }}
         doctorInfo={selectedDoctorInfo ?? undefined}
       />
+
+      {/* Modal xác nhận hủy lịch */}
+      <AnimatePresence>
+        {showCancelModal && selectedAppointmentForCancel && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white rounded-2xl p-6 max-w-md w-full mx-4 shadow-2xl"
+            >
+              <div className="text-center">
+                <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <XCircle className="w-8 h-8 text-red-600" />
+                </div>
+                <h3 className="text-xl font-semibold text-gray-900 mb-2">Xác nhận hủy lịch hẹn</h3>
+                <p className="text-gray-600 mb-6">
+                  Bạn có chắc chắn muốn hủy lịch hẹn này không? Bác sĩ sẽ nhận được thông báo về việc hủy lịch.
+                </p>
+
+                {/* Thông tin lịch hẹn */}
+                <div className="bg-gray-50 rounded-lg p-4 mb-6 text-left">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm text-gray-600">Bác sĩ:</span>
+                    <span className="text-sm font-medium text-gray-900">{selectedAppointmentForCancel.doctor}</span>
+                  </div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm text-gray-600">Dịch vụ:</span>
+                    <span className="text-sm font-medium text-gray-900">{selectedAppointmentForCancel.service}</span>
+                  </div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm text-gray-600">Ngày:</span>
+                    <span className="text-sm font-medium text-gray-900">
+                      {new Date(selectedAppointmentForCancel.date).toLocaleDateString('vi-VN')}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-600">Giờ:</span>
+                    <span className="text-sm font-medium text-gray-900">{selectedAppointmentForCancel.time}</span>
+                  </div>
+                </div>
+
+                <div className="flex gap-3">
+                  <button
+                    onClick={handleCloseCancelModal}
+                    disabled={isCanceling}
+                    className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Hủy
+                  </button>
+                  <button
+                    onClick={handleCancelAppointment}
+                    disabled={isCanceling}
+                    className="flex-1 px-4 py-2 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  >
+                    {isCanceling ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>Đang xử lý...</span>
+                      </>
+                    ) : (
+                      <span>Xác nhận hủy</span>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>;
 }
