@@ -44,37 +44,12 @@ export const useUpdateAppointmentStatus = (): UseUpdateAppointmentStatusReturn =
       const response = await updateAppointmentStatus(appointmentId, status);
 
       if (response.success) {
-        // Send WebSocket event after successful update
-        try {
-          let patientId = options?.patientId;
-          let doctorId = options?.doctorId;
-
-          // Only fetch appointment detail if patientId or doctorId are not provided
-          if (!patientId || !doctorId) {
-            console.log('[useUpdateAppointmentStatus] Fetching appointment detail for missing IDs...');
-            const appointmentDetail = await getAppointmentDetail(appointmentId);
-            patientId = patientId || appointmentDetail.patientId;
-            doctorId = doctorId || appointmentDetail.doctorId;
-          } else {
-            console.log('[useUpdateAppointmentStatus] Using provided patientId and doctorId, skipping getAppointmentDetail');
-          }
-
-          webSocketAppointmentService.sendScheduleEvent({
-            appointmentId: appointmentId,
-            patientId: patientId,
-            doctorId: doctorId,
-            event: 'UPDATE_APPOINTMENT_STATUS',
-            createAppointmentRequest: {
-              status: status,
-              rejectReason: rejectReason
-            },
-            // Skip refetch for current user since they will refetch manually after this call
-            skipRefetchForUserId: me?.userId
-          });
-        } catch (wsError) {
-          console.error('[useUpdateAppointmentStatus] Failed to send WebSocket event:', wsError);
-          // Don't fail the update if WebSocket fails
-        }
+        // NOTE: We do NOT send WebSocket event from frontend after REST API call.
+        // The backend automatically broadcasts WebSocket events to all relevant clients
+        // after successfully updating the appointment status in the database.
+        // Sending a WebSocket event here would cause a duplicate update attempt,
+        // resulting in an error: "Không thể cập nhật trạng thái lịch hẹn"
+        // This is similar to the fix in commit 24fe262 for medical record completion.
 
         // Show success toast based on status
         switch (status) {
@@ -125,7 +100,7 @@ export const useUpdateAppointmentStatus = (): UseUpdateAppointmentStatusReturn =
     } finally {
       setLoading(false);
     }
-  }, [me?.userId]);
+  }, []);
 
   const clearError = useCallback(() => {
     setError(null);

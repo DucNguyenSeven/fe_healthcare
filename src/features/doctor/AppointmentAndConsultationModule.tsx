@@ -177,8 +177,7 @@ export const AppointmentAndConsultationModule = ({
   const [openScheduleModalForFollowUp, setOpenScheduleModalForFollowUp] = useState(false);
   const [followUpNote, setFollowUpNote] = useState(''); // Ghi chú tái khám (optional)
 
-  // States for confirm/reject modals
-  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  // States for reject modal (no confirmation needed for accept - direct action)
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [selectedAppointmentForAction, setSelectedAppointmentForAction] = useState<any>(null);
   const [rejectReason, setRejectReason] = useState('');
@@ -251,34 +250,27 @@ export const AppointmentAndConsultationModule = ({
   }, [timeSlots, scheduleId, timeSlotMapping]);
 
   // Handlers for confirm/reject appointments
-  const handleOpenConfirmModal = (appointment: any) => {
-    setSelectedAppointmentForAction(appointment);
-    setShowConfirmModal(true);
-  };
-
   const handleOpenRejectModal = (appointment: any) => {
     setSelectedAppointmentForAction(appointment);
     setRejectReason('');
     setShowRejectModal(true);
   };
 
-  const handleConfirmAppointment = async () => {
-    if (!selectedAppointmentForAction) return;
+  // Direct confirmation handler - no modal needed for positive action
+  const handleConfirmAppointment = async (appointment: any) => {
+    if (!appointment) return;
 
     const success = await updateStatus(
-      selectedAppointmentForAction.appointmentId || selectedAppointmentForAction.id,
+      appointment.appointmentId || appointment.id,
       'CONFIRMED',
       undefined, // no reject reason
       {
-        patientId: selectedAppointmentForAction.patientId,
+        patientId: appointment.patientId,
         doctorId: me?.userId
       }
     );
 
     if (success) {
-      setShowConfirmModal(false);
-      setSelectedAppointmentForAction(null);
-
       // Refetch appointments
       if (me?.userId) {
         const { start, end } = getWeekStartEnd(currentWeek);
@@ -1084,7 +1076,7 @@ export const AppointmentAndConsultationModule = ({
         {appointmentTab === 'pending' && appointment.status === 'pending' && (
           <div className="flex gap-2">
             <button
-              onClick={() => handleOpenConfirmModal(appointment)}
+              onClick={() => handleConfirmAppointment(appointment)}
               disabled={updateStatusLoading}
               className="flex-1 bg-[#10B981] hover:bg-[#059669] text-white py-2 px-3 rounded-xl text-sm font-medium flex items-center justify-center gap-1 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
@@ -2575,36 +2567,6 @@ export const AppointmentAndConsultationModule = ({
         patientInfo={selectedPatientInfo ?? undefined}
         doctorInfo={selectedDoctorInfo ?? undefined}
       />
-
-      {/* Confirm Appointment Modal */}
-      {showConfirmModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            className="bg-white rounded-2xl p-6 max-w-md w-full mx-4"
-          >
-            <h3 className="text-xl font-bold text-gray-900 mb-6">Xác nhận lịch hẹn?</h3>
-            <div className="flex gap-3">
-              <button
-                onClick={() => setShowConfirmModal(false)}
-                disabled={updateStatusLoading}
-                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors disabled:opacity-50"
-              >
-                Hủy
-              </button>
-              <button
-                onClick={handleConfirmAppointment}
-                disabled={updateStatusLoading}
-                className="flex-1 px-4 py-2 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {updateStatusLoading ? 'Đang xử lý...' : 'Xác nhận'}
-              </button>
-            </div>
-          </motion.div>
-        </div>
-      )}
 
       {/* Reject Appointment Modal */}
       {showRejectModal && (
