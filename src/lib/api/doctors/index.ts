@@ -1,4 +1,28 @@
 import api from '../client';
+import type { MessageResponse } from '../types';
+import type { Certification } from '../certification';
+
+// Interface cho DoctorResponse từ API getDoctorById
+export interface DoctorResponse {
+  userId: string;
+  fullName: string;
+  email: string;
+  gender: string | null;
+  dob: string | null;
+  phone: string | null;
+  address: string | null;
+  avatarUrl: string | null;
+  role: 'DOCTOR' | 'PATIENT' | 'ADMIN';
+  status: 'ACTIVE' | 'INACTIVE' | 'BLOCKED';
+  // Thông tin chuyên môn
+  specialty?: string | null;
+  experienceYears?: number | null;
+  examinationFee?: number | null;
+  clinicAddress?: string | null;
+  bio?: string | null;
+  rating?: number;
+  certifications?: Certification[];
+}
 
 export interface DoctorInfo {
   id: string;
@@ -67,5 +91,17 @@ export const getDoctorsInfo = async (doctorIds: string[]): Promise<GetDoctorsInf
     }
   );
   
+  return response.data;
+};
+
+/**
+ * Lấy thông tin đầy đủ của bác sĩ theo ID (bao gồm thông tin chuyên môn và certifications)
+ * @param doctorId - ID của bác sĩ
+ * @returns Promise<MessageResponse<DoctorResponse>>
+ */
+export const getDoctorById = async (doctorId: string): Promise<MessageResponse<DoctorResponse>> => {
+  const response = await api.get<MessageResponse<DoctorResponse>>(
+    `/api/v1/doctors/getDoctorById/${encodeURIComponent(doctorId)}`
+  );
   return response.data;
 };

@@ -3,14 +3,13 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { User, Mail, Phone, Upload, Save, Camera, CheckCircle, Plus, Award, X, Calendar, MapPin, Briefcase, Stethoscope, DollarSign, Edit } from 'lucide-react';
-import { useGetMe } from '@/hooks/auth/useGetMe';
+import { useGetDoctorById } from '@/hooks/auth/useGetDoctorById';
 import { useUpdateUser } from '@/hooks/auth/useUpdateUser';
 import { useUpdateAvatar } from '@/hooks/auth/useUpdateAvatar';
 import { useUpdateDoctor } from '@/hooks/auth/useUpdateDoctor';
 import { useCertificationList, type AddCertificationRequest } from '@/hooks/certification';
 import type { UpdateCertificationRequest } from '@/lib/api/certification';
 import type { Certification } from '@/lib/api/certification';
-import type { GetMeResponse } from '@/types/auth';
 import type { UpdateUserRequest, UpdateDoctorRequest } from '@/lib/api/types';
 const currentYear = new Date().getFullYear();
 const years = Array.from({
@@ -20,8 +19,8 @@ const years = Array.from({
 
 // @component: DoctorProfilePage
 export const DoctorProfilePage = () => {
-  // Get user data from API
-  const { data: user, isLoading, error, refetch } = useGetMe();
+  // Get full doctor data from API (bao gồm thông tin chuyên môn và certifications)
+  const { data: doctor, isLoading, error, refetch } = useGetDoctorById();
   
   // Update user hook
   const { updateUser, isLoading: isUpdating, error: updateError } = useUpdateUser();
@@ -32,9 +31,10 @@ export const DoctorProfilePage = () => {
   // Update avatar hook
   const { updateAvatar, isLoading: isUploadingAvatar, error: avatarError, progress } = useUpdateAvatar();
   
-  // Certification management hooks
+  // Certification management hooks - vẫn dùng hook này để xử lý add/update/delete
+  // Nhưng certifications sẽ được lấy từ doctor response thay vì gọi API riêng
   const {
-    certifications,
+    certifications: certificationsFromHook,
     isLoading: isCertificationsLoading,
     isAdding: isAddingCertification,
     isUpdating: isUpdatingCertification,
@@ -48,7 +48,11 @@ export const DoctorProfilePage = () => {
     resetAddError,
     resetUpdateError,
     resetDeleteError,
-  } = useCertificationList(user?.userId || '');
+    refetch: refetchCertifications,
+  } = useCertificationList(doctor?.userId || '');
+  
+  // Ưu tiên dùng certifications từ doctor response, fallback về hook nếu chưa có
+  const certifications = doctor?.certifications || certificationsFromHook;
 
   const [formData, setFormData] = useState({
     fullName: '',
@@ -93,9 +97,9 @@ export const DoctorProfilePage = () => {
   const [showCertificationErrorNotification, setShowCertificationErrorNotification] = useState(false);
   const [dateError, setDateError] = useState<string>('');
 
-  // Update form data when user data is loaded
+  // Update form data và doctor data when doctor data is loaded
   useEffect(() => {
-    if (user) {
+    if (doctor) {
       const formatDate = (dateString: string | null) => {
         if (!dateString) return '';
         try {
@@ -106,22 +110,31 @@ export const DoctorProfilePage = () => {
         }
       };
 
+      // Populate formData (thông tin cá nhân)
       setFormData({
-        fullName: user.fullName || '',
-        email: user.email || '',
-        phone: user.phone || '',
-        dateOfBirth: formatDate(user.dob),
-        gender: mapGenderFromAPI(user.gender || ''),
-        address: user.address || '',
-        introduction: ''
+        fullName: doctor.fullName || '',
+        email: doctor.email || '',
+        phone: doctor.phone || '',
+        dateOfBirth: formatDate(doctor.dob),
+        gender: mapGenderFromAPI(doctor.gender || ''),
+        address: doctor.address || '',
+        introduction: doctor.bio || '' // Lấy từ bio field
+      });
+      
+      // Populate doctorData (thông tin chuyên môn) - QUAN TRỌNG: Đây là phần đang thiếu
+      setDoctorData({
+        specialty: doctor.specialty || '',
+        experienceYears: doctor.experienceYears || 0,
+        examinationFee: doctor.examinationFee || 0,
+        clinicAddress: doctor.clinicAddress || ''
       });
       
       // Set avatar if available
-      if (user.avatarUrl) {
-        setAvatar(user.avatarUrl);
+      if (doctor.avatarUrl) {
+        setAvatar(doctor.avatarUrl);
       }
     }
-  }, [user]);
+  }, [doctor]);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({
@@ -135,7 +148,7 @@ export const DoctorProfilePage = () => {
     }
   };
   const handleSave = async () => {
-    if (!user?.userId) {
+    if (!doctor?.userId) {
       setShowUpdateErrorNotification(true);
       setTimeout(() => setShowUpdateErrorNotification(false), 3000);
       return;
@@ -155,7 +168,7 @@ export const DoctorProfilePage = () => {
     try {
       // Prepare user data for API - only include fields that have values
       const updateData: UpdateUserRequest = {
-        userId: user.userId,
+        userId: doctor.userId,
       };
 
       // Add fields that have actual values
@@ -183,7 +196,7 @@ export const DoctorProfilePage = () => {
 
       // Prepare doctor data for API
       const doctorUpdateData: UpdateDoctorRequest = {
-        userId: user.userId,
+        userId: doctor.userId,
       };
 
       // Add doctor fields that have actual values
@@ -230,8 +243,9 @@ export const DoctorProfilePage = () => {
       const allSuccessful = results.every(result => result !== null);
 
       if (allSuccessful) {
-        // Success - refetch user data and show success notification
+        // Success - refetch doctor data và certifications để lấy thông tin mới nhất
         await refetch();
+        await refetchCertifications();
         setIsEditing(false);
         setShowUpdateSuccessNotification(true);
         setTimeout(() => setShowUpdateSuccessNotification(false), 3000);
@@ -387,7 +401,7 @@ export const DoctorProfilePage = () => {
   };
 
   const handleCancel = () => {
-    if (user) {
+    if (doctor) {
       const formatDate = (dateString: string | null) => {
         if (!dateString) return '';
         try {
@@ -399,21 +413,21 @@ export const DoctorProfilePage = () => {
       };
 
       setFormData({
-        fullName: user.fullName || '',
-        email: user.email || '',
-        phone: user.phone || '',
-        dateOfBirth: formatDate(user.dob),
-        gender: mapGenderFromAPI(user.gender || ''),
-        address: user.address || '',
-        introduction: ''
+        fullName: doctor.fullName || '',
+        email: doctor.email || '',
+        phone: doctor.phone || '',
+        dateOfBirth: formatDate(doctor.dob),
+        gender: mapGenderFromAPI(doctor.gender || ''),
+        address: doctor.address || '',
+        introduction: doctor.bio || ''
       });
       
       // Reset doctor data to original values
       setDoctorData({
-        specialty: '',
-        experienceYears: 0,
-        examinationFee: 0,
-        clinicAddress: ''
+        specialty: doctor.specialty || '',
+        experienceYears: doctor.experienceYears || 0,
+        examinationFee: doctor.examinationFee || 0,
+        clinicAddress: doctor.clinicAddress || ''
       });
     }
     setDateError(''); // Clear date error
@@ -422,7 +436,7 @@ export const DoctorProfilePage = () => {
 
   const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (!file || !user?.userId) {
+    if (!file || !doctor?.userId) {
       return;
     }
 
@@ -435,7 +449,7 @@ export const DoctorProfilePage = () => {
       reader.readAsDataURL(file);
 
       // Call API to upload avatar
-      const avatarUrl = await updateAvatar(user.userId, file);
+      const avatarUrl = await updateAvatar(doctor.userId, file);
       
       if (avatarUrl) {
         // Success - update avatar state with the actual URL from Cloudinary
@@ -447,16 +461,16 @@ export const DoctorProfilePage = () => {
         // Show success notification
         setShowAvatarSuccessNotification(true);
         setTimeout(() => setShowAvatarSuccessNotification(false), 3000);
-      } else {
-        // Error - revert to original avatar
-        setAvatar(user.avatarUrl || null);
-        setShowAvatarErrorNotification(true);
-        setTimeout(() => setShowAvatarErrorNotification(false), 3000);
-      }
-    } catch (error) {
-      console.error('Error uploading avatar:', error);
-      // Revert to original avatar
-      setAvatar(user.avatarUrl || null);
+        } else {
+          // Error - revert to original avatar
+          setAvatar(doctor.avatarUrl || null);
+          setShowAvatarErrorNotification(true);
+          setTimeout(() => setShowAvatarErrorNotification(false), 3000);
+        }
+      } catch (error) {
+        console.error('Error uploading avatar:', error);
+        // Revert to original avatar
+        setAvatar(doctor.avatarUrl || null);
       setShowAvatarErrorNotification(true);
       setTimeout(() => setShowAvatarErrorNotification(false), 3000);
     }
@@ -465,7 +479,7 @@ export const DoctorProfilePage = () => {
     event.target.value = '';
   };
   const handleAddCertificate = async () => {
-    if (!user?.userId) {
+    if (!doctor?.userId) {
       setShowCertificationErrorNotification(true);
       setTimeout(() => setShowCertificationErrorNotification(false), 3000);
       return;
@@ -480,6 +494,9 @@ export const DoctorProfilePage = () => {
       
       try {
         await addCertification(certData);
+        
+        // Refetch doctor data để lấy certifications mới nhất
+        await refetch();
         
         // Reset form and close modal
         setNewCertificate({
@@ -511,7 +528,7 @@ export const DoctorProfilePage = () => {
   };
 
   const handleUpdateCertificate = async () => {
-    if (!user?.userId || !editingCertificate) {
+    if (!doctor?.userId || !editingCertificate) {
       setShowCertificationErrorNotification(true);
       setTimeout(() => setShowCertificationErrorNotification(false), 3000);
       return;
@@ -526,6 +543,9 @@ export const DoctorProfilePage = () => {
       
       try {
         await updateCertification({ certificationId: editingCertificate.id, certData });
+        
+        // Refetch doctor data để lấy certifications mới nhất
+        await refetch();
         
         // Close modal and reset
         setShowEditCertificateModal(false);
@@ -547,7 +567,7 @@ export const DoctorProfilePage = () => {
     }
   };
   const handleDeleteCertificate = async (id: string) => {
-    if (!user?.userId) {
+    if (!doctor?.userId) {
       setShowCertificationErrorNotification(true);
       setTimeout(() => setShowCertificationErrorNotification(false), 3000);
       return;
@@ -555,6 +575,10 @@ export const DoctorProfilePage = () => {
     
     try {
       await deleteCertification(id);
+      
+      // Refetch doctor data để lấy certifications mới nhất
+      await refetch();
+      
       setShowDeleteConfirm(null);
       
       // Show success notification
@@ -603,8 +627,8 @@ export const DoctorProfilePage = () => {
     );
   }
 
-  // No user data
-  if (!user) {
+  // No doctor data
+  if (!doctor) {
     return (
       <div className="p-6 max-w-4xl mx-auto">
         <div className="flex items-center justify-center min-h-[400px]">
