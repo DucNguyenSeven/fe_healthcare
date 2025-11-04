@@ -56,7 +56,7 @@ export function AppointmentsPage() {
   const [appointmentType, setAppointmentType] = useState<'direct' | 'online' | 'lab_test' | 'follow_up'>('direct');
 
   // Hook để lấy danh sách bác sĩ theo ngày
-  const { doctors: availableDoctors, loading: doctorsLoading, error: doctorsError, fetchDoctorsByDate, clearError } = useDoctorOfDate();
+  const { doctors: availableDoctors, scheduleIdMap, loading: doctorsLoading, error: doctorsError, fetchDoctorsByDate, clearError } = useDoctorOfDate();
 
   // Hook để lấy lịch làm việc của bác sĩ
   const { timeSlots: availableTimeSlots, scheduleId, timeSlotMapping, loading: timeSlotsLoading, error: timeSlotsError, fetchDoctorSchedule, refreshAvailableSlots, clearError: clearTimeSlotsError } = useDoctorSchedule();
@@ -566,6 +566,11 @@ export function AppointmentsPage() {
     };
 
     setSelectedDoctor(doctorData);
+
+    // Lấy scheduleId từ map (đã có sẵn từ bước chọn ngày)
+    const scheduleIdFromMap = scheduleIdMap[doctor.id];
+    console.log('✅ ScheduleId từ map:', scheduleIdFromMap, 'cho bác sĩ:', doctor.name);
+
     // Reset dependent fields
     setSelectedTime('');
     setSelectedSlotId(null);
@@ -573,7 +578,7 @@ export function AppointmentsPage() {
     setNote('');
     setAddressDetail('');
 
-    // Gọi API để lấy lịch làm việc của bác sĩ trong ngày đã chọn
+    // Vẫn cần gọi API để lấy time slots (scheduleId cũng sẽ được xác nhận lại)
     if (selectedDate) {
       await fetchDoctorSchedule(doctor.id, selectedDate);
     }
@@ -1116,20 +1121,51 @@ export function AppointmentsPage() {
                         <img
                           src={doctor.avatar || '/api/placeholder/60/60'}
                           alt={doctor.name}
-                          className="w-12 h-12 rounded-full object-cover"
+                          className="w-16 h-16 rounded-full object-cover"
                         />
                         <div className="flex-1">
-                          <h5 className="font-medium text-gray-900">{doctor.name}</h5>
-                          <p className="text-sm text-gray-600">{doctor.specialty}</p>
-                          <div className="flex items-center space-x-2 mt-1">
-                            <Star className="w-4 h-4 text-yellow-400 fill-current" />
-                            <span className="text-sm text-gray-600">{doctor.rating || '4.5'}</span>
-                            <span className="text-sm text-gray-500">•</span>
-                            <span className="text-sm text-gray-500">{doctor.experience || '5 năm kinh nghiệm'}</span>
+                          <div>
+                            <span className="text-sm font-semibold text-gray-700">Tên bác sĩ: </span>
+                            <span className="font-medium text-gray-900">{doctor.name}</span>
                           </div>
+                          
+                          {/* Specialty with label */}
+                          <div className="mt-1">
+                            <span className="text-sm font-semibold text-gray-700">Chuyên khoa: </span>
+                            <span className="text-sm text-gray-600">{doctor.specialty}</span>
+                          </div>
+
+                          {/* Experience */}
+                          <div className="mt-1">
+                            <span className="text-sm font-semibold text-gray-700">Số năm kinh nghiệm: </span>
+                            <span className="text-sm text-gray-600">{doctor.experience}</span>
+                          </div>
+
+                          {/* Rating */}
+                          <div className="flex items-center space-x-1 mt-1">
+                            <span className="text-sm font-semibold text-gray-700">Đánh giá: </span>
+                            <span className="text-sm text-gray-600">{doctor.rating || 'Chưa có đánh giá'}</span>
+                            <Star className="w-4 h-4 text-yellow-400 fill-current" />
+                          </div>
+
+                          {/* Clinic Address with label */}
+                          {doctor.clinicAddress && (
+                            <div className="mt-1">
+                              <div className="flex items-start space-x-1">
+                                <MapPin className="w-3.5 h-3.5 text-gray-400 mt-0.5 flex-shrink-0" />
+                                <div>
+                                  <span className="text-sm font-semibold text-gray-700">Chi nhánh: </span>
+                                  <span className="text-sm text-gray-600">{doctor.clinicAddress}</span>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Examination Fee */}
                           {doctor.examinationFee && (
-                            <p className="text-sm text-blue-600 font-medium mt-1">
-                              Phí khám: {doctor.examinationFee.toLocaleString('vi-VN')}đ
+                            <p className="text-sm text-blue-600 mt-1">
+                              <span className="font-semibold">Phí khám: </span>
+                              <span>{doctor.examinationFee.toLocaleString('vi-VN')}đ</span>
                             </p>
                           )}
                         </div>
@@ -1280,27 +1316,6 @@ export function AppointmentsPage() {
                   {note.length}/1000 ký tự
                 </div>
               </div>
-
-              {/* Địa chỉ - chỉ hiển thị cho khám trực tiếp, tái khám, xét nghiệm */}
-              {(appointmentType === 'direct' || appointmentType === 'follow_up' || appointmentType === 'lab_test') && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-600 mb-2">
-                    Chọn chi nhánh khám <span className="text-gray-400">(Tùy chọn)</span>
-                  </label>
-                  <select
-                    value={addressDetail}
-                    onChange={(e) => setAddressDetail(e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
-                    <option value="">Chọn chi nhánh khám</option>
-                    {branches.map((branch) => (
-                      <option key={branch.id} value={branch.address}>
-                        {branch.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
 
               {/* Địa chỉ mặc định cho online */}
               {appointmentType === 'online' && (

@@ -37,20 +37,84 @@ export interface GetDoctorScheduleParams {
 }
 
 /**
+ * Interface cho thông tin bác sĩ kèm chi tiết lịch làm việc
+ */
+export interface DoctorScheduleInfo {
+  doctorId: string;
+  fullName: string;
+  email: string;
+  phoneNumber: string;
+  specialty: string;
+  experienceYears: number;
+  avatarUrl: string | null;
+  clinicAddress: string;
+  scheduleId: string; // Quan trọng: Dùng cho bước đặt lịch
+  rating: number | null;
+  examinationFee: number | null;
+}
+
+/**
+ * Response cho API getDoctorsWithDetailsByDate
+ */
+export interface GetDoctorsWithDetailsByDateResponse {
+  statusCode: number;
+  message: string;
+  success: boolean;
+  data: DoctorScheduleInfo[];
+}
+
+/**
  * Lấy danh sách ID bác sĩ có lịch làm việc trong ngày được chỉ định
  * @param params - Tham số bao gồm ngày cần lấy danh sách bác sĩ
  * @returns Promise<GetDoctorOfDateResponse>
  */
 export const getDoctorOfDate = async (params: GetDoctorOfDateParams): Promise<GetDoctorOfDateResponse> => {
   const { date } = params;
-  
+
   const response = await api.get<GetDoctorOfDateResponse>(
     `/api/v1/doctor-schedules/getDoctorOfDate`,
     {
       params: { date }
     }
   );
-  
+
+  return response.data;
+};
+
+/**
+ * Lấy danh sách bác sĩ có lịch làm việc kèm thông tin chi tiết theo ngày
+ * API mới - Tối ưu hơn so với getDoctorOfDate + getDoctorsInfo
+ * @param params - Tham số bao gồm ngày cần lấy danh sách bác sĩ
+ * @returns Promise<GetDoctorsWithDetailsByDateResponse>
+ */
+export const getDoctorsWithDetailsByDate = async (
+  params: GetDoctorOfDateParams
+): Promise<GetDoctorsWithDetailsByDateResponse> => {
+  const { date } = params;
+
+  // Validate date format
+  const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+  if (!dateRegex.test(date)) {
+    throw new Error('Định dạng ngày không hợp lệ. Vui lòng sử dụng định dạng YYYY-MM-DD');
+  }
+
+  // Validate không cho chọn ngày quá khứ (trước hôm qua)
+  const selectedDate = new Date(date);
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  yesterday.setHours(0, 0, 0, 0);
+
+  if (selectedDate < yesterday) {
+    throw new Error('Không thể chọn ngày trong quá khứ');
+  }
+
+  const response = await api.get<GetDoctorsWithDetailsByDateResponse>(
+    `/api/v1/doctor-schedules/getDoctorsWithDetailsByDate`,
+    {
+      params: { date }
+    }
+  );
+
   return response.data;
 };
 
@@ -61,13 +125,13 @@ export const getDoctorOfDate = async (params: GetDoctorOfDateParams): Promise<Ge
  */
 export const getDoctorScheduleByDoctorIdAndDate = async (params: GetDoctorScheduleParams): Promise<GetDoctorScheduleResponse> => {
   const { doctorId, date } = params;
-  
+
   const response = await api.get<GetDoctorScheduleResponse>(
     `/api/v1/doctor-schedules/getDoctorScheduleByDoctorIdAndDate`,
     {
       params: { doctorId, date }
     }
   );
-  
+
   return response.data;
 };
