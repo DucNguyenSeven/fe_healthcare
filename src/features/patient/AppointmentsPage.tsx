@@ -714,7 +714,7 @@ export function AppointmentsPage() {
         slotId: latestSlotId,            // ✅ Dùng slotId mới nhất
         consultationType: consultationTypeMap[appointmentType] || 'DIRECT_CONSULTATION',
         status: 'PENDING',
-        addressDetail: appointmentType === 'online' ? 'Tại nhà' : (addressDetail || selectedDoctor.clinicAddress || branches[0].address),
+        addressDetail: appointmentType === 'online' ? 'Tại nhà' : (selectedDoctor.clinicAddress || branches[0].address),
         hasPredict: hasPredictValue, // ✅ Dynamic check: true if from CKD prediction
         appointmentDate: selectedDate,
         appointmentTime: selectedTime,
