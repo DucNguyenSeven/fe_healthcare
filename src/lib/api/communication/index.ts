@@ -111,6 +111,63 @@ function generateGroupName(existingGroups: Group[]): string {
   return `Cuộc trò chuyện ${nextNumber}`;
 }
 
+/**
+ * Tìm existing group theo member IDs sử dụng API mới từ backend
+ * API: POST /api/communication/groups/find-by-members
+ * @param memberIds - Danh sách user IDs của members
+ * @returns Group nếu tìm thấy, null nếu không tìm thấy
+ */
+async function findGroupByMembersViaAPI(memberIds: string[]): Promise<Group | null> {
+  try {
+    console.log('[findGroupByMembersViaAPI] 🔍 Calling backend API with members:', memberIds);
+
+    const response = await fetch(
+      `${process.env.NEXT_PUBLIC_CHAT_SERVICE_URL}/api/communication/groups/find-by-members`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(memberIds)
+      }
+    );
+
+    // Handle 404 - Group not found (normal case)
+    if (response.status === 404) {
+      console.log('[findGroupByMembersViaAPI] ℹ️ No group found with these members (404)');
+      return null;
+    }
+
+    // Handle other errors
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('[findGroupByMembersViaAPI] ❌ API error:', response.status, errorText);
+      throw new Error(`Failed to find group: ${response.status} ${errorText}`);
+    }
+
+    // Success - Parse GroupResponse
+    const groupData = await response.json();
+
+    // Map backend GroupResponse to frontend Group format (same as createGroupViaREST)
+    const group: Group = {
+      groupId: groupData.groupId,
+      groupName: groupData.groupName,
+      appointmentId: groupData.appointmentId,
+      lastMessageContent: groupData.lastMessageContent || null,
+      timeLastMessage: groupData.timeLastMessage || null,
+      members: groupData.members || [],
+      createdAt: groupData.createdAt || new Date().toISOString(),
+      updatedAt: groupData.updatedAt || new Date().toISOString()
+    };
+
+    console.log('[findGroupByMembersViaAPI] ✅ Found existing group:', group.groupId);
+    return group;
+  } catch (error) {
+    console.error('[findGroupByMembersViaAPI] ❌ Error:', error);
+    return null;
+  }
+}
+
 // ============ API Functions ============
 
 /**
@@ -123,6 +180,7 @@ export async function getUserGroups(userId: string, page: number = 0, size: numb
 
 /**
  * Create a new group via WebSocket
+ * ✅ FIX: Handle "Group already exists" error using new backend API
  */
 export async function createGroupViaWebSocket(
   members: ChatMember[],
@@ -149,10 +207,66 @@ export async function createGroupViaWebSocket(
     ...(appointmentId && { appointmentId })
   };
 
-  const responsePromise = waitForResponse<Group>('group_created', 15000);
-  webSocketChatService.createGroup(createData);
+  return new Promise((resolve, reject) => {
+    const timeoutId = setTimeout(() => {
+      webSocketChatService.removeMessageHandler(handler);
+      reject(new Error('Timeout waiting for group creation'));
+    }, 15000);
 
-  return responsePromise;
+    const handler = (response: any) => {
+      // ✅ CASE 1: Handle error response from backend
+      if (response.action === 'error') {
+        const errorMessage = response.data || '';
+        console.log('[createGroupViaWebSocket] ⚠️ Received error:', errorMessage);
+
+        // Check if error is "Group already exists"
+        if (errorMessage.includes('Group with these members already exists')) {
+          console.log('[createGroupViaWebSocket] 🔄 Group exists, calling find-by-members API...');
+          clearTimeout(timeoutId);
+          webSocketChatService.removeMessageHandler(handler);
+
+          // ✅ SỬ DỤNG API MỚI - Nhanh và chính xác
+          const memberIds = members.map(m => m.userId);
+          findGroupByMembersViaAPI(memberIds)
+            .then(existingGroup => {
+              if (existingGroup) {
+                console.log('[createGroupViaWebSocket] ✅ Found existing group via API:', existingGroup.groupId);
+                resolve(existingGroup);
+              } else {
+                console.error('[createGroupViaWebSocket] ❌ API returned 404 but backend said group exists');
+                reject(new Error('Group exists but could not be found. Please try again.'));
+              }
+            })
+            .catch(error => {
+              console.error('[createGroupViaWebSocket] ❌ API error:', error);
+              reject(new Error('Failed to load existing group: ' + error.message));
+            });
+        } else {
+          // Other errors - reject normally
+          clearTimeout(timeoutId);
+          webSocketChatService.removeMessageHandler(handler);
+          reject(new Error(errorMessage));
+        }
+      }
+      // ✅ CASE 2: Handle group_created response (new group or existing from updated backend)
+      else if (response.action === 'group_created') {
+        clearTimeout(timeoutId);
+        webSocketChatService.removeMessageHandler(handler);
+
+        if (response.status === 'error') {
+          reject(new Error(response.data));
+        } else {
+          console.log('[createGroupViaWebSocket] ✅ Group created:', response.data.groupId);
+          resolve(response.data);
+        }
+      }
+    };
+
+    // Add handler and send create_group message
+    webSocketChatService.addMessageHandler(handler);
+    webSocketChatService.createGroup(createData);
+    console.log('[createGroupViaWebSocket] 📤 Sent create_group request');
+  });
 }
 
 /**
