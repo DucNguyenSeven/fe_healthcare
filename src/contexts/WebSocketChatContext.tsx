@@ -102,6 +102,21 @@ function mapGroupToConversation(group: Group, currentUserId: string): ChatConver
   return conversation;
 }
 
+// Helper function to check if a group is an AI group
+function isAIGroup(group: Group): boolean {
+  // Check if groupId ends with "-AI"
+  if (group.groupId.endsWith('-AI')) {
+    return true;
+  }
+
+  // Check if any member has userId === "AI"
+  if (group.members.some(member => member.userId === 'AI')) {
+    return true;
+  }
+
+  return false;
+}
+
 function mapMessageToChatMessage(message: any): ChatMessage {
   // Defensive mapping - handle both camelCase and snake_case
   // Priority: camelCase (from DTO) > snake_case (from DB)
@@ -514,8 +529,11 @@ export function WebSocketChatProvider({ children }: WebSocketChatProviderProps) 
       // Use REST API instead of WebSocket
       const groups = await getUserGroupsViaREST(user.userId);
 
+      // Filter out AI groups before mapping to conversations
+      const nonAIGroups = groups.filter(group => !isAIGroup(group));
+
       // Map groups to conversations with current user context
-      const conversations = groups.map(group => mapGroupToConversation(group, user.userId));
+      const conversations = nonAIGroups.map(group => mapGroupToConversation(group, user.userId));
 
       dispatch({ type: 'SET_CONVERSATIONS', payload: conversations });
     } catch (error) {

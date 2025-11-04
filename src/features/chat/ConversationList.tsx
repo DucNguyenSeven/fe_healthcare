@@ -21,6 +21,13 @@ export function ConversationList({
   const [searchQuery, setSearchQuery] = useState('')
 
   const filteredConversations = conversations.filter(conversation => {
+    // Filter out AI conversations (safety net)
+    // Check if conversation ID ends with "-AI" or if any participant has userId "AI"
+    const isAIConversation = conversation.id.endsWith('-AI') ||
+      conversation.participants.some(p => p.id === 'AI')
+
+    if (isAIConversation) return false
+
     if (!searchQuery) return true
     const otherParticipant = conversation.participants[0]
     return otherParticipant.name.toLowerCase().includes(searchQuery.toLowerCase())
