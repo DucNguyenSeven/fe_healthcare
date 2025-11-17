@@ -15,6 +15,9 @@ import { useAppointmentSocket } from '@/hooks/appointments/useAppointmentSocket'
 import { savePredictHistory, CreateHealthMetricRequest } from '@/lib/api/predict';
 import { webSocketAppointmentService } from '@/services/websocket-appointment';
 import { motion, AnimatePresence } from 'framer-motion';
+import { AppointmentConfirmationModal } from '@/components/AppointmentConfirmationModal';
+import { usePayment } from '@/hooks/usePayment';
+import { PaymentMethod } from '@/types/payment.types';
 
 
 
@@ -125,6 +128,13 @@ export function AppointmentsPage() {
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [selectedAppointmentForCancel, setSelectedAppointmentForCancel] = useState<TimelineAppointment | null>(null);
   const [isCanceling, setIsCanceling] = useState(false);
+
+  // State cho confirmation modal (payment selection)
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+
+  // Hook for payment operations
+  const { createPayment, loading: paymentLoading } = usePayment();
 
   // Danh sách chi nhánh
   const branches = [
@@ -591,7 +601,11 @@ export function AppointmentsPage() {
     setSelectedSlotId(slotId || null);
   };
 
-  const handleBookAppointment = async () => {
+  /**
+   * Open confirmation modal (bill review) before booking
+   * This replaces the direct booking button action
+   */
+  const handleOpenConfirmModal = async () => {
     // Prevent duplicate submissions
     if (isSubmitting || bookingLoading) {
       console.warn('⚠️ Booking already in progress, ignoring click');
@@ -615,9 +629,33 @@ export function AppointmentsPage() {
       return;
     }
 
+    // Open confirmation modal instead of direct booking
+    setShowConfirmModal(true);
+  };
+
+  /**
+   * Handle booking confirmation after payment method selection
+   * Dual flow: CASH (WebSocket) vs ONLINE (REST API + Payment)
+   */
+  const handleConfirmBooking = async (paymentMethod: PaymentMethod) => {
+    // Double-check validation
+    if (!selectedDoctor || !selectedDate || !selectedTime || !currentUser) {
+      toast.error('Thiếu thông tin', {
+        description: 'Vui lòng thử lại',
+        duration: 4000,
+      });
+      return;
+    }
+
     setIsSubmitting(true);
+    setIsProcessingPayment(true);
 
     try {
+      console.log('🔍 [handleConfirmBooking] Starting booking with payment method:', paymentMethod);
+
+      // Close confirmation modal
+      setShowConfirmModal(false);
+
       // BƯỚC 1: Refresh slots để lấy dữ liệu MỚI NHẤT (tránh race condition)
       toast.loading('Đang kiểm tra khung giờ...', {
         id: 'checking-slot',
@@ -716,6 +754,8 @@ export function AppointmentsPage() {
         status: 'PENDING',
         addressDetail: appointmentType === 'online' ? 'Tại nhà' : (selectedDoctor.clinicAddress || branches[0].address),
         hasPredict: hasPredictValue, // ✅ Dynamic check: true if from CKD prediction
+        payment_method: paymentMethod, // ✅ Payment method from modal selection (CASH or ONLINE)
+        // Backend tự động set paymentStatus = UNPAID, KHÔNG gửi payment_status từ frontend
         appointmentDate: selectedDate,
         appointmentTime: selectedTime,
         patientName: currentUser.fullName || 'Bệnh nhân',
@@ -723,46 +763,123 @@ export function AppointmentsPage() {
         patientEmail: currentUser.email
       };
 
+      // 🔍 DEBUG: Log toàn bộ bookingData object và payment_method
+      console.log('🔍🔍🔍 [DEBUG - bookingData] Full booking data object:', bookingData);
+      console.log('🔍🔍🔍 [DEBUG - payment_method] Value in bookingData:', bookingData.payment_method);
+      console.log('🔍🔍🔍 [DEBUG - payment_method] Type:', typeof bookingData.payment_method);
+      console.log('🔍🔍🔍 [DEBUG - paymentMethod param] Value from modal:', paymentMethod);
+      console.log('🔍🔍🔍 [DEBUG - bookingData] JSON stringified:', JSON.stringify(bookingData, null, 2));
+
       // 🔍 DEBUG: Log hasPredict value explicitly
       console.log('🔍🔍🔍 [DEBUG - hasPredict] Final value in bookingData:', {
         hasPredict: bookingData.hasPredict,
         hasPredictType: typeof bookingData.hasPredict,
-        hasPredictValue: hasPredictValue
+        hasPredictValue: hasPredictValue,
+        payment_method: paymentMethod
       });
 
-      console.log('📤 [handleBookAppointment] Final booking data:', bookingData);
-      console.log('🔍 [handleBookAppointment] Verify scheduleId:', bookingData.scheduleId);
-      console.log('🔍 [handleBookAppointment] Verify slotId:', bookingData.slotId);
-      console.log('🔍 [handleBookAppointment] Verify appointmentDate:', bookingData.appointmentDate);
-      console.log('🔍 [handleBookAppointment] Verify appointmentTime:', bookingData.appointmentTime);
+      console.log('📤 [handleConfirmBooking] Final booking data:', bookingData);
+      console.log('🔍 [handleConfirmBooking] Verify scheduleId:', bookingData.scheduleId);
+      console.log('🔍 [handleConfirmBooking] Verify slotId:', bookingData.slotId);
+      console.log('🔍 [handleConfirmBooking] Verify appointmentDate:', bookingData.appointmentDate);
+      console.log('🔍 [handleConfirmBooking] Verify appointmentTime:', bookingData.appointmentTime);
 
-      // BƯỚC 6: Gửi WebSocket booking (KHÔNG GỌI API)
-      console.log('🚀 [handleBookAppointment] Sending WebSocket booking request...');
-      await bookingAppointment(bookingData);
+      // ========== DUAL PAYMENT FLOW ==========
+      if (paymentMethod === 'CASH') {
+        // ========== CASH FLOW: WebSocket Booking (Original) ==========
+        console.log('🚀 [handleConfirmBooking] Using CASH flow (WebSocket)');
 
-      // WebSocket event đã được gửi thành công
-      console.log('✅ [handleBookAppointment] WebSocket event sent successfully');
+        await bookingAppointment(bookingData);
 
-      // Reset form
-      setShowBookingForm(false);
-      setSelectedDoctor(null);
-      setSelectedDate('');
-      setSelectedTime('');
-      setSelectedSlotId(null);
-      setSymptoms('');
-      setNote('');
-      setAddressDetail('');
-      resetBooking();
+        // WebSocket event sent successfully
+        console.log('✅ [handleConfirmBooking] WebSocket event sent successfully');
 
-      // Hiển thị loading toast - đợi WebSocket confirmation từ backend
-      toast.loading('Đang xác nhận đặt lịch...', {
-        id: 'booking-confirmation',
-        description: 'Vui lòng chờ trong giây lát',
-        duration: Infinity // Will be dismissed by WebSocket event
-      });
+        // Reset form
+        setShowBookingForm(false);
+        setSelectedDoctor(null);
+        setSelectedDate('');
+        setSelectedTime('');
+        setSelectedSlotId(null);
+        setSymptoms('');
+        setNote('');
+        setAddressDetail('');
+        resetBooking();
 
-      // NOTE: Prediction data sẽ được xử lý trong WebSocketAppointmentContext
-      // sau khi nhận được WebSocket response với appointmentId
+        // Show loading toast - wait for WebSocket confirmation
+        toast.loading('Đang xác nhận đặt lịch...', {
+          id: 'booking-confirmation',
+          description: 'Vui lòng chờ trong giây lát',
+          duration: Infinity // Will be dismissed by WebSocket event
+        });
+
+        // NOTE: Prediction data will be processed in WebSocketAppointmentContext
+        // after receiving WebSocket response with appointmentId
+      } else {
+        // ========== ONLINE FLOW: REST API + Payment ==========
+        console.log('🚀 [handleConfirmBooking] Using ONLINE flow (REST API + Payment)');
+
+        // Step 1: Create appointment via REST API
+        toast.loading('Đang tạo lịch hẹn...', {
+          id: 'creating-appointment',
+          duration: Infinity
+        });
+
+        const appointmentResponse = await bookingAppointment(bookingData);
+
+        if (!appointmentResponse) {
+          throw new Error('Không nhận được thông tin lịch hẹn từ server');
+        }
+
+        console.log('✅ [handleConfirmBooking] Appointment created:', appointmentResponse.appointmentId);
+        toast.dismiss('creating-appointment');
+
+        // Step 2: Create payment
+        toast.loading('Đang tạo thanh toán...', {
+          id: 'creating-payment',
+          duration: Infinity
+        });
+
+        const paymentResult = await createPayment({
+          appointmentId: appointmentResponse.appointmentId,
+          amount: selectedDoctor.examinationFee || 200000, // Use doctor's fee or default
+          description: `Thanh toán lịch khám với ${selectedDoctor.name} - ${selectedDate} ${selectedTime}`
+        });
+
+        toast.dismiss('creating-payment');
+
+        if (!paymentResult) {
+          throw new Error('Không thể tạo thanh toán. Vui lòng thử lại.');
+        }
+
+        console.log('✅ [handleConfirmBooking] Payment created:', paymentResult.paymentId);
+
+        // Store paymentId for payment return page
+        localStorage.setItem('pending_payment_id', paymentResult.paymentId);
+
+        // Reset form before redirect
+        setShowBookingForm(false);
+        setSelectedDoctor(null);
+        setSelectedDate('');
+        setSelectedTime('');
+        setSelectedSlotId(null);
+        setSymptoms('');
+        setNote('');
+        setAddressDetail('');
+        resetBooking();
+
+        // Step 3: Redirect to PayOS payment URL
+        toast.success('Chuyển hướng đến trang thanh toán...', {
+          description: 'Vui lòng hoàn tất thanh toán để xác nhận lịch hẹn',
+          duration: 2000
+        });
+
+        console.log('🔄 [handleConfirmBooking] Redirecting to PayOS:', paymentResult.paymentUrl);
+
+        // Delay để user có thể đọc toast message
+        setTimeout(() => {
+          window.location.href = paymentResult.paymentUrl;
+        }, 1000);
+      }
     } catch (error: any) {
       console.error('❌ [handleBookAppointment] Booking error:', {
         message: error.message,
@@ -844,14 +961,30 @@ export function AppointmentsPage() {
         });
       }
     } finally {
-      // Always reset submission flag
+      // Always reset flags
       setIsSubmitting(false);
+      setIsProcessingPayment(false);
     }
   };
 
   const renderTimelineEntry = (appointment: TimelineAppointment, isLast: boolean) => {
     // Use backendStatus for all UI logic
     const backendStatus = (appointment as any).backendStatus || appointment.status;
+
+    // 🔍 DEBUG LOG: Kiểm tra backendStatus và buttons visibility
+    console.log('🔍 [renderTimelineEntry] Appointment debug:', {
+      appointmentId: appointment.id,
+      doctor: appointment.doctor,
+      date: appointment.date,
+      time: appointment.time,
+      backendStatus: backendStatus,
+      rawStatus: appointment.status,
+      hasBackendStatus: !!(appointment as any).backendStatus,
+      paymentMethod: (appointment as any).paymentMethod,
+      paymentStatus: (appointment as any).paymentStatus,
+      shouldShowButtons: backendStatus === 'PENDING' || backendStatus === 'CONFIRMED'
+    });
+
     const StatusIcon = getStatusIcon(backendStatus);
     const isExpanded = appointment.expanded;
 
@@ -1026,6 +1159,28 @@ export function AppointmentsPage() {
                         <span className="text-gray-600">Thời gian:</span>
                         <span className="font-medium">30 phút</span>
                       </div>
+                      {(appointment as any).paymentMethod && <div className="flex justify-between">
+                        <span className="text-gray-600">Phương thức thanh toán:</span>
+                        <span className="font-medium">
+                          {(appointment as any).paymentMethod === 'CASH' ? 'Tiền mặt' :
+                           (appointment as any).paymentMethod === 'ONLINE' ? 'Trực tuyến' :
+                           'Chưa rõ'}
+                        </span>
+                      </div>}
+                      {(appointment as any).paymentStatus && <div className="flex justify-between">
+                        <span className="text-gray-600">Trạng thái thanh toán:</span>
+                        <span className={`font-medium ${
+                          (appointment as any).paymentStatus === 'PAID' ? 'text-green-600' :
+                          (appointment as any).paymentStatus === 'UNPAID' ? 'text-yellow-600' :
+                          (appointment as any).paymentStatus === 'REFUNDED' ? 'text-blue-600' :
+                          'text-gray-600'
+                        }`}>
+                          {(appointment as any).paymentStatus === 'PAID' ? '✅ Đã thanh toán' :
+                           (appointment as any).paymentStatus === 'UNPAID' ? '⏳ Chưa thanh toán' :
+                           (appointment as any).paymentStatus === 'REFUNDED' ? '💰 Đã hoàn tiền' :
+                           'Chưa rõ'}
+                        </span>
+                      </div>}
                       {appointment.patientInfo && <div className="flex justify-between">
                         <span className="text-gray-600">Bệnh nhân:</span>
                         <span className="font-medium">{appointment.patientInfo.fullName || appointment.patientInfo.name || 'Không có thông tin'}</span>
@@ -1354,12 +1509,12 @@ export function AppointmentsPage() {
               Hủy
             </button>
             <button
-              onClick={handleBookAppointment}
+              onClick={handleOpenConfirmModal}
               disabled={bookingLoading || isSubmitting}
               className="px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
             >
               {(bookingLoading || isSubmitting) && <Loader2 className="w-4 h-4 animate-spin" />}
-              <span>{(bookingLoading || isSubmitting) ? 'Đang đặt lịch...' : 'Xác nhận đặt lịch'}</span>
+              <span>{(bookingLoading || isSubmitting) ? 'Đang xử lý...' : 'Tiếp tục'}</span>
             </button>
           </div>}
       </div>
@@ -1636,5 +1791,27 @@ export function AppointmentsPage() {
           </div>
         )}
       </AnimatePresence>
+
+      {/* Modal xác nhận đặt lịch với phương thức thanh toán */}
+      {selectedDoctor && (
+        <AppointmentConfirmationModal
+          isOpen={showConfirmModal}
+          onClose={() => setShowConfirmModal(false)}
+          onConfirm={handleConfirmBooking}
+          isLoading={isProcessingPayment}
+          doctorInfo={selectedDoctor}
+          patientInfo={{
+            name: currentUser?.fullName || 'Bệnh nhân',
+            phone: currentUser?.phone,
+            email: currentUser?.email
+          }}
+          appointmentDate={selectedDate}
+          appointmentTime={selectedTime}
+          appointmentType={appointmentType}
+          symptoms={symptoms}
+          note={note}
+          addressDetail={appointmentType === 'online' ? 'Tại nhà' : (selectedDoctor.clinicAddress || branches[0].address)}
+        />
+      )}
     </div>;
 }

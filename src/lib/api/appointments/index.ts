@@ -32,8 +32,10 @@ export interface BookingAppointmentRequest {
   slotId: number;
   consultationType: 'ONLINE_CONSULTATION' | 'DIRECT_CONSULTATION' | 'FOLLOW_UP';
   addressDetail?: string;
-  status?: 'PENDING' | 'CONFIRMED' | 'CANCELED' | 'REJECTED' | 'COMPLETED' | 'NO_SHOW' | 'RESCHEDULED';
+  status?: 'PENDING' | 'CONFIRMED' | 'CANCELED' | 'REJECTED' | 'COMPLETED' | 'NO_SHOW' | 'RESCHEDULED' | 'PAYMENT_PENDING';
   hasPredict?: boolean; // Indicates if patient has AI prediction
+  payment_method?: 'CASH' | 'ONLINE'; // Payment method: CASH (WebSocket) or ONLINE (REST API + PaymentService)
+  // Backend tự động set paymentStatus = UNPAID, frontend KHÔNG gửi payment_status
   // Thêm các field có thể thiếu
   appointmentDate?: string;
   appointmentTime?: string;
@@ -81,6 +83,12 @@ export const bookingAppointment = async (data: BookingAppointmentRequest): Promi
       hasPredictType: typeof data.hasPredict,
       fullRequestData: data
     });
+
+    // 🔍 DEBUG: Log payment_method specifically
+    console.log('🔍🔍🔍 [API - Before POST] Request data:', data);
+    console.log('🔍🔍🔍 [API - Before POST] payment_method value:', data.payment_method);
+    console.log('🔍🔍🔍 [API - Before POST] payment_method type:', typeof data.payment_method);
+    console.log('🔍🔍🔍 [API - Before POST] JSON stringified:', JSON.stringify(data, null, 2));
 
     const response = await api.post<BookingAppointmentApiResponse>(
       '/api/v1/appointments/booking-appointment',

@@ -43,6 +43,8 @@ export interface Appointment {
   symptoms?: string;
   note?: string;
   addressDetail?: string;
+  paymentMethod?: 'CASH' | 'ONLINE';
+  paymentStatus?: 'UNPAID' | 'PAID' | 'REFUNDED';
 }
 export interface HealthMetric {
   id: string;
