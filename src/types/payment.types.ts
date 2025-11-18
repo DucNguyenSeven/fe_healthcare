@@ -27,11 +27,26 @@ export interface CreatePaymentRequest {
   appointmentId: string;  // ID của appointment vừa tạo
   amount: number;         // Số tiền thanh toán (VNĐ)
   description?: string;   // Mô tả thanh toán (optional)
+  returnUrl?: string;     // URL PayOS redirect về sau khi thanh toán thành công
+  cancelUrl?: string;     // URL PayOS redirect về khi user hủy thanh toán
 }
 
 /**
  * Response from creating payment
  * Contains PayOS payment URL for redirect
+ *
+ * NOTE: Backend returns FLAT structure directly (không có wrapper success/code/data)
+ * Backend response example:
+ * {
+ *   paymentId: "2082c22b-43ae-4481-a74f-6ebd1d1240bd",
+ *   appointmentId: "e4300efc-7934-4e97-82c9-a5164e4473ff",
+ *   orderCode: "1763438993",
+ *   paymentUrl: "https://pay.payos.vn/web/...",
+ *   amount: 1000,
+ *   expiresAt: "2025-11-18T11:24:54.798992",
+ *   status: "PENDING",
+ *   message: null
+ * }
  */
 export interface CreatePaymentResponse {
   paymentId: string;      // ID của payment record
@@ -41,10 +56,13 @@ export interface CreatePaymentResponse {
   amount: number;         // Số tiền
   expiresAt: string;      // Thời gian hết hạn (ISO 8601)
   status: 'PENDING';      // Status luôn là PENDING khi mới tạo
+  message: string | null; // Message from backend (usually null on success)
 }
 
 /**
  * API Response wrapper for create payment
+ * DEPRECATED: Backend thực tế trả về flat CreatePaymentResponse, không có wrapper này
+ * Keeping for backwards compatibility, but CreatePaymentResponse is the actual type used
  */
 export interface CreatePaymentApiResponse {
   code: number;

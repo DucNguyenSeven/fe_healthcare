@@ -56,33 +56,44 @@ export const usePayment = (): UsePaymentReturn => {
 
       const response = await createPaymentApi(data);
 
-      if (!response.success) {
+      // DEBUG: Log toàn bộ response từ payment service (flat structure)
+      console.log('🔍 [usePayment] Payment API response (flat structure):', {
+        hasPaymentId: 'paymentId' in response,
+        hasPaymentUrl: 'paymentUrl' in response,
+        responseKeys: Object.keys(response),
+        fullResponse: response
+      });
+
+      // Check if payment was created successfully (flat structure has paymentId and paymentUrl)
+      if (!response.paymentId || !response.paymentUrl) {
         throw new Error(response.message || 'Không thể tạo thanh toán');
       }
 
       console.log('✅ [usePayment] Payment created successfully:', {
-        paymentId: response.data.paymentId,
-        paymentUrl: response.data.paymentUrl
+        paymentId: response.paymentId,
+        paymentUrl: response.paymentUrl,
+        orderCode: response.orderCode,
+        status: response.status
       });
 
       // Update payment state with created payment info
       const paymentInfo: PaymentStatusResponse = {
-        paymentId: response.data.paymentId,
-        appointmentId: response.data.appointmentId,
-        orderCode: response.data.orderCode,
-        amount: response.data.amount,
+        paymentId: response.paymentId,
+        appointmentId: response.appointmentId,
+        orderCode: response.orderCode,
+        amount: response.amount,
         status: 'PENDING',
         paymentMethod: 'ONLINE',
         createdAt: new Date().toISOString(),
         paidAt: null,
-        expiresAt: response.data.expiresAt,
+        expiresAt: response.expiresAt,
         transactionId: null
       };
       setPayment(paymentInfo);
 
       return {
-        paymentUrl: response.data.paymentUrl,
-        paymentId: response.data.paymentId
+        paymentUrl: response.paymentUrl,
+        paymentId: response.paymentId
       };
     } catch (err: any) {
       const errorMessage = err.message || 'Có lỗi xảy ra khi tạo thanh toán';

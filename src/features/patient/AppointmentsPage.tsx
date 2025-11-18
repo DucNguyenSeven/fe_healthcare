@@ -842,7 +842,9 @@ export function AppointmentsPage() {
         const paymentResult = await createPayment({
           appointmentId: appointmentResponse.appointmentId,
           amount: selectedDoctor.examinationFee || 200000, // Use doctor's fee or default
-          description: `Thanh toán lịch khám với ${selectedDoctor.name} - ${selectedDate} ${selectedTime}`
+          description: `Thanh toán lịch khám với ${selectedDoctor.name} - ${selectedDate} ${selectedTime}`,
+          returnUrl: `${window.location.origin}/patient/payment/return?appointmentId=${appointmentResponse.appointmentId}`,
+          cancelUrl: `${window.location.origin}/patient/payment/return?cancel=true&appointmentId=${appointmentResponse.appointmentId}`
         });
 
         toast.dismiss('creating-payment');

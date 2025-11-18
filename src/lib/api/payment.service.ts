@@ -22,7 +22,7 @@ import {
  */
 export const createPayment = async (
   data: CreatePaymentRequest
-): Promise<CreatePaymentApiResponse> => {
+): Promise<CreatePaymentResponse> => {
   try {
     console.log('🔍 [PaymentService] Creating payment:', {
       endpoint: '/api/v1/payments/create',
@@ -30,28 +30,42 @@ export const createPayment = async (
       data
     });
 
-    const response = await api.post<CreatePaymentApiResponse>(
+    // Backend returns FLAT structure directly, not wrapped
+    const response = await api.post<CreatePaymentResponse>(
       '/api/v1/payments/create',
       data
     );
 
+    // DEBUG: Log toàn bộ response structure để kiểm tra
+    console.log('🔍 [PaymentService] Raw response structure:', {
+      hasData: !!response.data,
+      dataKeys: response.data ? Object.keys(response.data) : [],
+      fullResponse: response.data
+    });
+
+    // Backend returns flat structure - access properties directly
     console.log('✅ [PaymentService] Payment created successfully:', {
-      paymentId: response.data.data.paymentId,
-      orderCode: response.data.data.orderCode,
-      paymentUrl: response.data.data.paymentUrl
+      paymentId: response.data.paymentId,
+      orderCode: response.data.orderCode,
+      paymentUrl: response.data.paymentUrl,
+      status: response.data.status,
+      expiresAt: response.data.expiresAt
     });
 
     return response.data;
   } catch (error: any) {
     console.error('❌ [PaymentService] Create payment error:', {
+      errorName: error.name,
+      errorMessage: error.message,
+      stack: error.stack,
       status: error.response?.status,
       statusText: error.response?.statusText,
-      message: error.response?.data?.message,
-      data: error.response?.data
+      responseData: error.response?.data,
+      isAxiosError: error.isAxiosError
     });
 
     // Re-throw with enhanced error message
-    const errorMessage = error.response?.data?.message || 'Không thể tạo thanh toán. Vui lòng thử lại.';
+    const errorMessage = error.response?.data?.message || error.message || 'Không thể tạo thanh toán. Vui lòng thử lại.';
     throw new Error(errorMessage);
   }
 };
