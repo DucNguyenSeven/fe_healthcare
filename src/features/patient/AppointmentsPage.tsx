@@ -224,7 +224,6 @@ export function AppointmentsPage() {
 
     // Validation: Check if doctor info exists
     if (!appointment.doctorInfo?.doctorId || !appointment.doctorInfo?.fullName) {
-      console.error('Missing doctor info:', appointment.doctorInfo);
       toast.error('Thông tin bác sĩ không đầy đủ', {
         description: 'Không thể tạo cuộc trò chuyện với bác sĩ này',
         duration: 4000,
@@ -287,8 +286,6 @@ export function AppointmentsPage() {
       // ChatWidget will automatically open when activeConversation is set
 
     } catch (error) {
-      console.error('Failed to create chat:', error);
-
       // Dismiss loading toast
       toast.dismiss(`creating-chat-${appointment.id}`);
 
@@ -371,22 +368,7 @@ export function AppointmentsPage() {
     try {
       // Lấy thông tin appointment từ API data để đảm bảo có đầy đủ thông tin
       const appointmentData = apiAppointments.find(apt => apt.appointmentId === selectedAppointmentForCancel.id);
-      
-      // Debug log để kiểm tra dữ liệu
-      console.log('🔍 [Cancel Appointment] Debug info:', {
-        appointmentId: selectedAppointmentForCancel.id,
-        appointmentData: appointmentData ? {
-          doctorId: appointmentData.doctorId,
-          doctor: appointmentData.doctor,
-          patient: appointmentData.patient
-        } : null,
-        selectedAppointment: {
-          doctorId: (selectedAppointmentForCancel as any).doctorId,
-          doctorInfo: (selectedAppointmentForCancel as any).doctorInfo,
-          patientInfo: (selectedAppointmentForCancel as any).patientInfo
-        }
-      });
-      
+
       // Fallback: nếu không tìm thấy từ API, thử lấy từ appointment đã transform
       const patientId = appointmentData?.patient?.id 
         || (selectedAppointmentForCancel as any).patientInfo?.id 
@@ -401,19 +383,10 @@ export function AppointmentsPage() {
         || appointmentData?.doctor?.id;  // Từ API data doctor object
 
       if (!doctorId) {
-        console.error('❌ [Cancel Appointment] Doctor ID not found:', {
-          appointmentData,
-          selectedAppointment: selectedAppointmentForCancel
-        });
         throw new Error('Không tìm thấy thông tin bác sĩ. Vui lòng thử lại sau.');
       }
 
       if (!patientId) {
-        console.error('❌ [Cancel Appointment] Patient ID not found:', {
-          appointmentData,
-          selectedAppointment: selectedAppointmentForCancel,
-          currentUser: currentUser?.userId
-        });
         throw new Error('Không tìm thấy thông tin bệnh nhân. Vui lòng thử lại sau.');
       }
 
@@ -441,8 +414,6 @@ export function AppointmentsPage() {
       // Note: WebSocket response sẽ được handle bởi WebSocketAppointmentContext
       // và sẽ tự động refetch appointments và hiển thị toast success/error
     } catch (error: any) {
-      console.error('Failed to cancel appointment:', error);
-      
       // Dismiss loading toast nếu có lỗi
       if (selectedAppointmentForCancel?.id) {
         toast.dismiss(`cancel-${selectedAppointmentForCancel.id}`);
@@ -536,11 +507,6 @@ export function AppointmentsPage() {
       }
     });
 
-    console.log(`✅ [transformHealthMetrics] Transformed ${metrics.length} lab test metrics (expected: 9)`);
-    if (metrics.length !== 9) {
-      console.warn(`⚠️ [transformHealthMetrics] Expected 9 lab test metrics but got ${metrics.length}`);
-    }
-
     return metrics;
   };
 
@@ -579,7 +545,6 @@ export function AppointmentsPage() {
 
     // Lấy scheduleId từ map (đã có sẵn từ bước chọn ngày)
     const scheduleIdFromMap = scheduleIdMap[doctor.id];
-    console.log('✅ ScheduleId từ map:', scheduleIdFromMap, 'cho bác sĩ:', doctor.name);
 
     // Reset dependent fields
     setSelectedTime('');
@@ -608,7 +573,6 @@ export function AppointmentsPage() {
   const handleOpenConfirmModal = async () => {
     // Prevent duplicate submissions
     if (isSubmitting || bookingLoading) {
-      console.warn('⚠️ Booking already in progress, ignoring click');
       return;
     }
 
@@ -651,8 +615,6 @@ export function AppointmentsPage() {
     setIsProcessingPayment(true);
 
     try {
-      console.log('🔍 [handleConfirmBooking] Starting booking with payment method:', paymentMethod);
-
       // Close confirmation modal
       setShowConfirmModal(false);
 
@@ -666,30 +628,16 @@ export function AppointmentsPage() {
       let latestSlotId: number | undefined;
 
       try {
-        console.log('🔄 [handleBookAppointment] Refreshing slots before booking...', {
-          doctorId: selectedDoctor.id,
-          date: selectedDate,
-          selectedTime: selectedTime
-        });
-
         const refreshResult = await refreshAvailableSlots(selectedDoctor.id, selectedDate);
-
-        console.log('📥 [handleBookAppointment] Refresh result:', refreshResult);
 
         latestScheduleId = refreshResult.scheduleId;
         latestSlotId = refreshResult.mapping[selectedTime];
-
-        console.log('🎯 [handleBookAppointment] Using scheduleId:', latestScheduleId);
-        console.log('🎯 [handleBookAppointment] Using slotId:', latestSlotId);
-        console.log('🎯 [handleBookAppointment] Selected time:', selectedTime);
-        console.log('🎯 [handleBookAppointment] Available slots:', refreshResult.slots);
 
         // Dismiss loading toast
         toast.dismiss('checking-slot');
 
         // BƯỚC 2: Kiểm tra slot còn available không
         if (!latestSlotId) {
-          console.log('❌ [handleBookAppointment] Slot not found in mapping');
           toast.error('Khung giờ không khả dụng', {
             description: 'Khung giờ này đã được đặt bởi người khác. Vui lòng chọn khung giờ khác.',
             duration: 5000,
@@ -702,7 +650,6 @@ export function AppointmentsPage() {
 
         // BƯỚC 3: Validate scheduleId
         if (!latestScheduleId) {
-          console.log('❌ [handleBookAppointment] scheduleId is empty or invalid');
           toast.error('Lỗi lịch làm việc', {
             description: 'Không thể lấy thông tin lịch làm việc của bác sĩ. Vui lòng thử lại.',
             duration: 4000,
@@ -711,7 +658,6 @@ export function AppointmentsPage() {
         }
       } catch (refreshError) {
         toast.dismiss('checking-slot');
-        console.error('❌ [handleBookAppointment] Error refreshing slots:', refreshError);
         toast.error('Không thể kiểm tra khung giờ', {
           description: 'Vui lòng thử lại sau',
           duration: 4000,
@@ -726,14 +672,6 @@ export function AppointmentsPage() {
         'lab_test': 'DIRECT_CONSULTATION',
         'follow_up': 'FOLLOW_UP'
       };
-
-      // 🔍 DEBUG: Check localStorage BEFORE creating booking request
-      const pendingPredictionCheck = localStorage.getItem('pending_ckd_prediction');
-      console.log('🔍🔍🔍 [DEBUG - hasPredict] Checking localStorage BEFORE booking:', {
-        hasPendingPrediction: !!pendingPredictionCheck,
-        pendingPredictionData: pendingPredictionCheck ? JSON.parse(pendingPredictionCheck) : null,
-        willSetHasPredict: !!pendingPredictionCheck
-      });
 
       // BƯỚC 5: Tạo booking request với dữ liệu MỚI NHẤT
       const hasPredictValue = !!localStorage.getItem('pending_ckd_prediction');
@@ -763,36 +701,10 @@ export function AppointmentsPage() {
         patientEmail: currentUser.email
       };
 
-      // 🔍 DEBUG: Log toàn bộ bookingData object và payment_method
-      console.log('🔍🔍🔍 [DEBUG - bookingData] Full booking data object:', bookingData);
-      console.log('🔍🔍🔍 [DEBUG - payment_method] Value in bookingData:', bookingData.payment_method);
-      console.log('🔍🔍🔍 [DEBUG - payment_method] Type:', typeof bookingData.payment_method);
-      console.log('🔍🔍🔍 [DEBUG - paymentMethod param] Value from modal:', paymentMethod);
-      console.log('🔍🔍🔍 [DEBUG - bookingData] JSON stringified:', JSON.stringify(bookingData, null, 2));
-
-      // 🔍 DEBUG: Log hasPredict value explicitly
-      console.log('🔍🔍🔍 [DEBUG - hasPredict] Final value in bookingData:', {
-        hasPredict: bookingData.hasPredict,
-        hasPredictType: typeof bookingData.hasPredict,
-        hasPredictValue: hasPredictValue,
-        payment_method: paymentMethod
-      });
-
-      console.log('📤 [handleConfirmBooking] Final booking data:', bookingData);
-      console.log('🔍 [handleConfirmBooking] Verify scheduleId:', bookingData.scheduleId);
-      console.log('🔍 [handleConfirmBooking] Verify slotId:', bookingData.slotId);
-      console.log('🔍 [handleConfirmBooking] Verify appointmentDate:', bookingData.appointmentDate);
-      console.log('🔍 [handleConfirmBooking] Verify appointmentTime:', bookingData.appointmentTime);
-
       // ========== DUAL PAYMENT FLOW ==========
       if (paymentMethod === 'CASH') {
         // ========== CASH FLOW: WebSocket Booking (Original) ==========
-        console.log('🚀 [handleConfirmBooking] Using CASH flow (WebSocket)');
-
         await bookingAppointment(bookingData);
-
-        // WebSocket event sent successfully
-        console.log('✅ [handleConfirmBooking] WebSocket event sent successfully');
 
         // Reset form
         setShowBookingForm(false);
@@ -816,8 +728,6 @@ export function AppointmentsPage() {
         // after receiving WebSocket response with appointmentId
       } else {
         // ========== ONLINE FLOW: REST API + Payment ==========
-        console.log('🚀 [handleConfirmBooking] Using ONLINE flow (REST API + Payment)');
-
         // Step 1: Create appointment via REST API
         toast.loading('Đang tạo lịch hẹn...', {
           id: 'creating-appointment',
@@ -830,7 +740,6 @@ export function AppointmentsPage() {
           throw new Error('Không nhận được thông tin lịch hẹn từ server');
         }
 
-        console.log('✅ [handleConfirmBooking] Appointment created:', appointmentResponse.appointmentId);
         toast.dismiss('creating-appointment');
 
         // Step 2: Create payment
@@ -853,8 +762,6 @@ export function AppointmentsPage() {
           throw new Error('Không thể tạo thanh toán. Vui lòng thử lại.');
         }
 
-        console.log('✅ [handleConfirmBooking] Payment created:', paymentResult.paymentId);
-
         // Store paymentId for payment return page
         localStorage.setItem('pending_payment_id', paymentResult.paymentId);
 
@@ -875,21 +782,12 @@ export function AppointmentsPage() {
           duration: 2000
         });
 
-        console.log('🔄 [handleConfirmBooking] Redirecting to PayOS:', paymentResult.paymentUrl);
-
         // Delay để user có thể đọc toast message
         setTimeout(() => {
           window.location.href = paymentResult.paymentUrl;
         }, 1000);
       }
     } catch (error: any) {
-      console.error('❌ [handleBookAppointment] Booking error:', {
-        message: error.message,
-        statusCode: error.response?.status || error.statusCode,
-        responseData: error.response?.data,
-        fullError: error
-      });
-
       // BƯỚC 7: Xử lý error 409 (Time slot already booked - Race Condition)
       if (error.response?.status === 409 || error.statusCode === 409) {
         const errorData = error.response?.data;
@@ -915,13 +813,7 @@ export function AppointmentsPage() {
 
         // Auto refresh UI để hiển thị slots còn lại
         try {
-          console.log('🔄 [handleBookAppointment] Refreshing slots after 409 conflict...');
           const refreshResult = await refreshAvailableSlots(selectedDoctor!.id, selectedDate);
-          console.log('✅ [handleBookAppointment] Refreshed available slots after conflict:', {
-            availableSlots: refreshResult.slots.length,
-            slots: refreshResult.slots,
-            newScheduleId: refreshResult.scheduleId
-          });
 
           // Show success toast after refresh
           toast.success('Đã cập nhật danh sách khung giờ', {
@@ -937,7 +829,6 @@ export function AppointmentsPage() {
             }
           }, 300);
         } catch (refreshError) {
-          console.error('❌ Failed to refresh slots after conflict:', refreshError);
           toast.error('Không thể làm mới danh sách', {
             description: 'Vui lòng tải lại trang',
             duration: 4000,
@@ -972,20 +863,6 @@ export function AppointmentsPage() {
   const renderTimelineEntry = (appointment: TimelineAppointment, isLast: boolean) => {
     // Use backendStatus for all UI logic
     const backendStatus = (appointment as any).backendStatus || appointment.status;
-
-    // 🔍 DEBUG LOG: Kiểm tra backendStatus và buttons visibility
-    console.log('🔍 [renderTimelineEntry] Appointment debug:', {
-      appointmentId: appointment.id,
-      doctor: appointment.doctor,
-      date: appointment.date,
-      time: appointment.time,
-      backendStatus: backendStatus,
-      rawStatus: appointment.status,
-      hasBackendStatus: !!(appointment as any).backendStatus,
-      paymentMethod: (appointment as any).paymentMethod,
-      paymentStatus: (appointment as any).paymentStatus,
-      shouldShowButtons: backendStatus === 'PENDING' || backendStatus === 'CONFIRMED'
-    });
 
     const StatusIcon = getStatusIcon(backendStatus);
     const isExpanded = appointment.expanded;
