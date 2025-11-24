@@ -40,19 +40,37 @@ export const createPayment = async (
     console.log('🔍 [PaymentService] Raw response structure:', {
       hasData: !!response.data,
       dataKeys: response.data ? Object.keys(response.data) : [],
+      dataKeysDetailed: response.data ? Object.keys(response.data).map(key => ({
+        key,
+        value: response.data[key],
+        type: typeof response.data[key]
+      })) : [],
       fullResponse: response.data
     });
 
-    // Backend returns flat structure - access properties directly
-    console.log('✅ [PaymentService] Payment created successfully:', {
-      paymentId: response.data.paymentId,
-      orderCode: response.data.orderCode,
-      paymentUrl: response.data.paymentUrl,
-      status: response.data.status,
-      expiresAt: response.data.expiresAt
+    // DEBUG: Log từng field cụ thể
+    console.log('🔍 [PaymentService] Response fields breakdown:', {
+      'response.data': response.data,
+      'response.data.success': response.data?.success,
+      'response.data.message': response.data?.message,
+      'response.data.data': response.data?.data,
+      'response.data.data.paymentId': response.data?.data?.paymentId,
+      'response.data.data.paymentUrl': response.data?.data?.paymentUrl
     });
 
-    return response.data;
+    // Backend returns WRAPPED structure - access data from response.data.data
+    const paymentData = response.data.data;
+
+    console.log('✅ [PaymentService] Payment created successfully:', {
+      paymentId: paymentData.paymentId,
+      orderCode: paymentData.orderCode,
+      paymentUrl: paymentData.paymentUrl,
+      status: paymentData.status,
+      expiresAt: paymentData.expiresAt
+    });
+
+    // Return the nested data object, not the wrapper
+    return paymentData;
   } catch (error: any) {
     console.error('❌ [PaymentService] Create payment error:', {
       errorName: error.name,
@@ -226,4 +244,50 @@ export const pollPaymentStatus = async (
   // Get final status
   const finalResponse = await getPaymentStatus(paymentId);
   return finalResponse.data;
+};
+
+/**
+ * Cancel a payment by order code
+ * POST /api/v1/payments/cancel/orderCode/{orderCode}
+ *
+ * Called when user cancels payment on PayOS and is redirected back
+ * This will update payment status to CANCELLED and appointment status to CANCELED
+ *
+ * @param orderCode - PayOS order code
+ * @returns Cancel response with success status
+ * @throws Error if cancellation fails
+ */
+export const cancelPaymentByOrderCode = async (
+  orderCode: string
+): Promise<{ success: boolean; message: string }> => {
+  try {
+    console.log('🔍 [PaymentService] Cancelling payment by orderCode:', {
+      endpoint: `/api/v1/payments/cancel/orderCode/${orderCode}`,
+      method: 'POST',
+      orderCode
+    });
+
+    const response = await api.post<{ success: boolean; message: string }>(
+      `/api/v1/payments/cancel/orderCode/${orderCode}`
+    );
+
+    console.log('✅ [PaymentService] Payment cancelled successfully:', {
+      orderCode,
+      response: response.data
+    });
+
+    return response.data;
+  } catch (error: any) {
+    console.error('❌ [PaymentService] Cancel payment error:', {
+      orderCode,
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      message: error.response?.data?.message,
+      data: error.response?.data
+    });
+
+    // Re-throw with enhanced error message
+    const errorMessage = error.response?.data?.message || 'Không thể hủy thanh toán. Vui lòng thử lại.';
+    throw new Error(errorMessage);
+  }
 };

@@ -79,7 +79,7 @@ export default function PaymentReturnPage() {
               orderCode: orderCode,
               amount: 0,
               status: 'PAID',
-              paymentMethod: 'ONLINE',
+              paymentMethod: 'BANK',
               createdAt: new Date().toISOString(),
               paidAt: new Date().toISOString(),
               expiresAt: new Date().toISOString(),
@@ -131,23 +131,23 @@ export default function PaymentReturnPage() {
     handlePaymentReturn();
   }, [searchParams, pollPaymentStatus]);
 
-  // Countdown and redirect
+  // Countdown timer (updates state only)
   useEffect(() => {
     if (status === 'success' || status === 'cancelled') {
       const interval = setInterval(() => {
-        setRedirectCountdown(prev => {
-          if (prev <= 1) {
-            clearInterval(interval);
-            router.push('/patient/appointments');
-            return 0;
-          }
-          return prev - 1;
-        });
+        setRedirectCountdown(prev => prev > 0 ? prev - 1 : 0);
       }, 1000);
 
       return () => clearInterval(interval);
     }
-  }, [status, router]);
+  }, [status]);
+
+  // Navigate when countdown reaches 0 (separate effect to avoid setState during render)
+  useEffect(() => {
+    if ((status === 'success' || status === 'cancelled') && redirectCountdown === 0) {
+      router.push('/patient/appointments');
+    }
+  }, [redirectCountdown, status, router]);
 
   // Render different states
   const renderContent = () => {

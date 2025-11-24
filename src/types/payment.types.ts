@@ -15,9 +15,9 @@ export type PaymentStatus = 'PENDING' | 'PAID' | 'EXPIRED' | 'REFUNDED';
 /**
  * Payment Method Type
  * - CASH: Thanh toán tiền mặt tại phòng khám
- * - ONLINE: Thanh toán trực tuyến qua PayOS
+ * - BANK: Thanh toán chuyển khoản ngân hàng qua PayOS
  */
-export type PaymentMethod = 'CASH' | 'ONLINE';
+export type PaymentMethod = 'CASH' | 'BANK';
 
 /**
  * Request body for creating a new payment

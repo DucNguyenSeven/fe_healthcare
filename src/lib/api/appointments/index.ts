@@ -34,7 +34,7 @@ export interface BookingAppointmentRequest {
   addressDetail?: string;
   status?: 'PENDING' | 'CONFIRMED' | 'CANCELED' | 'REJECTED' | 'COMPLETED' | 'NO_SHOW' | 'RESCHEDULED' | 'PAYMENT_PENDING';
   hasPredict?: boolean; // Indicates if patient has AI prediction
-  payment_method?: 'CASH' | 'ONLINE'; // Payment method: CASH (WebSocket) or ONLINE (REST API + PaymentService)
+  payment_method?: 'CASH' | 'BANK'; // Payment method: CASH (WebSocket) or BANK (REST API + PaymentService)
   // Backend tự động set paymentStatus = UNPAID, frontend KHÔNG gửi payment_status
   // Thêm các field có thể thiếu
   appointmentDate?: string;

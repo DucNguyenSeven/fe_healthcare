@@ -332,12 +332,12 @@ export const AppointmentConfirmationModal: React.FC<AppointmentConfirmationModal
                     </div>
                   </button>
 
-                  {/* ONLINE Option */}
+                  {/* BANK Option */}
                   <button
-                    onClick={() => setSelectedPaymentMethod('ONLINE')}
+                    onClick={() => setSelectedPaymentMethod('BANK')}
                     disabled={isLoading}
                     className={`w-full p-4 rounded-xl border-2 transition-all text-left ${
-                      selectedPaymentMethod === 'ONLINE'
+                      selectedPaymentMethod === 'BANK'
                         ? 'border-blue-500 bg-blue-50'
                         : 'border-gray-200 hover:border-gray-300 bg-white'
                     } disabled:opacity-50 disabled:cursor-not-allowed`}
@@ -345,18 +345,18 @@ export const AppointmentConfirmationModal: React.FC<AppointmentConfirmationModal
                     <div className="flex items-start space-x-3">
                       <div
                         className={`w-5 h-5 rounded-full border-2 flex items-center justify-center mt-0.5 flex-shrink-0 ${
-                          selectedPaymentMethod === 'ONLINE'
+                          selectedPaymentMethod === 'BANK'
                             ? 'border-blue-500 bg-blue-500'
                             : 'border-gray-300'
                         }`}
                       >
-                        {selectedPaymentMethod === 'ONLINE' && (
+                        {selectedPaymentMethod === 'BANK' && (
                           <div className="w-2.5 h-2.5 rounded-full bg-white"></div>
                         )}
                       </div>
                       <div className="flex-1">
                         <div className="flex items-center space-x-2 mb-1">
-                          <span className="font-medium text-gray-900">Thanh toán trực tuyến</span>
+                          <span className="font-medium text-gray-900">Chuyển khoản ngân hàng</span>
                           <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs font-medium rounded">
                             Khuyến nghị
                           </span>

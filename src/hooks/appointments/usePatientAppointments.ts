@@ -35,7 +35,7 @@ export interface AppointmentResponse {
   createdAt?: string;
   updatedAt?: string;
   hasPredict?: boolean; // Indicates if appointment has AI prediction
-  paymentMethod?: 'CASH' | 'ONLINE'; // Payment method from backend
+  paymentMethod?: 'CASH' | 'BANK'; // Payment method from backend
   paymentStatus?: 'UNPAID' | 'PAID' | 'REFUNDED'; // Payment status from backend
 }
 

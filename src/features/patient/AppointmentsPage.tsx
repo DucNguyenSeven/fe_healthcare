@@ -842,9 +842,9 @@ export function AppointmentsPage() {
         const paymentResult = await createPayment({
           appointmentId: appointmentResponse.appointmentId,
           amount: selectedDoctor.examinationFee || 200000, // Use doctor's fee or default
-          description: `Thanh toán lịch khám với ${selectedDoctor.name} - ${selectedDate} ${selectedTime}`,
+          // Backend tự generate description: "DH{orderCode}" (ngắn gọn, phù hợp giới hạn 25 ký tự của PayOS)
           returnUrl: `${window.location.origin}/patient/payment/return?appointmentId=${appointmentResponse.appointmentId}`,
-          cancelUrl: `${window.location.origin}/patient/payment/return?cancel=true&appointmentId=${appointmentResponse.appointmentId}`
+          cancelUrl: `${window.location.origin}/patient/payment/cancel?cancel=true&appointmentId=${appointmentResponse.appointmentId}`
         });
 
         toast.dismiss('creating-payment');
@@ -1165,7 +1165,7 @@ export function AppointmentsPage() {
                         <span className="text-gray-600">Phương thức thanh toán:</span>
                         <span className="font-medium">
                           {(appointment as any).paymentMethod === 'CASH' ? 'Tiền mặt' :
-                           (appointment as any).paymentMethod === 'ONLINE' ? 'Trực tuyến' :
+                           (appointment as any).paymentMethod === 'BANK' ? 'Chuyển khoản ngân hàng' :
                            'Chưa rõ'}
                         </span>
                       </div>}

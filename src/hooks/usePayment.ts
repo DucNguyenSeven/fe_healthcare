@@ -83,7 +83,7 @@ export const usePayment = (): UsePaymentReturn => {
         orderCode: response.orderCode,
         amount: response.amount,
         status: 'PENDING',
-        paymentMethod: 'ONLINE',
+        paymentMethod: 'BANK',
         createdAt: new Date().toISOString(),
         paidAt: null,
         expiresAt: response.expiresAt,
