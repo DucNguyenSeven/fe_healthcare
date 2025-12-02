@@ -198,11 +198,16 @@ export function HealthcarePlusApp() {
       case "dashboard":
         return (
           <DashboardPage
-            user={user}
-            appointments={appointments}
-            healthMetrics={healthMetrics}
-            alerts={alerts}
-            onNavigate={setCurrentPage}
+            user={{
+              name: user.name,
+              fullName: user.fullName ?? undefined,
+              email: user.email
+            }}
+            healthMetrics={[] as any}
+            todayAppointments={[]}
+            recentConsultations={[]}
+            prescriptionGroups={[]}
+            onNavigate={(page: string) => setCurrentPage(page as NavigationItem)}
           />
         );
       case "profile":
@@ -212,7 +217,7 @@ export function HealthcarePlusApp() {
       case "telehealth":
         return <TelehealthPage user={user} appointments={appointments} />;
       case "monitoring":
-        return <MonitoringPage user={user} healthMetrics={healthMetrics} />;
+        return <MonitoringPage />;
       case "ai-assistant":
         return <AIAssistantPage user={user} onNavigate={setCurrentPage} />;
       case "community":
@@ -220,11 +225,16 @@ export function HealthcarePlusApp() {
       default:
         return (
           <DashboardPage
-            user={user}
-            appointments={appointments}
-            healthMetrics={healthMetrics}
-            alerts={alerts}
-            onNavigate={setCurrentPage}
+            user={{
+              name: user.name,
+              fullName: user.fullName ?? undefined,
+              email: user.email
+            }}
+            healthMetrics={[] as any}
+            todayAppointments={[]}
+            recentConsultations={[]}
+            prescriptionGroups={[]}
+            onNavigate={(page: string) => setCurrentPage(page as NavigationItem)}
           />
         );
     }

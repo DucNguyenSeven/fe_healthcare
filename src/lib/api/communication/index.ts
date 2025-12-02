@@ -8,6 +8,7 @@ import webSocketChatService, {
   type SendMessageData,
   type ChatMember
 } from '@/services/websocket-chat';
+import chatApi from '@/lib/api/chatClient';
 
 // Re-export WebSocketResponse for context usage
 export type { WebSocketResponse } from '@/services/websocket-chat';
@@ -121,40 +122,20 @@ async function findGroupByMembersViaAPI(memberIds: string[]): Promise<Group | nu
   try {
     console.log('[findGroupByMembersViaAPI] 🔍 Calling backend API with members:', memberIds);
 
-    const response = await fetch(
-      `${process.env.NEXT_PUBLIC_CHAT_SERVICE_URL}/api/communication/groups/find-by-members`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(memberIds)
-      }
+    const response = await chatApi.post<Group>(
+      '/api/communication/groups/find-by-members',
+      memberIds
     );
 
-    // Handle 404 - Group not found (normal case)
-    if (response.status === 404) {
-      console.log('[findGroupByMembersViaAPI] ℹ️ No group found with these members (404)');
-      return null;
-    }
-
-    // Handle other errors
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('[findGroupByMembersViaAPI] ❌ API error:', response.status, errorText);
-      throw new Error(`Failed to find group: ${response.status} ${errorText}`);
-    }
-
-    // Success - Parse GroupResponse
-    const groupData = await response.json();
+    const groupData = response.data;
 
     // Map backend GroupResponse to frontend Group format (same as createGroupViaREST)
     const group: Group = {
       groupId: groupData.groupId,
       groupName: groupData.groupName,
       appointmentId: groupData.appointmentId,
-      lastMessageContent: groupData.lastMessageContent || null,
-      timeLastMessage: groupData.timeLastMessage || null,
+      lastMessageContent: groupData.lastMessageContent || undefined,
+      timeLastMessage: groupData.timeLastMessage || undefined,
       members: groupData.members || [],
       createdAt: groupData.createdAt || new Date().toISOString(),
       updatedAt: groupData.updatedAt || new Date().toISOString()
@@ -162,7 +143,13 @@ async function findGroupByMembersViaAPI(memberIds: string[]): Promise<Group | nu
 
     console.log('[findGroupByMembersViaAPI] ✅ Found existing group:', group.groupId);
     return group;
-  } catch (error) {
+  } catch (error: any) {
+    // Handle 404 - Group not found (normal case)
+    if (error.response?.status === 404) {
+      console.log('[findGroupByMembersViaAPI] ℹ️ No group found with these members (404)');
+      return null;
+    }
+
     console.error('[findGroupByMembersViaAPI] ❌ Error:', error);
     return null;
   }
@@ -295,38 +282,31 @@ export async function createGroupViaREST(
     ...(appointmentId && { appointmentId })
   };
 
+  try {
+    const response = await chatApi.post<Group>('/api/communication/groups', createData);
 
-  const response = await fetch(`${process.env.NEXT_PUBLIC_CHAT_SERVICE_URL}/api/communication/groups`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(createData)
-  });
+    const result = response.data;
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
-  }
+    // Map backend GroupResponse to frontend Group format
+    if (result && result.groupId) {
+      const mappedGroup: Group = {
+        groupId: result.groupId,
+        groupName: result.groupName,
+        appointmentId: result.appointmentId,
+        lastMessageContent: result.lastMessageContent || undefined,
+        timeLastMessage: result.timeLastMessage || undefined,
+        members: result.members || [],
+        createdAt: result.createdAt || new Date().toISOString(),
+        updatedAt: result.updatedAt || new Date().toISOString()
+      };
 
-  const result = await response.json();
-
-  // Map backend GroupResponse to frontend Group format
-  if (result && result.groupId) {
-    const mappedGroup: Group = {
-      groupId: result.groupId,
-      groupName: result.groupName,
-      appointmentId: result.appointmentId,
-      lastMessageContent: result.lastMessageContent || null,
-      timeLastMessage: result.timeLastMessage || null,
-      members: result.members || [],
-      createdAt: result.createdAt || new Date().toISOString(),
-      updatedAt: result.updatedAt || new Date().toISOString()
-    };
-
-    return mappedGroup;
-  } else {
-    throw new Error('Invalid response format from backend');
+      return mappedGroup;
+    } else {
+      throw new Error('Invalid response format from backend');
+    }
+  } catch (error: any) {
+    const message = error.response?.data?.message || error.message;
+    throw new Error(`Failed to create group: ${message}`);
   }
 }
 
@@ -499,29 +479,25 @@ export async function sendMessageViaREST(
     tempMessageId
   });
 
-  const response = await fetch(`${process.env.NEXT_PUBLIC_CHAT_SERVICE_URL}/api/communication/messages`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      groupId,
-      senderId,
-      content,
-      messageType,
-      tempMessageId  // Include tempMessageId in request
-    })
-  });
+  try {
+    const response = await chatApi.post<Message>(
+      '/api/communication/messages',
+      {
+        groupId,
+        senderId,
+        content,
+        messageType,
+        tempMessageId
+      }
+    );
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error('[sendMessageViaREST] Failed:', response.status, errorText);
-    throw new Error(`Failed to send message: ${response.status} ${errorText}`);
+    console.log('[sendMessageViaREST] Success:', response.data.messageId, 'tempId:', response.data.tempMessageId);
+    return response.data;
+  } catch (error: any) {
+    const message = error.response?.data?.message || error.message;
+    console.error('[sendMessageViaREST] Failed:', message);
+    throw new Error(`Failed to send message: ${message}`);
   }
-
-  const result = await response.json();
-  console.log('[sendMessageViaREST] Success:', result.messageId, 'tempId:', result.tempMessageId);
-  return result;
 }
 
 /**
@@ -532,32 +508,23 @@ export async function getGroupMessagesViaREST(
   page: number = 0,
   size: number = 20
 ): Promise<Message[]> {
-  const query = new URLSearchParams({
-    page: page.toString(),
-    size: size.toString()
-  });
-
-  const response = await fetch(
-    `${process.env.NEXT_PUBLIC_CHAT_SERVICE_URL}/api/communication/groups/${groupId}/messages?${query.toString()}`,
-    {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
+  try {
+    const response = await chatApi.get<Message[]>(
+      `/api/communication/groups/${groupId}/messages`,
+      {
+        params: { page, size }
       }
-    }
-  );
+    );
 
-  if (!response.ok) {
+    return Array.isArray(response.data) ? response.data : [];
+  } catch (error: any) {
     // Handle 404 for empty groups gracefully
-    if (response.status === 404) {
+    if (error.response?.status === 404) {
       return [];
     }
-    const errorText = await response.text();
-    throw new Error(`Failed to get messages: ${response.status} ${errorText}`);
+    const message = error.response?.data?.message || error.message;
+    throw new Error(`Failed to get messages: ${message}`);
   }
-
-  const result = await response.json();
-  return Array.isArray(result) ? result : [];
 }
 
 /**
@@ -568,30 +535,19 @@ export async function getUserGroupsViaREST(
   page: number = 0,
   size: number = 20
 ): Promise<Group[]> {
-
-  const query = new URLSearchParams({
-    page: page.toString(),
-    size: size.toString()
-  });
-
-  const response = await fetch(
-    `${process.env.NEXT_PUBLIC_CHAT_SERVICE_URL}/api/communication/users/${userId}/groups?${query.toString()}`,
-    {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
+  try {
+    const response = await chatApi.get<Group[]>(
+      `/api/communication/users/${userId}/groups`,
+      {
+        params: { page, size }
       }
-    }
-  );
+    );
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Failed to get user groups: ${response.status} ${errorText}`);
+    return Array.isArray(response.data) ? response.data : [];
+  } catch (error: any) {
+    const message = error.response?.data?.message || error.message;
+    throw new Error(`Failed to get user groups: ${message}`);
   }
-
-  const result = await response.json();
-
-  return Array.isArray(result) ? result : [];
 }
 
 // Legacy compatibility exports

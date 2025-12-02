@@ -193,11 +193,10 @@ export function useLatestHealthMetrics(patientId: string | undefined) {
         'Oxalate'         // Oxalate
       ];
 
-      // Filter metrics có giá trị (không null, không rỗng)
+      // Filter metrics có giá trị (không null)
       const validMetrics = data.filter(metric =>
         metric.metricValue != null &&
-        metric.metricValue !== '' &&
-        metric.metricValue !== 'null'
+        !isNaN(metric.metricValue)
       );
 
       console.log('🔍 Valid metrics after filter:', {

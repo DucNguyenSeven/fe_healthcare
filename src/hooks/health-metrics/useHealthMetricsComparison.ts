@@ -225,8 +225,8 @@ function determineTrendQuality(
     }
   }
 
-  // Mặc định: Ổn định hoặc cải thiện = tốt
-  return changeDirection === 'stable' || changeDirection === 'down';
+  // Mặc định: cải thiện = tốt (stable đã được handle ở trên)
+  return changeDirection === 'down';
 }
 
 /**

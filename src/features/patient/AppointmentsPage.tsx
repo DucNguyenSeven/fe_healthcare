@@ -1681,8 +1681,8 @@ export function AppointmentsPage() {
           doctorInfo={selectedDoctor}
           patientInfo={{
             name: currentUser?.fullName || 'Bệnh nhân',
-            phone: currentUser?.phone,
-            email: currentUser?.email
+            phone: currentUser?.phone || undefined,
+            email: currentUser?.email || undefined
           }}
           appointmentDate={selectedDate}
           appointmentTime={selectedTime}

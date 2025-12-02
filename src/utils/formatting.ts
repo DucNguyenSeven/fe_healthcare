@@ -1,7 +1,12 @@
 // Formatting utilities
-export const formatDate = (date: string | Date, format: 'short' | 'long' | 'time' = 'short'): string => {
+export const formatDate = (date: string | Date | null | undefined, format: 'short' | 'long' | 'time' = 'short'): string => {
+  // Handle null or undefined
+  if (!date) {
+    return 'Chưa cập nhật';
+  }
+
   const dateObj = typeof date === 'string' ? new Date(date) : date;
-  
+
   if (isNaN(dateObj.getTime())) {
     return 'Invalid Date';
   }
@@ -31,9 +36,14 @@ export const formatDate = (date: string | Date, format: 'short' | 'long' | 'time
   return dateObj.toLocaleDateString('vi-VN', options);
 };
 
-export const formatDateTime = (date: string | Date): string => {
+export const formatDateTime = (date: string | Date | null | undefined): string => {
+  // Handle null or undefined
+  if (!date) {
+    return 'Chưa cập nhật';
+  }
+
   const dateObj = typeof date === 'string' ? new Date(date) : date;
-  
+
   if (isNaN(dateObj.getTime())) {
     return 'Invalid Date';
   }

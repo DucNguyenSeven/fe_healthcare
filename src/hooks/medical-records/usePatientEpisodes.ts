@@ -1,8 +1,6 @@
 import { useState, useEffect } from 'react';
-import {
-  getPatientEpisodes,
-  type GetMedicalRecordsResponse,
-} from '@/lib/api/medical-records';
+import { getPatientEpisodes } from '@/lib/api/medical-records';
+import type { GetMedicalRecordsResponse } from '@/types/medical-record';
 
 interface UsePatientEpisodesParams {
   patientId?: string;

@@ -57,43 +57,42 @@ export const usePayment = (): UsePaymentReturn => {
       const response = await createPaymentApi(data);
 
       // DEBUG: Log toàn bộ response từ payment service (flat structure)
-      console.log('🔍 [usePayment] Payment API response (flat structure):', {
-        hasPaymentId: 'paymentId' in response,
-        hasPaymentUrl: 'paymentUrl' in response,
+      console.log('🔍 [usePayment] Payment API response:', {
+        hasData: !!response.data,
         responseKeys: Object.keys(response),
         fullResponse: response
       });
 
-      // Check if payment was created successfully (flat structure has paymentId and paymentUrl)
-      if (!response.paymentId || !response.paymentUrl) {
+      // Check if payment was created successfully (response.data contains paymentId and paymentUrl)
+      if (!response.data?.paymentId || !response.data?.paymentUrl) {
         throw new Error(response.message || 'Không thể tạo thanh toán');
       }
 
       console.log('✅ [usePayment] Payment created successfully:', {
-        paymentId: response.paymentId,
-        paymentUrl: response.paymentUrl,
-        orderCode: response.orderCode,
-        status: response.status
+        paymentId: response.data.paymentId,
+        paymentUrl: response.data.paymentUrl,
+        orderCode: response.data.orderCode,
+        status: response.data.status
       });
 
       // Update payment state with created payment info
       const paymentInfo: PaymentStatusResponse = {
-        paymentId: response.paymentId,
-        appointmentId: response.appointmentId,
-        orderCode: response.orderCode,
-        amount: response.amount,
+        paymentId: response.data.paymentId,
+        appointmentId: response.data.appointmentId,
+        orderCode: response.data.orderCode,
+        amount: response.data.amount,
         status: 'PENDING',
         paymentMethod: 'BANK',
         createdAt: new Date().toISOString(),
         paidAt: null,
-        expiresAt: response.expiresAt,
+        expiresAt: response.data.expiresAt,
         transactionId: null
       };
       setPayment(paymentInfo);
 
       return {
-        paymentUrl: response.paymentUrl,
-        paymentId: response.paymentId
+        paymentUrl: response.data.paymentUrl,
+        paymentId: response.data.paymentId
       };
     } catch (err: any) {
       const errorMessage = err.message || 'Có lỗi xảy ra khi tạo thanh toán';

@@ -840,7 +840,9 @@ export default function DoctorScheduleRegistrationModal({
                               <span className="font-medium text-[#10B981]">
                                 {formData.recurringType === 'indefinite'
                                   ? 'Vô thời hạn'
-                                  : new Date(formData.recurringEndDate).toLocaleDateString('vi-VN')
+                                  : formData.recurringEndDate
+                                    ? new Date(formData.recurringEndDate).toLocaleDateString('vi-VN')
+                                    : 'Chưa chọn'
                                 }
                               </span>
                             </div>
@@ -888,7 +890,9 @@ export default function DoctorScheduleRegistrationModal({
                               <div className="text-xs text-blue-600 mb-2">
                                 Kết thúc: {formData.recurringType === 'indefinite'
                                   ? 'Vô thời hạn'
-                                  : new Date(formData.recurringEndDate).toLocaleDateString('vi-VN')
+                                  : formData.recurringEndDate
+                                    ? new Date(formData.recurringEndDate).toLocaleDateString('vi-VN')
+                                    : 'Chưa chọn'
                                 }
                               </div>
                               <div className="text-xs text-blue-600">

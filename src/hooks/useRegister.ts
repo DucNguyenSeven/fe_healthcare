@@ -26,7 +26,7 @@ export function useRegister(): UseRegisterReturn {
   const validateForm = (data: RegisterFormData): string | null => {
     // Email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(data.emailOrPhone)) {
+    if (!emailRegex.test(data.email)) {
       return 'Email không hợp lệ';
     }
 
@@ -59,7 +59,7 @@ export function useRegister(): UseRegisterReturn {
       }
 
       const response = await AuthApi.register({
-        email: data.emailOrPhone,  // Backend expects 'email'
+        email: data.email,  // Backend expects 'email'
         password: data.password,
       });
 
@@ -71,7 +71,7 @@ export function useRegister(): UseRegisterReturn {
 
         // Registration successful - redirect to OTP verification
         // Store email in sessionStorage for OTP verification
-        sessionStorage.setItem('otp-email', data.emailOrPhone);
+        sessionStorage.setItem('otp-email', data.email);
         router.push('/otp');
         return true;
       } else {

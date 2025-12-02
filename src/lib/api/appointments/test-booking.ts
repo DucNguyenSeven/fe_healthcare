@@ -16,7 +16,7 @@ export const testBookingAppointment = async () => {
       symptoms: 'Đau đầu, sốt nhẹ',
       note: 'Bệnh nhân có tiền sử dị ứng thuốc',
       slotId: 16,
-      consultationType: 'ONLINE' as const,
+      consultationType: 'ONLINE_CONSULTATION' as const,
       addressDetail: '123 Đường ABC, Quận 1, TP.HCM'
     };
     

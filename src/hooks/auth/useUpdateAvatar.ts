@@ -45,6 +45,7 @@ export const useUpdateAvatar = (): UseUpdateAvatarReturn => {
     }
 
     // Validate filename for unsafe characters
+    // eslint-disable-next-line no-control-regex
     const unsafeChars = /[<>:"/\\|?*\x00-\x1f]/;
     if (unsafeChars.test(file.name)) {
       setError('Tên file chứa ký tự không được phép');

@@ -22,7 +22,7 @@ import {
  */
 export const createPayment = async (
   data: CreatePaymentRequest
-): Promise<CreatePaymentResponse> => {
+): Promise<CreatePaymentApiResponse> => {
   try {
     console.log('🔍 [PaymentService] Creating payment:', {
       endpoint: '/api/v1/payments/create',
@@ -31,7 +31,7 @@ export const createPayment = async (
     });
 
     // Backend returns FLAT structure directly, not wrapped
-    const response = await api.post<CreatePaymentResponse>(
+    const response = await api.post<CreatePaymentApiResponse>(
       '/api/v1/payments/create',
       data
     );
@@ -42,8 +42,8 @@ export const createPayment = async (
       dataKeys: response.data ? Object.keys(response.data) : [],
       dataKeysDetailed: response.data ? Object.keys(response.data).map(key => ({
         key,
-        value: response.data[key],
-        type: typeof response.data[key]
+        value: (response.data as any)[key],
+        type: typeof (response.data as any)[key]
       })) : [],
       fullResponse: response.data
     });
@@ -69,8 +69,8 @@ export const createPayment = async (
       expiresAt: paymentData.expiresAt
     });
 
-    // Return the nested data object, not the wrapper
-    return paymentData;
+    // Return the full response wrapper
+    return response.data;
   } catch (error: any) {
     console.error('❌ [PaymentService] Create payment error:', {
       errorName: error.name,
