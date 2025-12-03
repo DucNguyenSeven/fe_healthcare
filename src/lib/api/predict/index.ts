@@ -2,7 +2,7 @@
  * Prediction API Service
  * Backend endpoints:
  * - POST /api/v1/analysis/ckd-prediction (AI Service - Direct connection port 8086)
- * - GET /api/v1/analysis/predict-current-trends/{patientId} (AI Service - Trend comparison port 8086)
+ * - POST /api/v1/analysis/predict-current-trends (AI Service - Trend comparison port 8086)
  * - POST /api/v1/predicts/create-predict (Gateway - Save history to DB port 8080)
  */
 
@@ -146,17 +146,24 @@ export async function getPredict(patientId: string): Promise<GetPredictResponse>
 
 /**
  * Lấy so sánh xu hướng giữa dự đoán hiện tại và lần trước (trực tiếp đến AI Service)
- * Endpoint: GET /api/v1/analysis/predict-current-trends/{patientId}
+ * Endpoint: POST /api/v1/analysis/predict-current-trends
  *
  * @param patientId - ID của bệnh nhân
  * @returns Response chứa thông tin xu hướng và so sánh metrics
  * @throws Error nếu chưa có đủ dữ liệu lịch sử (< 2 predictions)
  */
 export async function getPredictCurrentTrends(patientId: string): Promise<PredictCurrentTrendsResponse> {
-  const response = await aiClient.get<PredictCurrentTrendsResponse>(
-    `/api/v1/analysis/predict-current-trends/${patientId}`
+  const response = await aiClient.post<PredictCurrentTrendsResponse>(
+    '/api/v1/analysis/predict-current-trends',
+    { patientId }
   );
-  return response.data;
+
+  // Normalize response: ensure metricComparisons exists
+  const data = response.data;
+  return {
+    trend: data.trend,
+    metricComparisons: data.metricComparisons || []
+  };
 }
 
 export default {

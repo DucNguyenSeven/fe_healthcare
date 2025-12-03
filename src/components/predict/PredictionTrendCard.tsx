@@ -154,7 +154,7 @@ function getMetricStatusLabel(status: MetricComparisonStatus): string {
 }
 
 export function PredictionTrendCard({ trendData }: PredictionTrendCardProps) {
-  const { trend, metricComparisons } = trendData;
+  const { trend, metricComparisons = [] } = trendData;
   const colors = getTrendColorClasses(trend.classification);
 
   return (

@@ -63,16 +63,16 @@ export interface TrendOverview {
   confidenceChange: number | null;
 
   /** Giá trị của metric chính lần trước (thường là GFR) */
-  metricPrevious: number | null;
+  metricPrevious?: number | null;
 
   /** Giá trị của metric chính hiện tại */
-  metricCurrent: number | null;
+  metricCurrent?: number | null;
 
   /** Phần trăm thay đổi của metric chính */
-  metricChangePct: number | null;
+  metricChangePct?: number | null;
 
   /** Tên metric chính được dùng để đánh giá (ưu tiên: GFR > Creatinine > BUN) */
-  metricName: string | null;
+  metricName?: string | null;
 
   /** Tóm tắt xu hướng bằng văn bản */
   summary: string;
@@ -86,7 +86,7 @@ export interface PredictCurrentTrendsResponse {
   trend: TrendOverview;
 
   /** Danh sách so sánh chi tiết từng metric */
-  metricComparisons: MetricComparison[];
+  metricComparisons?: MetricComparison[];
 }
 
 /**

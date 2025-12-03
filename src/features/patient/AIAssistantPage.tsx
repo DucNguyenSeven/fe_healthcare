@@ -145,6 +145,7 @@ export function AIAssistantPage({
     risk: 'low' | 'moderate' | 'high';
     percentage: number;
     stage: string;
+    stageNumber: number;
     recommendations: string[];
   } | null>(null);
 
@@ -650,14 +651,16 @@ export function AIAssistantPage({
         // Transform 9 lab test metrics to array format
         const healthMetrics = transformHealthMetricsToArray(backendData, user.id);
 
-        // Prepare save request
+        // Prepare save request - use parsed stageNumber from prediction result
         const saveRequest = {
           patientId: user.id,
-          stage: aiResult.predicted_stage,
+          stage: aiPredictionResult.stageNumber,
           confidence: aiResult.confidence,
           recommendations: aiResult.recommendations || [],
           healthMetrics: healthMetrics
         };
+
+        console.log('📊 Saving with stage:', saveRequest.stage);
 
         await savePredictHistory(saveRequest);
 
@@ -697,7 +700,18 @@ export function AIAssistantPage({
   const parseAIServiceResponse = (aiResult: any) => {
     console.log('🔍 Parsing AI response:', aiResult);
 
-    const predictedStage = aiResult.predicted_stage || aiResult.stage || 3;
+    // Extract stage NUMBER properly with type checking
+    let predictedStage: number;
+    if (typeof aiResult.predicted_stage === 'number') {
+      predictedStage = aiResult.predicted_stage;
+    } else if (typeof aiResult.predicted_stage === 'string') {
+      // Extract number from "Stage 3" or "3"
+      const match = aiResult.predicted_stage.match(/\d+/);
+      predictedStage = match ? parseInt(match[0]) : 3;
+    } else {
+      predictedStage = aiResult.stage || 3;
+    }
+
     const confidence = aiResult.confidence || 0.5;
     const riskLevel = aiResult.risk_level || 'moderate';
     const stageDescription = aiResult.stage_description || 'Cần đánh giá thêm';
@@ -731,6 +745,7 @@ export function AIAssistantPage({
       risk,
       percentage,
       stage: formattedStage,
+      stageNumber: predictedStage,
       recommendations: formattedRecommendations,
       originalStage: predictedStage,
       originalRiskLevel: riskLevel,
@@ -741,6 +756,7 @@ export function AIAssistantPage({
       risk,
       percentage,
       stage: formattedStage,
+      stageNumber: predictedStage,
       recommendations: formattedRecommendations
     };
   };
@@ -1546,14 +1562,84 @@ export function AIAssistantPage({
           {currentTab === 5 && predictionResult && <div className="space-y-6">
               <div className="flex items-center space-x-2 mb-6">
                 <span className="text-2xl">📊</span>
-                <h3 className="text-xl font-semibold text-gray-900">Kết quả dự đoán CKD</h3>
+                <h3 className="text-xl font-semibold text-gray-900">Kết quả dự đoán bệnh thận</h3>
+              </div>
+
+              {/* CKD Stage - Color-coded by Severity */}
+              <div className={`rounded-2xl shadow-lg p-8 text-white ${
+                predictionResult.stageNumber <= 1
+                  ? 'bg-gradient-to-br from-green-500 to-emerald-600'
+                  : predictionResult.stageNumber === 2
+                  ? 'bg-gradient-to-br from-yellow-500 to-amber-600'
+                  : predictionResult.stageNumber === 3
+                  ? 'bg-gradient-to-br from-orange-500 to-orange-600'
+                  : 'bg-gradient-to-br from-red-500 to-red-600'
+              }`}>
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-white/90 mb-2">🏥 TÌNH TRẠNG THẬN CỦA BẠN</p>
+                    <div className="flex items-baseline space-x-4">
+                      <div className="flex items-center space-x-3">
+                        <span className="text-5xl">
+                          {predictionResult.stageNumber <= 1
+                            ? '🟢'
+                            : predictionResult.stageNumber === 2
+                            ? '🟡'
+                            : predictionResult.stageNumber === 3
+                            ? '🟠'
+                            : '🔴'}
+                        </span>
+                        <div>
+                          <div className="flex items-baseline space-x-2">
+                            <span className="text-6xl font-bold tracking-tight">
+                              {predictionResult.stageNumber}
+                            </span>
+                            <span className="text-2xl font-semibold text-white/90">/ 5</span>
+                          </div>
+                          <p className="text-sm text-white/80 mt-1">GIAI ĐOẠN</p>
+                        </div>
+                      </div>
+                    </div>
+                    <p className="mt-4 text-white/95 font-medium text-lg">
+                      {predictionResult.stage}
+                    </p>
+                    <p className="mt-2 text-sm text-white/80">
+                      {predictionResult.stageNumber <= 1
+                        ? 'Thận hoạt động tốt (≥90%)'
+                        : predictionResult.stageNumber === 2
+                        ? 'Thận hoạt động ở mức 60-89%'
+                        : predictionResult.stageNumber === 3
+                        ? 'Thận hoạt động ở mức 30-59%'
+                        : 'Thận hoạt động dưới 30%'}
+                    </p>
+                  </div>
+                  <div className="hidden md:block">
+                    <div className="w-32 h-32 bg-white/10 backdrop-blur-sm rounded-2xl flex items-center justify-center">
+                      <span className="text-7xl">🏥</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Confidence Score */}
+                <div className="mt-6 pt-6 border-t border-white/20">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium text-white/90">Độ chính xác của dự đoán</span>
+                    <span className="text-lg font-bold">{predictionResult.percentage}% ✅</span>
+                  </div>
+                  <div className="w-full bg-white/20 rounded-full h-2.5">
+                    <div
+                      className="h-2.5 rounded-full bg-white transition-all duration-500"
+                      style={{ width: `${predictionResult.percentage}%` }}
+                    ></div>
+                  </div>
+                </div>
               </div>
 
               <div className="grid lg:grid-cols-2 gap-6">
                 {/* Risk Level */}
                 <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
                   <h2 className="text-xl font-semibold text-gray-900 mb-4">Mức độ nguy cơ</h2>
-                  
+
                   <div className={`p-6 rounded-2xl mb-4 ${predictionResult.risk === 'low' ? 'bg-green-50 border border-green-200' : predictionResult.risk === 'moderate' ? 'bg-yellow-50 border border-yellow-200' : 'bg-red-50 border border-red-200'}`}>
                     <div className="flex items-center space-x-3 mb-3">
                       {predictionResult.risk === 'low' ? <Shield className="w-8 h-8 text-green-600" /> : predictionResult.risk === 'moderate' ? <AlertTriangle className="w-8 h-8 text-yellow-600" /> : <AlertCircle className="w-8 h-8 text-red-600" />}
@@ -1562,35 +1648,37 @@ export function AIAssistantPage({
                           Nguy cơ {predictionResult.risk === 'low' ? 'Thấp' : predictionResult.risk === 'moderate' ? 'Trung bình' : 'Cao'}
                         </h3>
                         <p className={`text-sm ${predictionResult.risk === 'low' ? 'text-green-600' : predictionResult.risk === 'moderate' ? 'text-yellow-600' : 'text-red-600'}`}>
-                          {predictionResult.percentage}% khả năng phát triển CKD
+                          Mức độ nguy hiểm của tình trạng hiện tại
                         </p>
                       </div>
                     </div>
-                    
-                    <div className="mb-3">
-                      <div className="w-full bg-gray-200 rounded-full h-3">
-                        <div className={`h-3 rounded-full transition-all duration-500 ${predictionResult.risk === 'low' ? 'bg-green-500' : predictionResult.risk === 'moderate' ? 'bg-yellow-500' : 'bg-red-500'}`} style={{
-                      width: `${predictionResult.percentage}%`
-                    }}></div>
+
+                    <div className="mt-4 p-4 bg-white rounded-lg">
+                      <p className="text-sm text-gray-600 mb-2">Thang đánh giá nguy cơ:</p>
+                      <div className="flex items-center space-x-2">
+                        <div className="flex-1 h-2 rounded-full bg-gradient-to-r from-green-400 via-yellow-400 to-red-500"></div>
+                      </div>
+                      <div className="flex justify-between mt-1 text-xs text-gray-500">
+                        <span>Thấp</span>
+                        <span>Trung bình</span>
+                        <span>Cao</span>
                       </div>
                     </div>
-                    
-                    <p className={`font-medium ${predictionResult.risk === 'low' ? 'text-green-800' : predictionResult.risk === 'moderate' ? 'text-yellow-800' : 'text-red-800'}`}>
-                      {predictionResult.stage}
-                    </p>
                   </div>
                 </div>
 
                 {/* Recommendations */}
                 <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
                   <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center space-x-2">
-                    <TrendingUp className="w-5 h-5 text-blue-600" />
-                    <span>Khuyến nghị</span>
+                    <span className="text-2xl">💊</span>
+                    <span>BẠN NÊN LÀM GÌ?</span>
                   </h3>
-                  
+
                   <ul className="space-y-3">
                     {predictionResult.recommendations.map((rec, index) => <li key={index} className="flex items-start space-x-3">
-                        <div className="w-2 h-2 bg-blue-600 rounded-full mt-2 flex-shrink-0"></div>
+                        <div className="flex-shrink-0 mt-1">
+                          <span className="text-green-600 font-bold text-lg">✓</span>
+                        </div>
                         <span className="text-gray-700 text-sm">{rec}</span>
                       </li>)}
                   </ul>
@@ -1619,15 +1707,15 @@ export function AIAssistantPage({
               {/* Action Buttons */}
               <div className="flex flex-col sm:flex-row justify-center items-center gap-4 pt-6">
                 <button onClick={resetPrediction} className="flex items-center space-x-2 px-6 py-3 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-colors">
-                  <span>🔄 Thực hiện lại</span>
+                  <span>🔄 Làm lại</span>
                 </button>
                 <button className="flex items-center space-x-2 px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors">
                   <FileText className="w-4 h-4" />
-                  <span>Xuất báo cáo</span>
+                  <span>📄 In kết quả</span>
                 </button>
                 <button onClick={handleBookAppointment} className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-green-500 text-white rounded-xl hover:from-blue-600 hover:to-green-600 transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
                   <Calendar className="w-4 h-4" />
-                  <span>Đặt lịch khám</span>
+                  <span>📅 Đặt khám bác sĩ</span>
                 </button>
               </div>
             </div>}
