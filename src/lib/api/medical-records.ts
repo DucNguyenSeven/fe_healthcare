@@ -429,26 +429,42 @@ export const getMedicalHistoryByDoctor = async (
     const queryString = queryParams.toString();
     const url = `/api/v1/medical-records/doctor/${params.doctorId}/patient/${params.patientId}/history${queryString ? '?' + queryString : ''}`;
 
-    console.log('🔍 [API - getMedicalHistoryByDoctor] Fetching history:', {
+    console.log('🔍 [Medical History API] Fetching consultation history:', {
+      endpoint: url,
+      fullURL: `${url}`,
       doctorId: params.doctorId,
       patientId: params.patientId,
       page: params.page,
-      size: params.size
+      size: params.size,
+      timestamp: new Date().toISOString()
     });
 
     const response = await api.get<ApiResponse<MedicalHistoryResponse>>(url);
 
-    console.log('✅ [API - getMedicalHistoryByDoctor] Success:', {
+    console.log('✅ [Medical History API] Success - Response received:', {
       totalRecords: response.data.data?.totalElements || 0,
-      totalPages: response.data.data?.totalPages || 0
+      totalPages: response.data.data?.totalPages || 0,
+      recordsCount: response.data.data?.content?.length || 0,
+      firstRecord: response.data.data?.content?.[0] ? {
+        appointmentDate: response.data.data.content[0].appointmentDate,
+        diagnosis: response.data.data.content[0].diagnosis,
+        hasSymptoms: !!response.data.data.content[0].symptoms,
+        hasTreatment: !!response.data.data.content[0].treatment,
+        serviceName: response.data.data.content[0].serviceName
+      } : null,
+      timestamp: new Date().toISOString()
     });
 
     return response.data;
   } catch (error: any) {
-    console.error('❌ [API - getMedicalHistoryByDoctor] Error:', {
+    console.error('❌ [Medical History API] Error fetching consultation history:', {
       status: error.response?.status,
+      statusText: error.response?.statusText,
       message: error.response?.data?.message,
-      error: error.response?.data
+      errorData: error.response?.data,
+      doctorId: params.doctorId,
+      patientId: params.patientId,
+      timestamp: new Date().toISOString()
     });
     return {
       success: false,

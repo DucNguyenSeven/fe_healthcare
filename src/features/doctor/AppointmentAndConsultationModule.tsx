@@ -777,7 +777,7 @@ export const AppointmentAndConsultationModule = ({
         imageAttachments: imageAttachments || [],
         signatureUrl: signatureUrl || '',
         stage: stage ? parseInt(stage) : 0,
-        statusHealth: statusHealth || 'stable'
+        statusHealth: statusHealth || 'STABLE'
       };
 
       const medicalRecord = await createMedicalRecord(medicalRecordData);
@@ -1652,10 +1652,10 @@ export const AppointmentAndConsultationModule = ({
                           </label>
                           <select value={statusHealth} onChange={e => setStatusHealth(e.target.value)} className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent">
                             <option value="">Chọn tình trạng</option>
-                            <option value="stable">Ổn định</option>
-                            <option value="improving">Cải thiện</option>
-                            <option value="declining">Suy giảm</option>
-                            <option value="critical">Nguy kịch</option>
+                            <option value="STABLE">Ổn định</option>
+                            <option value="IMPROVING">Cải thiện</option>
+                            <option value="DECREASING">Suy giảm</option>
+                            <option value="INCREASING">Xấu đi</option>
                           </select>
                         </div>
                       </div>
