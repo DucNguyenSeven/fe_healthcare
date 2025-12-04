@@ -41,7 +41,7 @@ const navigationItems: NavigationItemConfig[] = [{
   icon: Activity
 }, {
   id: 'ai-assistant',
-  label: 'Trợ lý AI',
+  label: 'Dự đoán với AI',
   icon: Bot
 }, {
   id: 'community',

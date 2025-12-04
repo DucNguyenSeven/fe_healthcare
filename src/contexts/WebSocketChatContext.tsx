@@ -44,6 +44,7 @@ interface WebSocketChatState {
   unreadCounts: Record<string, number>; // groupId -> count
   typingUsers: Record<string, string[]>; // groupId -> userIds
   isJoiningGroup: boolean; // Track if currently joining a group to prevent race conditions
+  activeWidget: 'none' | 'doctor' | 'ai'; // Track which widget is currently open
 
   // AI Chat
   currentAIGroupId: string | null; // Track AI group for chatbot
@@ -62,6 +63,7 @@ type WebSocketChatAction =
   | { type: 'UPDATE_UNREAD_COUNT'; payload: { groupId: string; count: number } }
   | { type: 'SET_TYPING_USERS'; payload: { groupId: string; userIds: string[] } }
   | { type: 'SET_JOINING_GROUP'; payload: boolean }
+  | { type: 'SET_ACTIVE_WIDGET'; payload: 'none' | 'doctor' | 'ai' }
   | { type: 'SET_AI_GROUP'; payload: string | null }
   | { type: 'SET_AI_RESPONDING'; payload: boolean };
 
@@ -284,6 +286,9 @@ function webSocketChatReducer(state: WebSocketChatState, action: WebSocketChatAc
     case 'SET_JOINING_GROUP':
       return { ...state, isJoiningGroup: action.payload };
 
+    case 'SET_ACTIVE_WIDGET':
+      return { ...state, activeWidget: action.payload };
+
     case 'SET_AI_GROUP':
       return { ...state, currentAIGroupId: action.payload };
 
@@ -306,6 +311,7 @@ interface WebSocketChatContextType extends WebSocketChatState {
   setActiveConversation: (conversationId: string | null) => void;
   markAsRead: (groupId: string) => void;
   joinConversation: (groupId: string) => Promise<void>;
+  setActiveWidget: (widget: 'none' | 'doctor' | 'ai') => void;
 
   // AI Chat Actions
   initializeAIGroup: () => Promise<string>;
@@ -337,6 +343,7 @@ export function WebSocketChatProvider({ children }: WebSocketChatProviderProps) 
     unreadCounts: {},
     typingUsers: {},
     isJoiningGroup: false,
+    activeWidget: 'none',
     currentAIGroupId: null,
     isAIResponding: false
   });
@@ -723,6 +730,10 @@ export function WebSocketChatProvider({ children }: WebSocketChatProviderProps) 
     dispatch({ type: 'SET_ERROR', payload: null });
   }, []);
 
+  const setActiveWidget = useCallback((widget: 'none' | 'doctor' | 'ai') => {
+    dispatch({ type: 'SET_ACTIVE_WIDGET', payload: widget });
+  }, []);
+
   // ============ AI Chat Methods ============
 
   // Storage key for AI group
@@ -968,6 +979,7 @@ export function WebSocketChatProvider({ children }: WebSocketChatProviderProps) 
     setActiveConversation,
     markAsRead,
     joinConversation,
+    setActiveWidget,
     initializeAIGroup,
     sendAIMessage,
     reconnect,

@@ -149,13 +149,32 @@ export async function getPredict(patientId: string): Promise<GetPredictResponse>
  * Endpoint: POST /api/v1/analysis/predict-current-trends
  *
  * @param patientId - ID của bệnh nhân
+ * @param predictData - Dữ liệu prediction hiện tại (predictId, stage, confidence, recommendations, timestamps)
  * @returns Response chứa thông tin xu hướng và so sánh metrics
  * @throws Error nếu chưa có đủ dữ liệu lịch sử (< 2 predictions)
  */
-export async function getPredictCurrentTrends(patientId: string): Promise<PredictCurrentTrendsResponse> {
+export async function getPredictCurrentTrends(
+  patientId: string,
+  predictData: {
+    predictId: string;
+    stage: number;
+    confidence: number;
+    recommendations: string[];
+    createdAt: string;
+    updatedAt: string;
+  }
+): Promise<PredictCurrentTrendsResponse> {
   const response = await aiClient.post<PredictCurrentTrendsResponse>(
     '/api/v1/analysis/predict-current-trends',
-    { patientId }
+    {
+      predictId: predictData.predictId,
+      patientId: patientId,
+      stage: predictData.stage,
+      recommendations: predictData.recommendations,
+      confidence: predictData.confidence,
+      createdAt: predictData.createdAt,
+      updatedAt: predictData.updatedAt
+    }
   );
 
   // Normalize response: ensure metricComparisons exists

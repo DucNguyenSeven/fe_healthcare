@@ -42,7 +42,7 @@ export const navigationItems: NavigationItem[] = [
   },
   {
     id: 'ai-assistant',
-    label: 'Trợ lý AI',
+    label: 'Dự đoán với AI',
     path: '/patient/ai-assistant',
   },
   {

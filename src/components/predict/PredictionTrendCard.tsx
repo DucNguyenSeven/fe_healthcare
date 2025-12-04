@@ -176,8 +176,8 @@ export function PredictionTrendCard({ trendData }: PredictionTrendCardProps) {
               </span>
             </div>
 
-            {/* Stage and Confidence Info */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+            {/* Stage Comparison */}
+            <div className="mb-3">
               {trend.stagePrevious !== null && trend.stageCurrent !== null && (
                 <div className="flex items-center gap-2 text-sm">
                   <span className={`font-medium ${colors.text}`}>Giai đoạn:</span>
@@ -187,14 +187,7 @@ export function PredictionTrendCard({ trendData }: PredictionTrendCardProps) {
                 </div>
               )}
 
-              {trend.confidenceChange !== null && (
-                <div className="flex items-center gap-2 text-sm">
-                  <span className={`font-medium ${colors.text}`}>Độ tin cậy:</span>
-                  <span className="font-semibold text-gray-900">
-                    {trend.confidenceChange > 0 ? '+' : ''}{trend.confidenceChange.toFixed(1)}%
-                  </span>
-                </div>
-              )}
+              {/* Removed: Confidence change display - values too small (scientific notation ~0.0%) */}
             </div>
 
             {/* Summary */}

@@ -26,7 +26,7 @@ export function AIChatButton({ onClick, isOpen, isExpanded = false }: AIChatButt
           ? 'bg-purple-500 hover:bg-purple-600'
           : 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700'
         }
-        z-[9999]
+        z-[9997]
       `}
       whileHover={{ scale: 1.05 }}
       whileTap={{ scale: 0.95 }}

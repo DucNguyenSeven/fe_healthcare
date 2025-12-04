@@ -21,12 +21,14 @@ export function ChatWidget() {
     connectionStatus,
     isLoading,
     error,
+    activeWidget,
     setActiveConversation,
     joinConversation,
     sendChatMessage,
     markAsRead,
     reconnect,
-    clearError
+    clearError,
+    setActiveWidget
   } = useWebSocketChat()
 
   // Current user based on auth context
@@ -47,10 +49,12 @@ export function ChatWidget() {
   const handleToggleWidget = () => {
     if (view === 'collapsed') {
       setView('conversations')
+      setActiveWidget('doctor') // Notify context that doctor chat is opening
       // Clear error when opening widget
       if (error) clearError()
     } else {
       setView('collapsed')
+      setActiveWidget('none') // Notify context that widget is closing
       setActiveConversation(null)
       setIsExpanded(false) // Reset expand state when closing
     }
@@ -101,6 +105,15 @@ export function ChatWidget() {
       joinConversation(activeConversationId)
     }
   }, [activeConversationId, view, joinConversation])
+
+  // Close doctor chat when AI chat opens
+  useEffect(() => {
+    if (activeWidget === 'ai' && view !== 'collapsed') {
+      setView('collapsed')
+      setActiveConversation(null)
+      setIsExpanded(false)
+    }
+  }, [activeWidget, view, setActiveConversation])
 
   return (
     <>
