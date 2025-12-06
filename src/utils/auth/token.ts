@@ -62,3 +62,38 @@ export function getEmailFromToken(token?: string | null): string | null {
   const decoded = decodeJWT(accessToken);
   return decoded?.email as string || null;
 }
+
+// Token validation functions
+export function isTokenExpired(token: string): boolean {
+  try {
+    const decoded = decodeJWT(token);
+    if (!decoded || !decoded.exp) return true;
+
+    const expirationTime = (decoded.exp as number) * 1000; // Convert to milliseconds
+    const currentTime = Date.now();
+
+    return currentTime >= expirationTime;
+  } catch {
+    return true; // If unable to decode, consider it expired
+  }
+}
+
+export function isTokenValid(token: string | null): boolean {
+  if (!token) return false;
+  return !isTokenExpired(token);
+}
+
+export function isTokenExpiringSoon(token: string, thresholdMinutes: number = 5): boolean {
+  try {
+    const decoded = decodeJWT(token);
+    if (!decoded || !decoded.exp) return true;
+
+    const expirationTime = (decoded.exp as number) * 1000;
+    const currentTime = Date.now();
+    const thresholdMs = thresholdMinutes * 60 * 1000;
+
+    return (expirationTime - currentTime) <= thresholdMs;
+  } catch {
+    return true;
+  }
+}

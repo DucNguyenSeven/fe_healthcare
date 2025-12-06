@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { getAccessToken, clearTokens } from '@/utils/auth/token';
+import { getAccessToken, clearTokens, isTokenValid } from '@/utils/auth/token';
 import { AuthAPI } from '@/lib/api/user';
 import type { User } from '@/types/user';
 
@@ -30,19 +30,26 @@ export function AuthProvider({ children }: AuthProviderProps) {
     clearTokens();
   };
 
-  // Get user data on mount if token exists
+  // Get user data on mount if token exists and is valid
   useEffect(() => {
     const initAuth = async () => {
       const token = getAccessToken();
-      if (token) {
+
+      // Validate token before making API call
+      if (token && isTokenValid(token)) {
         try {
           const response = await AuthAPI.getMe();
           setUser(response.data);
         } catch (error) {
-          // Failed to get user info
+          // Failed to get user info - clear tokens
           clearTokens();
         }
+      } else if (token) {
+        // Token exists but is expired - clear immediately without API call
+        clearTokens();
       }
+      // No token - do nothing
+
       setLoading(false);
     };
 
