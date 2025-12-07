@@ -1,8 +1,9 @@
 'use client';
 
 import React from 'react';
-import { Calendar, Pill, FileText, User, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { Calendar, Pill, FileText, User, TrendingUp, TrendingDown, Minus, Download } from 'lucide-react';
 import type { MedicalRecordWithEpisode } from '@/lib/api/medical-records';
+import { useDownloadPrescription } from '@/hooks/use-download-prescription';
 
 interface MedicalRecordTimelineProps {
   allRecords: MedicalRecordWithEpisode[];
@@ -15,6 +16,9 @@ interface MedicalRecordTimelineProps {
 export const MedicalRecordTimeline: React.FC<MedicalRecordTimelineProps> = ({
   allRecords,
 }) => {
+  // Hook for downloading prescription PDF
+  const { downloadPDF, isDownloading } = useDownloadPrescription();
+
   // Sort records từ mới đến cũ (DESC)
   const sortedRecords = React.useMemo(() => {
     return [...allRecords].sort((a, b) => {
@@ -96,6 +100,34 @@ export const MedicalRecordTimeline: React.FC<MedicalRecordTimelineProps> = ({
                   </span>
                 </div>
               </div>
+
+              {/* Download Button - Top right corner */}
+              {record.prescriptions && record.prescriptions.length > 0 && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    downloadPDF(record.recordId);
+                  }}
+                  disabled={isDownloading(record.recordId)}
+                  className="flex items-center space-x-1.5 px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-xs font-medium"
+                  title="Tải đơn thuốc PDF"
+                >
+                  {isDownloading(record.recordId) ? (
+                    <>
+                      <svg className="animate-spin h-3 w-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      <span>Đang tải...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Download className="w-3 h-3" />
+                      <span>Tải đơn thuốc</span>
+                    </>
+                  )}
+                </button>
+              )}
             </div>
 
             {/* Details Grid */}

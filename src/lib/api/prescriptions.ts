@@ -117,3 +117,65 @@ export const getPrescriptionGroups = async (
     };
   }
 };
+
+/**
+ * Response type cho download PDF
+ */
+export interface DownloadPDFResponse {
+  blob: Blob;
+  filename: string;
+}
+
+/**
+ * Download đơn thuốc dưới dạng PDF
+ * API: GET /api/v1/prescriptions/download/{recordId}
+ * @param recordId - ID của medical record
+ * @returns Object chứa blob và filename từ Content-Disposition header
+ */
+export const downloadPrescriptionPDF = async (
+  recordId: string
+): Promise<DownloadPDFResponse> => {
+  const response = await api.get(
+    `/api/v1/prescriptions/download/${recordId}`,
+    {
+      responseType: 'blob',
+      headers: {
+        'Accept': 'application/pdf'
+      }
+    }
+  );
+
+  // Extract filename from Content-Disposition header
+  const contentDisposition = response.headers['content-disposition'];
+  let filename = `don-thuoc-${recordId}.pdf`; // fallback
+
+  if (contentDisposition) {
+    // Try RFC 2231 format first: filename*=UTF-8''encoded-name
+    const rfc2231Match = contentDisposition.match(/filename\*=UTF-8''([^;]+)/i);
+    if (rfc2231Match && rfc2231Match[1]) {
+      filename = decodeURIComponent(rfc2231Match[1]);
+    } else {
+      // Try standard format: filename="name" or filename=name
+      const standardMatch = contentDisposition.match(/filename="?([^";\n]+)"?/i);
+      if (standardMatch && standardMatch[1]) {
+        let extractedName = standardMatch[1].trim();
+
+        // Decode MIME encoded-word if present: =?UTF-8?Q?...?=
+        const mimeMatch = extractedName.match(/=\?UTF-8\?Q\?(.+)\?=/i);
+        if (mimeMatch && mimeMatch[1]) {
+          // Decode quoted-printable: replace _ with space, decode %XX
+          extractedName = mimeMatch[1]
+            .replace(/_/g, ' ')
+            .replace(/=([0-9A-F]{2})/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
+        }
+
+        filename = extractedName;
+      }
+    }
+  }
+
+  return {
+    blob: response.data,
+    filename
+  };
+};

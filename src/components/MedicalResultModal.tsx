@@ -1,11 +1,12 @@
 "use client";
 
 import React, { useEffect, useState } from 'react';
-import { X, User, Stethoscope, Calendar, FileText, Pill, AlertCircle, CheckCircle, Loader2, ClipboardList, AlertTriangle, Activity, Phone, Mail } from 'lucide-react';
+import { X, User, Stethoscope, Calendar, FileText, Pill, AlertCircle, CheckCircle, Loader2, ClipboardList, AlertTriangle, Activity, Phone, Mail, Download } from 'lucide-react';
 import { useMedicalResultsByAppointment } from '@/hooks/medical-results';
 import { getMedicalRecordById } from '@/lib/api/medical-records';
 import type { MedicalRecordWithPrescriptions } from '@/types/medical-record';
 import { FullTimelineTab } from '@/components/medical-records/timeline/FullTimelineTab';
+import { useDownloadPrescription } from '@/hooks/use-download-prescription';
 
 interface MedicalResultModalProps {
   isOpen: boolean;
@@ -36,6 +37,9 @@ export function MedicalResultModal({ isOpen, onClose, appointmentId, patientInfo
 
   // State for tabs
   const [activeTab, setActiveTab] = useState<'current' | 'timeline'>('current');
+
+  // Hook for downloading prescription PDF
+  const { downloadPDF, isDownloading } = useDownloadPrescription();
 
   // Fetch medical results when modal opens
   useEffect(() => {
@@ -391,7 +395,32 @@ export function MedicalResultModal({ isOpen, onClose, appointmentId, patientInfo
 
           {/* Close Button for Current Tab */}
           {data && !loading && !error && activeTab === 'current' && (
-            <div className="mt-6 flex justify-end">
+            <div className="mt-6 flex items-center justify-between">
+              {/* Download Button - Left side */}
+              {data.prescriptions.length > 0 && (
+                <button
+                  onClick={() => downloadPDF(data.medicalRecord.recordId)}
+                  disabled={isDownloading(data.medicalRecord.recordId)}
+                  className="flex items-center space-x-2 px-6 py-3 bg-blue-600 text-white rounded-2xl hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                >
+                  {isDownloading(data.medicalRecord.recordId) ? (
+                    <>
+                      <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      <span>Đang tải PDF...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Download className="w-4 h-4" />
+                      <span>Tải đơn thuốc PDF</span>
+                    </>
+                  )}
+                </button>
+              )}
+
+              {/* Close Button - Right side */}
               <button
                 onClick={onClose}
                 className="px-6 py-3 bg-gray-200 text-gray-700 rounded-2xl hover:bg-gray-300 transition-colors font-medium"
