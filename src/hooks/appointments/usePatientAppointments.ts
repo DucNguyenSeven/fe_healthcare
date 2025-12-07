@@ -334,12 +334,36 @@ export const transformAppointmentToTimelineFormat = (appointment: AppointmentRes
     id: appointment.appointmentId,
     service: getServiceName(appointment.consultationType, appointment.note),
     doctor: getDoctorName(), // String for display
-    doctorInfo: appointment.doctor ? {
-      ...appointment.doctor,
-      // Đảm bảo doctorInfo có doctorId
-      doctorId: appointment.doctor.id || appointment.doctorId,
-      id: appointment.doctor.id || appointment.doctorId
-    } : null, // Preserve full object for chat functionality
+    doctorInfo: (() => {
+      // Enhanced doctor info extraction with logging for data quality monitoring
+
+      // CASE 1: Full doctor object exists
+      if (appointment.doctor) {
+        const doctorInfo = {
+          ...appointment.doctor,
+          doctorId: appointment.doctor.id || appointment.doctorId,
+          id: appointment.doctor.id || appointment.doctorId
+        };
+        // Uncomment for debugging: console.log('[transform] ✅ Full doctor object for appointment:', appointment.appointmentId);
+        return doctorInfo;
+      }
+
+      // CASE 2: Only doctorId exists (partial data)
+      if (appointment.doctorId) {
+        console.warn('[transform] ⚠️ Partial doctor data for appointment:', appointment.appointmentId, '- only doctorId available');
+        return {
+          doctorId: appointment.doctorId,
+          id: appointment.doctorId,
+          fullName: undefined, // Will use fallback in handleStartChat
+          specialty: undefined,
+          avatarUrl: undefined
+        };
+      }
+
+      // CASE 3: No doctor data at all
+      console.error('[transform] ❌ No doctor data available for appointment:', appointment.appointmentId);
+      return null;
+    })(), // Preserve full object for chat functionality
     doctorId: doctorId, // Lưu doctorId để dễ dàng truy cập
     date: appointment.appointmentDate,
     time: appointment.timeSlot.startTime,

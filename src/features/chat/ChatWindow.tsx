@@ -21,6 +21,7 @@ export function ChatWindow({
   onSendMessage
 }: ChatWindowProps) {
   const otherParticipant = conversation.participants[0]
+  const messagesEndRef = useRef<HTMLDivElement>(null)
 
   const {
     messages: allMessages,
@@ -28,11 +29,18 @@ export function ChatWindow({
     connectionStatus
   } = useWebSocketChat()
 
-  // Get messages for this conversation (reversed: newest first)
+  // Get messages for this conversation
   const messages = useMemo(() => {
     const msgs = allMessages[conversation.id] || []
-    return [...msgs].reverse()
+    return [...msgs]
   }, [allMessages, conversation.id])
+
+  // Auto scroll to bottom when messages change
+  useEffect(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' })
+    }
+  }, [messages])
 
   const handleSendMessage = (content: string) => {
     onSendMessage(content)
@@ -49,7 +57,7 @@ export function ChatWindow({
       />
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 flex flex-col-reverse gap-2">
+      <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-2">
         {messages.length > 0 ? (
           <>
             {messages.map((message, index) => {
@@ -72,6 +80,8 @@ export function ChatWindow({
                 />
               )
             })}
+            {/* Auto-scroll anchor */}
+            <div ref={messagesEndRef} />
           </>
         ) : (
           <div className="flex-1 flex items-center justify-center">

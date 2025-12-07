@@ -222,14 +222,49 @@ export function AppointmentsPage() {
       return;
     }
 
-    // Validation: Check if doctor info exists
-    if (!appointment.doctorInfo?.doctorId || !appointment.doctorInfo?.fullName) {
-      toast.error('Thông tin bác sĩ không đầy đủ', {
-        description: 'Không thể tạo cuộc trò chuyện với bác sĩ này',
-        duration: 4000,
+    // Enhanced validation with detailed logging and graceful fallback
+    console.group('[handleStartChat] Validating doctor info');
+    console.log('Appointment:', appointment.id);
+    console.log('doctorInfo:', appointment.doctorInfo);
+    console.groupEnd();
+
+    // Tìm fallback doctorId từ nhiều nguồn
+    const fallbackDoctorId = appointment.doctorInfo?.doctorId
+      || appointment.doctorInfo?.id
+      || (appointment as any).doctorId;
+
+    const fallbackFullName = appointment.doctorInfo?.fullName
+      || appointment.doctor
+      || 'Bác sĩ (Thông tin chưa đầy đủ)';
+
+    // CHỈ chặn nếu không có doctorId (critical - required for chat creation)
+    if (!fallbackDoctorId) {
+      console.error('[handleStartChat] ❌ Missing doctorId');
+      toast.error('Không thể nhắn tin', {
+        description: 'Thiếu thông tin ID bác sĩ. Vui lòng liên hệ hỗ trợ.',
+        duration: 5000,
       });
       return;
     }
+
+    // Nếu thiếu fullName → warning nhưng VẪN cho phép chat
+    if (!appointment.doctorInfo?.fullName) {
+      console.warn('[handleStartChat] ⚠️ Missing fullName, using fallback:', fallbackFullName);
+      toast.warning('Thông tin bác sĩ chưa đầy đủ', {
+        description: 'Cuộc trò chuyện vẫn sẽ được tạo.',
+        duration: 4000,
+      });
+    }
+
+    // Cập nhật appointment với fallback values
+    appointment.doctorInfo = {
+      ...appointment.doctorInfo,
+      doctorId: fallbackDoctorId,
+      fullName: fallbackFullName,
+      avatarUrl: appointment.doctorInfo?.avatarUrl || '/api/placeholder/40/40'
+    };
+
+    console.log('[handleStartChat] ✅ Using doctorInfo:', appointment.doctorInfo);
 
     setIsCreatingChat(appointment.id);
 
@@ -242,19 +277,37 @@ export function AppointmentsPage() {
 
     try {
 
-      // Tạo danh sách members cho group chat với đúng structure từ API
+      // Tạo danh sách members cho group chat với defensive fallbacks
       const members = [
         {
           userId: currentUser.userId,
-          fullName: currentUser.fullName || 'Bệnh nhân',
+          fullName: currentUser.fullName || (currentUser as any).name || 'Bệnh nhân',
           avatarUrl: currentUser.avatarUrl || '/api/placeholder/40/40'
         },
         {
-          userId: appointment.doctorInfo.doctorId,
-          fullName: appointment.doctorInfo.fullName,
-          avatarUrl: appointment.doctorInfo.avatarUrl || '/api/placeholder/40/40'
+          userId: appointment.doctorInfo.doctorId, // Đã có fallback ở validation phía trên
+          fullName: appointment.doctorInfo.fullName, // Đã có fallback ở validation phía trên
+          avatarUrl: appointment.doctorInfo.avatarUrl
+            || (appointment.doctorInfo as any).avatar
+            || '/api/placeholder/40/40'
         }
       ];
+
+      console.log('[handleStartChat] Members array created:', members);
+      console.log('[handleStartChat] - Patient:', members[0]);
+      console.log('[handleStartChat] - Doctor:', members[1]);
+
+      // Final safety check: Ensure all required fields are present
+      if (!members[0].userId || !members[1].userId) {
+        console.error('[handleStartChat] ❌ Invalid members array - missing userId');
+        toast.error('Lỗi hệ thống', {
+          description: 'Không thể xác định thông tin người dùng.',
+          duration: 5000,
+        });
+        return;
+      }
+
+      console.log('[handleStartChat] ✅ Members validation passed');
 
       // Tạo group chat với tên tự động
       const groupName = generateGroupName();
@@ -285,13 +338,36 @@ export function AppointmentsPage() {
 
       // ChatWidget will automatically open when activeConversation is set
 
-    } catch (error) {
+    } catch (error: any) {
       // Dismiss loading toast
       toast.dismiss(`creating-chat-${appointment.id}`);
 
+      // Enhanced error logging with full context
+      console.group('[handleStartChat] ❌ Error creating conversation');
+      console.error('Error object:', error);
+      console.error('Error message:', error?.message);
+      console.error('Error response:', error?.response);
+      console.error('Appointment context:', {
+        appointmentId: appointment.id,
+        doctorInfo: appointment.doctorInfo,
+        members: members
+      });
+      console.groupEnd();
+
+      // Provide specific error messages based on error type
+      let errorMsg = 'Vui lòng kiểm tra kết nối và thử lại';
+
+      if (error?.message?.includes('doctorId') || error?.message?.includes('userId')) {
+        errorMsg = 'Thiếu thông tin bác sĩ. Vui lòng liên hệ hỗ trợ.';
+      } else if (error?.message?.includes('WebSocket') || error?.message?.includes('connection')) {
+        errorMsg = 'Lỗi kết nối. Vui lòng kiểm tra internet.';
+      } else if (error?.message?.includes('timeout')) {
+        errorMsg = 'Hết thời gian chờ. Vui lòng thử lại sau.';
+      }
+
       toast.error('Không thể tạo cuộc trò chuyện', {
-        description: 'Vui lòng kiểm tra kết nối và thử lại',
-        duration: 4000,
+        description: errorMsg,
+        duration: 5000,
       });
     } finally {
       setIsCreatingChat(null);
@@ -993,16 +1069,16 @@ export function AppointmentsPage() {
                       </button>
                       <button
                         onClick={() => handleStartChat(appointment)}
-                        disabled={isCreatingChat === appointment.id || chatLoading}
+                        disabled={isCreatingChat === appointment.id}
                         className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-xl text-sm font-medium flex items-center justify-center gap-1 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        {(isCreatingChat === appointment.id || chatLoading) ? (
+                        {isCreatingChat === appointment.id ? (
                           <Loader2 size={16} className="animate-spin" />
                         ) : (
                           <MessageCircle size={16} />
                         )}
                         <span>
-                          {(isCreatingChat === appointment.id || chatLoading) ? 'Đang tạo...' : 'Nhắn tin'}
+                          {isCreatingChat === appointment.id ? 'Đang tạo...' : 'Nhắn tin'}
                         </span>
                       </button>
                     </>}

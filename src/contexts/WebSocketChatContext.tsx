@@ -165,7 +165,10 @@ function webSocketChatReducer(state: WebSocketChatState, action: WebSocketChatAc
         ...state,
         messages: {
           ...state.messages,
-          [action.payload.groupId]: action.payload.messages.map(mapMessageToChatMessage)
+          // Reverse backend messages to chronological order (oldest first)
+          [action.payload.groupId]: action.payload.messages
+            .map(mapMessageToChatMessage)
+            .reverse()
         }
       };
     }
