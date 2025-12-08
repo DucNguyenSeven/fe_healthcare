@@ -30,8 +30,8 @@ export interface SendMessageData {
   groupId: string;
   senderId: string;
   content: string;
-  messageType?: 'TEXT' | 'IMAGE' | 'FILE';
-  tempMessageId?: string;  // For optimistic update tracking
+  messageType?: "TEXT" | "IMAGE" | "FILE";
+  tempMessageId?: string; // For optimistic update tracking
 }
 
 export interface GetMessagesData {
@@ -56,7 +56,12 @@ class WebSocketChatService {
   private maxReconnectAttempts = 5;
   private reconnectDelay = 2000;
   private isConnecting = false;
-  private connectionState: 'disconnected' | 'connecting' | 'handshaking' | 'authenticating' | 'ready' = 'disconnected';
+  private connectionState:
+    | "disconnected"
+    | "connecting"
+    | "handshaking"
+    | "authenticating"
+    | "ready" = "disconnected";
   private connectionStabilizationDelay = 300;
   private pingInterval: NodeJS.Timeout | null = null;
   private connectionLock = false;
@@ -67,7 +72,8 @@ class WebSocketChatService {
   private readonly wsUrl: string;
 
   constructor() {
-    const baseUrl = process.env.NEXT_PUBLIC_CHAT_WS_URL || 'ws://localhost:8085';
+    const baseUrl =
+      process.env.NEXT_PUBLIC_CHAT_WS_URL || "ws://localhost:8085";
     this.wsUrl = `${baseUrl}/ws/communication`;
   }
 
@@ -79,7 +85,10 @@ class WebSocketChatService {
       return this.connectionPromise;
     }
 
-    if (this.ws?.readyState === WebSocket.OPEN && this.connectionState === 'ready') {
+    if (
+      this.ws?.readyState === WebSocket.OPEN &&
+      this.connectionState === "ready"
+    ) {
       return Promise.resolve();
     }
 
@@ -94,21 +103,25 @@ class WebSocketChatService {
 
         setTimeout(() => {
           clearInterval(checkInterval);
-          reject(new Error('Connection lock timeout'));
+          reject(new Error("Connection lock timeout"));
         }, 5000);
       });
     }
 
-    if (this.ws && (this.ws.readyState === WebSocket.CLOSING || this.ws.readyState === WebSocket.CLOSED)) {
+    if (
+      this.ws &&
+      (this.ws.readyState === WebSocket.CLOSING ||
+        this.ws.readyState === WebSocket.CLOSED)
+    ) {
       this.ws = null;
-      this.connectionState = 'disconnected';
+      this.connectionState = "disconnected";
     }
 
     this.connectionLock = true;
     this.connectionPromise = new Promise((resolve, reject) => {
       try {
         this.isConnecting = true;
-        this.connectionState = 'connecting';
+        this.connectionState = "connecting";
 
         this.ws = new WebSocket(this.wsUrl);
         this.setupEventHandlers(resolve, reject);
@@ -131,7 +144,7 @@ class WebSocketChatService {
    */
   private resetConnectionState(): void {
     this.isConnecting = false;
-    this.connectionState = 'disconnected';
+    this.connectionState = "disconnected";
     this.connectionLock = false;
     this.connectionPromise = null;
     this.isAuthenticated = false;
@@ -147,8 +160,11 @@ class WebSocketChatService {
     this.reconnectAttempts = this.maxReconnectAttempts;
 
     if (this.ws) {
-      if (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING) {
-        this.ws.close(1000, 'Normal closure');
+      if (
+        this.ws.readyState === WebSocket.OPEN ||
+        this.ws.readyState === WebSocket.CONNECTING
+      ) {
+        this.ws.close(1000, "Normal closure");
       }
       this.ws = null;
     }
@@ -168,7 +184,11 @@ class WebSocketChatService {
    * Check if WebSocket is ready for normal operations (after authentication)
    */
   isReady(): boolean {
-    return this.isConnected() && this.connectionState === 'ready' && this.isAuthenticated;
+    return (
+      this.isConnected() &&
+      this.connectionState === "ready" &&
+      this.isAuthenticated
+    );
   }
 
   /**
@@ -205,7 +225,11 @@ class WebSocketChatService {
     } else {
       this.messageQueue.push(message);
 
-      if (this.connectionState === 'disconnected' && !this.connectionLock && !this.connectionPromise) {
+      if (
+        this.connectionState === "disconnected" &&
+        !this.connectionLock &&
+        !this.connectionPromise
+      ) {
         this.connect().catch(() => {
           // Silent error handling
         });
@@ -225,10 +249,10 @@ class WebSocketChatService {
     this.ws.onopen = () => {
       this.isConnecting = false;
       this.reconnectAttempts = 0;
-      this.connectionState = 'handshaking';
+      this.connectionState = "handshaking";
 
       setTimeout(() => {
-        if (this.connectionState === 'handshaking') {
+        if (this.connectionState === "handshaking") {
           this.startPingPong();
         }
         resolve();
@@ -248,8 +272,10 @@ class WebSocketChatService {
       this.stopPingPong();
       this.resetConnectionState();
 
-      const shouldReconnect = event.code !== 1000 && event.code !== 1001 &&
-                              this.reconnectAttempts < this.maxReconnectAttempts;
+      const shouldReconnect =
+        event.code !== 1000 &&
+        event.code !== 1001 &&
+        this.reconnectAttempts < this.maxReconnectAttempts;
 
       if (shouldReconnect) {
         this.attemptReconnect();
@@ -261,7 +287,7 @@ class WebSocketChatService {
       this.resetConnectionState();
 
       if (this.reconnectAttempts === 0) {
-        reject(new Error('Initial WebSocket connection failed'));
+        reject(new Error("Initial WebSocket connection failed"));
       }
     };
   }
@@ -271,46 +297,49 @@ class WebSocketChatService {
    */
   private handleIncomingMessage(response: WebSocketResponse): void {
     // Backend sends 'connection' action on successful connection - wait for authenticate
-    if ((response.action === 'welcome' || response.action === 'hello' || response.action === 'connection') && this.connectionState === 'handshaking') {
+    if (
+      (response.action === "welcome" ||
+        response.action === "hello" ||
+        response.action === "connection") &&
+      this.connectionState === "handshaking"
+    ) {
       // DO NOT set to 'ready' yet - wait for authenticate to be called by context
     }
 
     // Handle authenticate response - với nhiều format khả thi
-    if (response.action === 'authenticate' || response.action === 'authenticated') {
-      console.log('📨 [WS-RECV] Received authentication response:', response);
-
+    if (
+      response.action === "authenticate" ||
+      response.action === "authenticated"
+    ) {
       // Kiểm tra nhiều format response từ backend
       const isSuccess =
-        response.status === 'success' ||
-        response.status === 'ok' ||
-        response.status === 'SUCCESS' ||
-        response.data?.includes('authenticated') ||
-        response.data?.includes('User authenticated');
+        response.status === "success" ||
+        response.status === "ok" ||
+        response.status === "SUCCESS" ||
+        response.data?.includes("authenticated") ||
+        response.data?.includes("User authenticated");
 
       if (isSuccess) {
         this.isAuthenticated = true;
-        this.connectionState = 'ready';
-        console.log('✅ [WS-AUTH] Authentication successful! Connection ready.');
-        console.log('✅ [WS-AUTH] Flushing queued messages...');
+        this.connectionState = "ready";
 
         setTimeout(() => {
           this.flushMessageQueue();
         }, 50);
       } else {
         this.isAuthenticated = false;
-        console.error('❌ [WS-AUTH] Authentication failed:', response);
       }
     }
 
-    if (response.action === 'pong') {
+    if (response.action === "pong") {
       return;
     }
 
-    this.messageHandlers.forEach(handler => {
+    this.messageHandlers.forEach((handler) => {
       try {
         handler(response);
       } catch (error) {
-        console.error('Handler error:', error);
+        console.error("Handler error:", error);
       }
     });
   }
@@ -343,8 +372,8 @@ class WebSocketChatService {
         try {
           // Application-level health check
         } catch (error) {
-          if (this.connectionState === 'ready') {
-            this.connectionState = 'disconnected';
+          if (this.connectionState === "ready") {
+            this.connectionState = "disconnected";
             this.attemptReconnect();
           }
         }
@@ -378,10 +407,16 @@ class WebSocketChatService {
 
     const baseDelay = this.reconnectDelay;
     const maxDelay = 30000;
-    const delay = Math.min(baseDelay * Math.pow(1.5, this.reconnectAttempts - 1), maxDelay);
+    const delay = Math.min(
+      baseDelay * Math.pow(1.5, this.reconnectAttempts - 1),
+      maxDelay
+    );
 
     setTimeout(() => {
-      if (this.connectionState === 'disconnected' && this.reconnectAttempts <= this.maxReconnectAttempts) {
+      if (
+        this.connectionState === "disconnected" &&
+        this.reconnectAttempts <= this.maxReconnectAttempts
+      ) {
         this.connect().catch(() => {
           // Silent error handling
         });
@@ -397,28 +432,24 @@ class WebSocketChatService {
    * This method BYPASSES the isReady() check to avoid deadlock
    */
   authenticate(userId: string): void {
-    console.log('🔐 [WS-AUTH] Starting authentication for userId:', userId);
     this.currentUserId = userId;
-    this.connectionState = 'authenticating';
+    this.connectionState = "authenticating";
 
     // CRITICAL FIX: Send authenticate directly, bypassing isReady() check
     // The authenticate message MUST be sent before isReady() can return true
     const message = {
-      action: 'authenticate',
-      data: { userId }
+      action: "authenticate",
+      data: { userId },
     };
 
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
       try {
         this.ws.send(JSON.stringify(message));
-        console.log('✅ [WS-AUTH] Authentication message sent:', message);
       } catch (error) {
-        console.error('❌ [WS-AUTH] Failed to send authenticate:', error);
-        this.connectionState = 'disconnected';
+        this.connectionState = "disconnected";
       }
     } else {
-      console.error('❌ [WS-AUTH] WebSocket not open, state:', this.ws?.readyState);
-      this.connectionState = 'disconnected';
+      this.connectionState = "disconnected";
     }
   }
 
@@ -433,28 +464,19 @@ class WebSocketChatService {
    * Create a new group chat
    */
   createGroup(data: CreateGroupData): void {
-    this.sendMessage('create_group', data);
+    this.sendMessage("create_group", data);
   }
 
   /**
    * Send a chat message
    */
   sendChatMessage(data: SendMessageData): void {
-    console.log('📤 [WS-SEND] Sending chat message:', {
-      groupId: data.groupId,
-      senderId: data.senderId,
-      messageType: data.messageType || 'TEXT',
-      contentLength: data.content?.length,
-      tempMessageId: data.tempMessageId
-    });
-
     const messageData = {
       ...data,
-      messageType: data.messageType || 'TEXT'
+      messageType: data.messageType || "TEXT",
     };
 
-    this.sendMessage('send_message', messageData);
-    console.log('✅ [WS-SEND] Message sent via WebSocket');
+    this.sendMessage("send_message", messageData);
   }
 
   /**
@@ -464,9 +486,9 @@ class WebSocketChatService {
     const messageData = {
       groupId: data.groupId,
       page: data.page || 0,
-      size: data.size || 20
+      size: data.size || 20,
     };
-    this.sendMessage('get_messages', messageData);
+    this.sendMessage("get_messages", messageData);
   }
 
   /**
@@ -476,45 +498,42 @@ class WebSocketChatService {
     const messageData = {
       userId: data.userId,
       page: data.page || 0,
-      size: data.size || 20
+      size: data.size || 20,
     };
-    this.sendMessage('get_groups', messageData);
+    this.sendMessage("get_groups", messageData);
   }
 
   /**
    * Join a group
    */
   joinGroup(groupId: string): void {
-    console.log('🚪 [WS-JOIN] Joining group:', groupId);
-    console.log('🚪 [WS-JOIN] WebSocket state:', {
-      connected: this.isConnected(),
-      authenticated: this.isAuthenticated,
-      connectionState: this.connectionState,
-      readyState: this.ws?.readyState
-    });
-
-    this.sendMessage('join_group', { groupId });
-    console.log('✅ [WS-JOIN] Join group message sent');
+    this.sendMessage("join_group", { groupId });
   }
 
   /**
    * Leave a group
    */
   leaveGroup(groupId: string): void {
-    this.sendMessage('leave_group', { groupId });
+    this.sendMessage("leave_group", { groupId });
   }
 
   /**
    * Get connection status
    */
-  getStatus(): 'connecting' | 'connected' | 'disconnected' | 'error' {
-    if (this.connectionState === 'connecting' || this.isConnecting) return 'connecting';
-    if (this.connectionState === 'handshaking') return 'connecting';
-    if (this.connectionState === 'authenticating') return 'connecting';
-    if (this.connectionState === 'ready' && this.isAuthenticated) return 'connected';
-    if (this.reconnectAttempts > 0 && this.reconnectAttempts < this.maxReconnectAttempts) return 'connecting';
-    if (this.reconnectAttempts >= this.maxReconnectAttempts) return 'error';
-    return 'disconnected';
+  getStatus(): "connecting" | "connected" | "disconnected" | "error" {
+    if (this.connectionState === "connecting" || this.isConnecting)
+      return "connecting";
+    if (this.connectionState === "handshaking") return "connecting";
+    if (this.connectionState === "authenticating") return "connecting";
+    if (this.connectionState === "ready" && this.isAuthenticated)
+      return "connected";
+    if (
+      this.reconnectAttempts > 0 &&
+      this.reconnectAttempts < this.maxReconnectAttempts
+    )
+      return "connecting";
+    if (this.reconnectAttempts >= this.maxReconnectAttempts) return "error";
+    return "disconnected";
   }
 }
 

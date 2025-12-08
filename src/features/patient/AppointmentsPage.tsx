@@ -222,11 +222,7 @@ export function AppointmentsPage() {
       return;
     }
 
-    // Enhanced validation with detailed logging and graceful fallback
-    console.group('[handleStartChat] Validating doctor info');
-    console.log('Appointment:', appointment.id);
-    console.log('doctorInfo:', appointment.doctorInfo);
-    console.groupEnd();
+    // Enhanced validation with graceful fallback
 
     // Tìm fallback doctorId từ nhiều nguồn
     const fallbackDoctorId = appointment.doctorInfo?.doctorId
@@ -239,7 +235,6 @@ export function AppointmentsPage() {
 
     // CHỈ chặn nếu không có doctorId (critical - required for chat creation)
     if (!fallbackDoctorId) {
-      console.error('[handleStartChat] ❌ Missing doctorId');
       toast.error('Không thể nhắn tin', {
         description: 'Thiếu thông tin ID bác sĩ. Vui lòng liên hệ hỗ trợ.',
         duration: 5000,
@@ -249,7 +244,6 @@ export function AppointmentsPage() {
 
     // Nếu thiếu fullName → warning nhưng VẪN cho phép chat
     if (!appointment.doctorInfo?.fullName) {
-      console.warn('[handleStartChat] ⚠️ Missing fullName, using fallback:', fallbackFullName);
       toast.warning('Thông tin bác sĩ chưa đầy đủ', {
         description: 'Cuộc trò chuyện vẫn sẽ được tạo.',
         duration: 4000,
@@ -263,8 +257,6 @@ export function AppointmentsPage() {
       fullName: fallbackFullName,
       avatarUrl: appointment.doctorInfo?.avatarUrl || '/api/placeholder/40/40'
     };
-
-    console.log('[handleStartChat] ✅ Using doctorInfo:', appointment.doctorInfo);
 
     setIsCreatingChat(appointment.id);
 
@@ -293,21 +285,14 @@ export function AppointmentsPage() {
         }
       ];
 
-      console.log('[handleStartChat] Members array created:', members);
-      console.log('[handleStartChat] - Patient:', members[0]);
-      console.log('[handleStartChat] - Doctor:', members[1]);
-
       // Final safety check: Ensure all required fields are present
       if (!members[0].userId || !members[1].userId) {
-        console.error('[handleStartChat] ❌ Invalid members array - missing userId');
         toast.error('Lỗi hệ thống', {
           description: 'Không thể xác định thông tin người dùng.',
           duration: 5000,
         });
         return;
       }
-
-      console.log('[handleStartChat] ✅ Members validation passed');
 
       // Tạo group chat với tên tự động
       const groupName = generateGroupName();
@@ -343,16 +328,7 @@ export function AppointmentsPage() {
       toast.dismiss(`creating-chat-${appointment.id}`);
 
       // Enhanced error logging with full context
-      console.group('[handleStartChat] ❌ Error creating conversation');
-      console.error('Error object:', error);
-      console.error('Error message:', error?.message);
-      console.error('Error response:', error?.response);
-      console.error('Appointment context:', {
-        appointmentId: appointment.id,
-        doctorInfo: appointment.doctorInfo,
-        members: members
-      });
-      console.groupEnd();
+      console.error('[handleStartChat] Error creating conversation:', error);
 
       // Provide specific error messages based on error type
       let errorMsg = 'Vui lòng kiểm tra kết nối và thử lại';

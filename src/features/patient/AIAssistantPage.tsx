@@ -156,7 +156,6 @@ export function AIAssistantPage({ user, onNavigate }: AIAssistantPageProps) {
 
   // Function to map API panel data to CKD form
   const mapApiPanelToCKDForm = (panel: any) => {
-    console.log("🧮 Mapping panel data for date:", panel?.measuredAt);
 
     // panel.metrics is now a Record<string, { value, unit }>
     const metrics = panel?.metrics || {};
@@ -200,20 +199,11 @@ export function AIAssistantPage({ user, onNavigate }: AIAssistantPageProps) {
       stress_level: ckdFormData.stress_level,
     };
 
-    console.log("✅ Mapped values:", {
-      creatinine: mappedResult.serum_creatinine,
-      gfr: mappedResult.gfr,
-      bun: mappedResult.bun,
-      ana: mappedResult.ana,
-      hematuria: mappedResult.hematuria,
-    });
-
     return mappedResult;
   };
 
   // Function to handle test selection from dropdown
   const handleTestSelection = (panelId: string) => {
-    console.log("🔄 Selecting test data for panel ID:", panelId);
 
     if (panelId === "manual") {
       // Reset to default values for manual input
@@ -244,21 +234,12 @@ export function AIAssistantPage({ user, onNavigate }: AIAssistantPageProps) {
       setCkdFormData(manualData);
       setSelectedPanel("manual");
       setSelectedDate(null);
-      console.log("✅ Manual input selected");
     } else {
       // Find the selected panel to get its measuredAt date
       const selectedPanelInfo = availableDates.find((d) => d.id === panelId);
       if (selectedPanelInfo) {
         setSelectedPanel(panelId);
         setSelectedDate(selectedPanelInfo.date); // Use measuredAt for API query
-        console.log(
-          "✅ Selected panel:",
-          panelId,
-          "Date:",
-          selectedPanelInfo.date
-        );
-      } else {
-        console.error("❌ Panel not found:", panelId);
       }
     }
     setIsDropdownOpen(false);
@@ -267,10 +248,8 @@ export function AIAssistantPage({ user, onNavigate }: AIAssistantPageProps) {
   // Auto-fill form when panel data is loaded
   useEffect(() => {
     if (selectedPanelData && selectedPanel !== "manual") {
-      console.log("📊 Panel data loaded, updating form:", selectedPanelData);
       const mappedData = mapApiPanelToCKDForm(selectedPanelData);
       setCkdFormData(mappedData);
-      console.log("✅ Form data updated from API");
     }
   }, [selectedPanelData, selectedPanel]);
 
@@ -357,13 +336,6 @@ export function AIAssistantPage({ user, onNavigate }: AIAssistantPageProps) {
         });
       }
     });
-
-    console.log(
-      `✅ Transformed ${metrics.length} lab test metrics (expected: 9)`
-    );
-    if (metrics.length !== 9) {
-      console.warn(`⚠️ Expected 9 lab test metrics but got ${metrics.length}`);
-    }
 
     return metrics;
   };
@@ -471,19 +443,13 @@ export function AIAssistantPage({ user, onNavigate }: AIAssistantPageProps) {
     setTrendData(null); // Reset previous data
 
     try {
-      console.log(
-        "📊 Fetching trend comparison with predictData:",
-        predictData
-      );
       const trends = await getPredictCurrentTrends(
         predictData.patientId,
         predictData
       );
-      console.log("✅ Received trend data:", trends);
       setTrendData(trends);
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error);
-      console.log("⚠️ Trend comparison not available:", message);
 
       // Set INSUFFICIENT_HISTORY state if no previous prediction exists
       // This is not an error, just means first prediction
@@ -521,54 +487,11 @@ export function AIAssistantPage({ user, onNavigate }: AIAssistantPageProps) {
       // Format data for backend (21 fields matching API schema)
       const backendData = formatDataForBackend();
 
-      console.log("🔬 Sending data to AI service via Gateway:", backendData);
-      console.log(
-        "🌐 API Endpoint: Gateway:8080 -> /api/v1/analysis/ckd-prediction"
-      );
-
       // Step 1: Call prediction API through Gateway (port 8080)
       const aiResult = await predictCKD(backendData);
 
-      console.log("========================================");
-      console.log("📥 AI PREDICTION RAW RESPONSE");
-      console.log("========================================");
-      console.log("Full response object:", JSON.stringify(aiResult, null, 2));
-      console.log("---");
-      console.log(
-        "predicted_stage:",
-        aiResult.predicted_stage,
-        `(type: ${typeof aiResult.predicted_stage})`
-      );
-      console.log("confidence:", aiResult.confidence);
-      console.log("stage_description:", aiResult.stage_description);
-      console.log("risk_level:", aiResult.risk_level);
-      console.log("recommendations:", aiResult.recommendations);
-      console.log("========================================\n");
-
       // Parse AI service response and format for UI
       const aiPredictionResult = parseAIServiceResponse(aiResult);
-
-      console.log("========================================");
-      console.log("🔄 PARSED PREDICTION RESULT FOR UI");
-      console.log("========================================");
-      console.log(
-        "Parsed object:",
-        JSON.stringify(aiPredictionResult, null, 2)
-      );
-      console.log("---");
-      console.log(
-        "stageNumber:",
-        aiPredictionResult.stageNumber,
-        `(will save to DB)`
-      );
-      console.log("risk:", aiPredictionResult.risk);
-      console.log("percentage:", aiPredictionResult.percentage + "%");
-      console.log("stage description:", aiPredictionResult.stage);
-      console.log(
-        "recommendations count:",
-        aiPredictionResult.recommendations.length
-      );
-      console.log("========================================\n");
 
       // Display result to user
       setPredictionResult(aiPredictionResult);
@@ -576,8 +499,6 @@ export function AIAssistantPage({ user, onNavigate }: AIAssistantPageProps) {
 
       // ✅ Step 2: SAVE TO DATABASE immediately (follow Mobile flow)
       try {
-        console.log("💾 Saving prediction to database...");
-
         // Transform 9 lab test metrics to array format
         const healthMetrics = transformHealthMetricsToArray(
           backendData,
@@ -593,32 +514,7 @@ export function AIAssistantPage({ user, onNavigate }: AIAssistantPageProps) {
           healthMetrics: healthMetrics,
         };
 
-        console.log("========================================");
-        console.log("💾 SAVE PREDICTION REQUEST TO DB");
-        console.log("========================================");
-        console.log("Full request:", JSON.stringify(saveRequest, null, 2));
-        console.log("---");
-        console.log("patientId:", saveRequest.patientId);
-        console.log("stage (to save):", saveRequest.stage);
-        console.log("confidence:", saveRequest.confidence);
-        console.log("recommendations:", saveRequest.recommendations);
-        console.log("healthMetrics count:", saveRequest.healthMetrics.length);
-        console.log("========================================\n");
-
         const saveResponse = await savePredictHistory(saveRequest);
-
-        console.log("========================================");
-        console.log("✅ SAVE PREDICTION RESPONSE FROM DB");
-        console.log("========================================");
-        console.log("Full response:", JSON.stringify(saveResponse, null, 2));
-        console.log("---");
-        console.log("predictId (from DB):", saveResponse.id);
-        console.log("saved stage:", saveResponse.predicted_stage);
-        console.log("saved confidence:", saveResponse.confidence);
-        console.log("created_at:", saveResponse.created_at);
-        console.log("risk_level:", saveResponse.risk_level);
-        console.log("message:", saveResponse.message);
-        console.log("========================================\n");
 
         // ✅ Create predictData for trends API (backend doesn't return prediction details)
         const now = new Date().toISOString();
@@ -631,17 +527,6 @@ export function AIAssistantPage({ user, onNavigate }: AIAssistantPageProps) {
           createdAt: now,
           updatedAt: now,
         };
-
-        console.log("========================================");
-        console.log("📊 CREATED PREDICT DATA FOR TRENDS API");
-        console.log("========================================");
-        console.log("Full predictData:", JSON.stringify(predictData, null, 2));
-        console.log("---");
-        console.log("predictId (generated):", predictData.predictId);
-        console.log("stage:", predictData.stage);
-        console.log("confidence:", predictData.confidence);
-        console.log("timestamps:", predictData.createdAt);
-        console.log("========================================\n");
 
         // ✅ Step 3: Fetch trend comparison AFTER save (correct order)
         await fetchTrendComparison(predictData);
@@ -672,43 +557,45 @@ export function AIAssistantPage({ user, onNavigate }: AIAssistantPageProps) {
 
   // Parse AI service response to our UI format
   const parseAIServiceResponse = (aiResult: any) => {
-    console.log("🔍 Parsing AI response:", aiResult);
 
     // Extract stage NUMBER properly with type checking
+    // Support both camelCase (predictedStage) and snake_case (predicted_stage)
     let predictedStage: number;
-    if (typeof aiResult.predicted_stage === "number") {
-      predictedStage = aiResult.predicted_stage;
-    } else if (typeof aiResult.predicted_stage === "string") {
+    const stageValue = aiResult.predicted_stage ?? aiResult.predictedStage;
+    
+    if (typeof stageValue === "number") {
+      predictedStage = stageValue;
+    } else if (typeof stageValue === "string") {
       // Extract number from "Stage 3" or "3"
-      const match = aiResult.predicted_stage.match(/\d+/);
+      const match = stageValue.match(/\d+/);
       predictedStage = match ? parseInt(match[0]) : 3;
     } else {
       predictedStage = aiResult.stage || 3;
     }
 
     const confidence = aiResult.confidence || 0.5;
-    const riskLevel = aiResult.risk_level || "moderate";
-    const stageDescription = aiResult.stage_description || "Cần đánh giá thêm";
+    const riskLevel = aiResult.risk_level ?? aiResult.riskLevel ?? "moderate";
+    const stageDescription = aiResult.stage_description ?? aiResult.stageDescription ?? "Cần đánh giá thêm";
     const recommendations = aiResult.recommendations || [];
 
     // Convert predicted_stage and risk_level to our UI format
     let risk: "low" | "moderate" | "high";
-    let percentage: number;
+    
+    // Use confidence directly from backend (convert from 0-1 to 0-100%)
+    // Keep exact value without rounding to avoid showing 100% when confidence is 0.99...
+    const percentage = confidence * 100;
 
-    // Map based on predicted_stage and risk_level
+    // Map risk level based on predicted_stage and risk_level
     if (predictedStage <= 2 || riskLevel === "low") {
       risk = "low";
-      percentage = Math.round(confidence * 30); // 0-30% for low risk
     } else if (
       predictedStage >= 4 ||
       riskLevel === "critical" ||
       riskLevel === "high"
     ) {
       risk = "high";
-      percentage = Math.round(70 + confidence * 25); // 70-95% for high risk
     } else {
       risk = "moderate";
-      percentage = Math.round(30 + confidence * 40); // 30-70% for moderate risk
     }
 
     // Use the stage_description directly from AI service (already in Vietnamese)
@@ -718,12 +605,6 @@ export function AIAssistantPage({ user, onNavigate }: AIAssistantPageProps) {
     const formattedRecommendations = Array.isArray(recommendations)
       ? recommendations.slice(0, 8)
       : [];
-
-    console.log("✅ Parsed result:", {
-      risk,
-      percentage,
-      stage: formattedStage,
-      stageNumber: predictedStage,
       recommendations: formattedRecommendations,
       originalStage: predictedStage,
       originalRiskLevel: riskLevel,
@@ -1699,7 +1580,7 @@ export function AIAssistantPage({ user, onNavigate }: AIAssistantPageProps) {
                         Độ chính xác của dự đoán
                       </span>
                       <span className="text-lg font-bold">
-                        {predictionResult.percentage}% ✅
+                        {(Math.floor(predictionResult.percentage * 100) / 100).toFixed(2)}% ✅
                       </span>
                     </div>
                     <div className="w-full bg-white/20 rounded-full h-2.5">

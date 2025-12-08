@@ -6,12 +6,12 @@
 import webSocketChatService, {
   type CreateGroupData,
   type SendMessageData,
-  type ChatMember
-} from '@/services/websocket-chat';
-import chatApi from '@/lib/api/chatClient';
+  type ChatMember,
+} from "@/services/websocket-chat";
+import chatApi from "@/lib/api/chatClient";
 
 // Re-export WebSocketResponse for context usage
-export type { WebSocketResponse } from '@/services/websocket-chat';
+export type { WebSocketResponse } from "@/services/websocket-chat";
 
 // ============ Types ============
 
@@ -34,12 +34,12 @@ export interface Message {
   content: string;
   sendAt: string;
   createdAt: string;
-  tempMessageId?: string;  // For optimistic update tracking
+  tempMessageId?: string; // For optimistic update tracking
 }
 
 export interface CommunicationApiError {
   action: string;
-  status: 'error';
+  status: "error";
   data: string;
 }
 
@@ -63,7 +63,7 @@ function waitForResponse<T = any>(
         clearTimeout(timeoutId);
         webSocketChatService.removeMessageHandler(handler);
 
-        if (response.status === 'error') {
+        if (response.status === "error") {
           reject(new Error(response.data));
         } else {
           resolve(response.data);
@@ -89,19 +89,19 @@ async function ensureConnection(): Promise<void> {
  * Mobile-compatible: ensures WebSocket is ready before operations
  */
 async function waitForWebSocketReady(timeout: number = 5000): Promise<void> {
-  console.log('[waitForWebSocketReady] Waiting for WebSocket to be ready...');
+  console.log("[waitForWebSocketReady] Waiting for WebSocket to be ready...");
   const startTime = Date.now();
 
   while (!webSocketChatService.isReady()) {
     if (Date.now() - startTime > timeout) {
       const error = new Error(`WebSocket not ready after ${timeout}ms timeout`);
-      console.error('[waitForWebSocketReady] Timeout:', error);
+      console.error("[waitForWebSocketReady] Timeout:", error);
       throw error;
     }
-    await new Promise(resolve => setTimeout(resolve, 100));
+    await new Promise((resolve) => setTimeout(resolve, 100));
   }
 
-  console.log('[waitForWebSocketReady] WebSocket is ready!');
+  console.log("[waitForWebSocketReady] WebSocket is ready!");
 }
 
 /**
@@ -118,12 +118,12 @@ function generateGroupName(existingGroups: Group[]): string {
  * @param memberIds - Danh sách user IDs của members
  * @returns Group nếu tìm thấy, null nếu không tìm thấy
  */
-async function findGroupByMembersViaAPI(memberIds: string[]): Promise<Group | null> {
+async function findGroupByMembersViaAPI(
+  memberIds: string[]
+): Promise<Group | null> {
   try {
-    console.log('[findGroupByMembersViaAPI] 🔍 Calling backend API with members:', memberIds);
-
     const response = await chatApi.post<Group>(
-      '/api/communication/groups/find-by-members',
+      "/api/communication/groups/find-by-members",
       memberIds
     );
 
@@ -138,19 +138,16 @@ async function findGroupByMembersViaAPI(memberIds: string[]): Promise<Group | nu
       timeLastMessage: groupData.timeLastMessage || undefined,
       members: groupData.members || [],
       createdAt: groupData.createdAt || new Date().toISOString(),
-      updatedAt: groupData.updatedAt || new Date().toISOString()
+      updatedAt: groupData.updatedAt || new Date().toISOString(),
     };
 
-    console.log('[findGroupByMembersViaAPI] ✅ Found existing group:', group.groupId);
     return group;
   } catch (error: any) {
     // Handle 404 - Group not found (normal case)
     if (error.response?.status === 404) {
-      console.log('[findGroupByMembersViaAPI] ℹ️ No group found with these members (404)');
       return null;
     }
 
-    console.error('[findGroupByMembersViaAPI] ❌ Error:', error);
     return null;
   }
 }
@@ -160,7 +157,11 @@ async function findGroupByMembersViaAPI(memberIds: string[]): Promise<Group | nu
 /**
  * Get all groups for a user using REST API only (optimized for reliability)
  */
-export async function getUserGroups(userId: string, page: number = 0, size: number = 20): Promise<Group[]> {
+export async function getUserGroups(
+  userId: string,
+  page: number = 0,
+  size: number = 20
+): Promise<Group[]> {
   // Use REST API directly for better reliability
   return await getUserGroupsViaREST(userId, page, size);
 }
@@ -191,42 +192,43 @@ export async function createGroupViaWebSocket(
   const createData: CreateGroupData = {
     groupName,
     members,
-    ...(appointmentId && { appointmentId })
+    ...(appointmentId && { appointmentId }),
   };
 
   return new Promise((resolve, reject) => {
     const timeoutId = setTimeout(() => {
       webSocketChatService.removeMessageHandler(handler);
-      reject(new Error('Timeout waiting for group creation'));
+      reject(new Error("Timeout waiting for group creation"));
     }, 15000);
 
     const handler = (response: any) => {
       // ✅ CASE 1: Handle error response from backend
-      if (response.action === 'error') {
-        const errorMessage = response.data || '';
-        console.log('[createGroupViaWebSocket] ⚠️ Received error:', errorMessage);
+      if (response.action === "error") {
+        const errorMessage = response.data || "";
 
         // Check if error is "Group already exists"
-        if (errorMessage.includes('Group with these members already exists')) {
-          console.log('[createGroupViaWebSocket] 🔄 Group exists, calling find-by-members API...');
+        if (errorMessage.includes("Group with these members already exists")) {
           clearTimeout(timeoutId);
           webSocketChatService.removeMessageHandler(handler);
 
           // ✅ SỬ DỤNG API MỚI - Nhanh và chính xác
-          const memberIds = members.map(m => m.userId);
+          const memberIds = members.map((m) => m.userId);
           findGroupByMembersViaAPI(memberIds)
-            .then(existingGroup => {
+            .then((existingGroup) => {
               if (existingGroup) {
-                console.log('[createGroupViaWebSocket] ✅ Found existing group via API:', existingGroup.groupId);
                 resolve(existingGroup);
               } else {
-                console.error('[createGroupViaWebSocket] ❌ API returned 404 but backend said group exists');
-                reject(new Error('Group exists but could not be found. Please try again.'));
+                reject(
+                  new Error(
+                    "Group exists but could not be found. Please try again."
+                  )
+                );
               }
             })
-            .catch(error => {
-              console.error('[createGroupViaWebSocket] ❌ API error:', error);
-              reject(new Error('Failed to load existing group: ' + error.message));
+            .catch((error) => {
+              reject(
+                new Error("Failed to load existing group: " + error.message)
+              );
             });
         } else {
           // Other errors - reject normally
@@ -236,14 +238,13 @@ export async function createGroupViaWebSocket(
         }
       }
       // ✅ CASE 2: Handle group_created response (new group or existing from updated backend)
-      else if (response.action === 'group_created') {
+      else if (response.action === "group_created") {
         clearTimeout(timeoutId);
         webSocketChatService.removeMessageHandler(handler);
 
-        if (response.status === 'error') {
+        if (response.status === "error") {
           reject(new Error(response.data));
         } else {
-          console.log('[createGroupViaWebSocket] ✅ Group created:', response.data.groupId);
           resolve(response.data);
         }
       }
@@ -252,7 +253,6 @@ export async function createGroupViaWebSocket(
     // Add handler and send create_group message
     webSocketChatService.addMessageHandler(handler);
     webSocketChatService.createGroup(createData);
-    console.log('[createGroupViaWebSocket] 📤 Sent create_group request');
   });
 }
 
@@ -279,11 +279,14 @@ export async function createGroupViaREST(
   const createData = {
     groupName,
     members,
-    ...(appointmentId && { appointmentId })
+    ...(appointmentId && { appointmentId }),
   };
 
   try {
-    const response = await chatApi.post<Group>('/api/communication/groups', createData);
+    const response = await chatApi.post<Group>(
+      "/api/communication/groups",
+      createData
+    );
 
     const result = response.data;
 
@@ -297,12 +300,12 @@ export async function createGroupViaREST(
         timeLastMessage: result.timeLastMessage || undefined,
         members: result.members || [],
         createdAt: result.createdAt || new Date().toISOString(),
-        updatedAt: result.updatedAt || new Date().toISOString()
+        updatedAt: result.updatedAt || new Date().toISOString(),
       };
 
       return mappedGroup;
     } else {
-      throw new Error('Invalid response format from backend');
+      throw new Error("Invalid response format from backend");
     }
   } catch (error: any) {
     const message = error.response?.data?.message || error.message;
@@ -319,8 +322,6 @@ export async function createGroup(
   appointmentId?: string,
   customGroupName?: string
 ): Promise<Group> {
-  console.log('[createGroup] 🚀 Starting group creation (Mobile-compatible: WebSocket only)');
-
   // Get existing groups to generate name if not provided
   let groupName = customGroupName;
   if (!groupName) {
@@ -335,16 +336,12 @@ export async function createGroup(
   }
 
   // ✅ FORCE WebSocket ONLY - giống Mobile (no REST fallback)
-  console.log('[createGroup] Checking WebSocket status...');
   if (!webSocketChatService.isReady()) {
-    console.warn('[createGroup] ⚠️ WebSocket not ready, waiting...');
     await waitForWebSocketReady(10000); // Wait up to 10s
   }
 
-  console.log('[createGroup] ✅ WebSocket ready! Creating group via WebSocket');
   return await createGroupViaWebSocket(members, appointmentId, groupName);
 }
-
 
 /**
  * Send a message to a group
@@ -353,7 +350,7 @@ export async function sendMessage(
   groupId: string,
   senderId: string,
   content: string,
-  messageType: 'TEXT' | 'IMAGE' | 'FILE' = 'TEXT'
+  messageType: "TEXT" | "IMAGE" | "FILE" = "TEXT"
 ): Promise<Message> {
   await ensureConnection();
 
@@ -361,10 +358,10 @@ export async function sendMessage(
     groupId,
     senderId,
     content,
-    messageType
+    messageType,
   };
 
-  const responsePromise = waitForResponse<Message>('message_received');
+  const responsePromise = waitForResponse<Message>("message_received");
   webSocketChatService.sendChatMessage(messageData);
 
   return responsePromise;
@@ -380,7 +377,7 @@ export async function getGroupMessages(
 ): Promise<Message[]> {
   await ensureConnection();
 
-  const responsePromise = waitForResponse<Message[]>('messages');
+  const responsePromise = waitForResponse<Message[]>("messages");
   webSocketChatService.getMessages({ groupId, page, size });
 
   return responsePromise;
@@ -392,7 +389,7 @@ export async function getGroupMessages(
 export async function joinGroup(groupId: string): Promise<string> {
   await ensureConnection();
 
-  const responsePromise = waitForResponse<string>('join_group');
+  const responsePromise = waitForResponse<string>("join_group");
   webSocketChatService.joinGroup(groupId);
 
   return responsePromise;
@@ -404,7 +401,7 @@ export async function joinGroup(groupId: string): Promise<string> {
 export async function leaveGroup(groupId: string): Promise<string> {
   await ensureConnection();
 
-  const responsePromise = waitForResponse<string>('leave_group');
+  const responsePromise = waitForResponse<string>("leave_group");
   webSocketChatService.leaveGroup(groupId);
 
   return responsePromise;
@@ -413,7 +410,11 @@ export async function leaveGroup(groupId: string): Promise<string> {
 /**
  * Get WebSocket connection status
  */
-export function getConnectionStatus(): 'connecting' | 'connected' | 'disconnected' | 'error' {
+export function getConnectionStatus():
+  | "connecting"
+  | "connected"
+  | "disconnected"
+  | "error" {
   return webSocketChatService.getStatus();
 }
 
@@ -469,33 +470,38 @@ export async function sendMessageViaREST(
   groupId: string,
   senderId: string,
   content: string,
-  messageType: 'TEXT' | 'IMAGE' | 'FILE' = 'TEXT',
+  messageType: "TEXT" | "IMAGE" | "FILE" = "TEXT",
   tempMessageId?: string
 ): Promise<Message> {
-  console.log('[sendMessageViaREST] Sending message:', {
+  console.log("[sendMessageViaREST] Sending message:", {
     groupId,
     senderId,
     content: content.substring(0, 30),
-    tempMessageId
+    tempMessageId,
   });
 
   try {
     const response = await chatApi.post<Message>(
-      '/api/communication/messages',
+      "/api/communication/messages",
       {
         groupId,
         senderId,
         content,
         messageType,
-        tempMessageId
+        tempMessageId,
       }
     );
 
-    console.log('[sendMessageViaREST] Success:', response.data.messageId, 'tempId:', response.data.tempMessageId);
+    console.log(
+      "[sendMessageViaREST] Success:",
+      response.data.messageId,
+      "tempId:",
+      response.data.tempMessageId
+    );
     return response.data;
   } catch (error: any) {
     const message = error.response?.data?.message || error.message;
-    console.error('[sendMessageViaREST] Failed:', message);
+    console.error("[sendMessageViaREST] Failed:", message);
     throw new Error(`Failed to send message: ${message}`);
   }
 }
@@ -512,7 +518,7 @@ export async function getGroupMessagesViaREST(
     const response = await chatApi.get<Message[]>(
       `/api/communication/groups/${groupId}/messages`,
       {
-        params: { page, size }
+        params: { page, size },
       }
     );
 
@@ -539,7 +545,7 @@ export async function getUserGroupsViaREST(
     const response = await chatApi.get<Group[]>(
       `/api/communication/users/${userId}/groups`,
       {
-        params: { page, size }
+        params: { page, size },
       }
     );
 

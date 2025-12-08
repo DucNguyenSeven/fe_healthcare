@@ -1,87 +1,63 @@
-'use client'
+"use client";
 
-import { DashboardPage } from '@/features/patient'
-import { useGetMe } from '@/hooks/auth/useGetMe'
-import { useAuthContext } from '@/contexts/AuthContext'
+import { DashboardPage } from "@/features/patient";
+import { useGetMe } from "@/hooks/auth/useGetMe";
+import { useAuthContext } from "@/contexts/AuthContext";
 // import { useLatestHealthMetrics } from '@/hooks/health-metrics/useLatestHealthMetrics' // API cũ - giữ để tham khảo
-import { useHealthMetricsComparison } from '@/hooks/health-metrics/useHealthMetricsComparison' // API mới với so sánh tháng trước
-import { useTodayAppointments } from '@/hooks/appointments/useTodayAppointments'
-import { usePrescriptionGroups } from '@/hooks/prescriptions/usePrescriptionGroups'
-import { useRecentConsultations } from '@/hooks/medical-records/useRecentConsultations'
-import { useRouter } from 'next/navigation'
+import { useHealthMetricsComparison } from "@/hooks/health-metrics/useHealthMetricsComparison"; // API mới với so sánh tháng trước
+import { useTodayAppointments } from "@/hooks/appointments/useTodayAppointments";
+import { usePrescriptionGroups } from "@/hooks/prescriptions/usePrescriptionGroups";
+import { useRecentConsultations } from "@/hooks/medical-records/useRecentConsultations";
+import { useRouter } from "next/navigation";
 
 export default function PatientDashboard() {
-  const router = useRouter()
-  const { user: authUser } = useAuthContext()
-  const { data: userData, isLoading: isLoadingUser } = useGetMe()
+  const router = useRouter();
+  const { user: authUser } = useAuthContext();
+  const { data: userData, isLoading: isLoadingUser } = useGetMe();
 
   // Get patient ID from user data
-  const patientId = userData?.userId || authUser?.userId
-
-  // 🔍 DEBUG: Log patient ID and user data
-  console.log('🔍 DEBUG Patient Dashboard:', {
-    patientId,
-    hasPatientId: !!patientId,
-    userData: userData,
-    authUser: authUser,
-    userDataUserId: userData?.userId,
-    authUserUserId: authUser?.userId
-  });
+  const patientId = userData?.userId || authUser?.userId;
 
   // Fetch dashboard data using custom hooks
   // 🔄 UPDATED: Sử dụng useHealthMetricsComparison để lấy chỉ số + so sánh với tháng trước
   const {
     data: healthMetrics = [],
     isLoading: isLoadingMetrics,
-    error: healthMetricsError
-  } = useHealthMetricsComparison(patientId)
+    error: healthMetricsError,
+  } = useHealthMetricsComparison(patientId);
 
-  // 🔍 DEBUG: Log health metrics result
-  console.log('🔍 Health Metrics Result:', {
-    healthMetrics,
-    count: healthMetrics?.length,
-    isLoading: isLoadingMetrics,
-    error: healthMetricsError
-  });
+  const { data: todayAppointments = [], isLoading: isLoadingAppointments } =
+    useTodayAppointments(patientId);
 
-  const {
-    data: todayAppointments = [],
-    isLoading: isLoadingAppointments
-  } = useTodayAppointments(patientId)
+  const { data: prescriptionGroups = [], isLoading: isLoadingPrescriptions } =
+    usePrescriptionGroups(patientId);
 
-  const {
-    data: prescriptionGroups = [],
-    isLoading: isLoadingPrescriptions
-  } = usePrescriptionGroups(patientId)
-
-  const {
-    data: recentConsultations = [],
-    isLoading: isLoadingConsultations
-  } = useRecentConsultations(patientId)
+  const { data: recentConsultations = [], isLoading: isLoadingConsultations } =
+    useRecentConsultations(patientId);
 
   const handleNavigate = (page: string) => {
     // Navigate to different pages based on action
     switch (page) {
-      case 'monitoring':
+      case "monitoring":
         // Navigate to profile page with test results tab active
-        router.push('/patient/profile?tab=test-results')
-        break
-      case 'appointments':
-        router.push('/patient/appointments')
-        break
-      case 'ai-assistant':
-        router.push('/patient/ai-assistant')
-        break
-      case 'telehealth':
-        router.push('/patient/telehealth')
-        break
-      case 'community':
-        router.push('/patient/community')
-        break
+        router.push("/patient/profile?tab=test-results");
+        break;
+      case "appointments":
+        router.push("/patient/appointments");
+        break;
+      case "ai-assistant":
+        router.push("/patient/ai-assistant");
+        break;
+      case "telehealth":
+        router.push("/patient/telehealth");
+        break;
+      case "community":
+        router.push("/patient/community");
+        break;
       default:
-        console.log('Navigate to:', page)
+        console.log("Navigate to:", page);
     }
-  }
+  };
 
   // Determine if any data is still loading
   const isLoading =
@@ -89,30 +65,34 @@ export default function PatientDashboard() {
     isLoadingMetrics ||
     isLoadingAppointments ||
     isLoadingPrescriptions ||
-    isLoadingConsultations
+    isLoadingConsultations;
 
   // Use real user data from getMe API, fallback to auth context
-  const user = userData ? {
-    id: userData.userId,
-    name: userData.fullName || userData.email || 'Bạn',
-    fullName: userData.fullName || undefined,
-    email: userData.email,
-    phone: userData.phone || '',
-    avatar: userData.avatarUrl || undefined
-  } : authUser ? {
-    id: authUser.userId,
-    name: authUser.name || authUser.fullName || 'Bạn',
-    fullName: authUser.fullName || undefined,
-    email: authUser.email,
-    phone: authUser.phone || '',
-    avatar: authUser.avatar || authUser.avatarUrl || undefined
-  } : {
-    id: 'guest',
-    name: 'Bạn',
-    fullName: 'Bạn',
-    email: '',
-    phone: ''
-  }
+  const user = userData
+    ? {
+        id: userData.userId,
+        name: userData.fullName || userData.email || "Bạn",
+        fullName: userData.fullName || undefined,
+        email: userData.email,
+        phone: userData.phone || "",
+        avatar: userData.avatarUrl || undefined,
+      }
+    : authUser
+      ? {
+          id: authUser.userId,
+          name: authUser.name || authUser.fullName || "Bạn",
+          fullName: authUser.fullName || undefined,
+          email: authUser.email,
+          phone: authUser.phone || "",
+          avatar: authUser.avatar || authUser.avatarUrl || undefined,
+        }
+      : {
+          id: "guest",
+          name: "Bạn",
+          fullName: "Bạn",
+          email: "",
+          phone: "",
+        };
 
   // Show loading state only for initial user data load
   if (isLoadingUser) {
@@ -123,7 +103,7 @@ export default function PatientDashboard() {
           <p className="text-gray-600">Đang tải thông tin người dùng...</p>
         </div>
       </div>
-    )
+    );
   }
 
   return (
@@ -137,5 +117,5 @@ export default function PatientDashboard() {
       onNavigate={handleNavigate}
       isLoading={false} // Don't show loading for dashboard data, show empty states instead
     />
-  )
+  );
 }

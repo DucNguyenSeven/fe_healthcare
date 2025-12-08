@@ -21,14 +21,10 @@ export function usePanelByDate(patientId?: string, measuredAt?: string | null) {
         throw new Error('Patient ID and measured date are required');
       }
 
-      console.log('🔍 [usePanelByDate] Fetching panel for:', { patientId, measuredAt });
-
       const response = await HealthMetricsApi.getPanelsByPatientAndDate({
         patientId,
         measuredAt
       });
-
-      console.log('🔍 [usePanelByDate] Response:', response);
 
       const payload: any = (response as any)?.data ?? response as any;
       
@@ -47,8 +43,6 @@ export function usePanelByDate(patientId?: string, measuredAt?: string | null) {
           return acc;
         }, {} as Record<string, { value: number | string; unit: string }>),
       };
-
-      console.log('🔍 [usePanelByDate] Normalized panel:', normalized);
 
       return normalized;
     },
