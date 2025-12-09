@@ -605,11 +605,6 @@ export function AIAssistantPage({ user, onNavigate }: AIAssistantPageProps) {
     const formattedRecommendations = Array.isArray(recommendations)
       ? recommendations.slice(0, 8)
       : [];
-      recommendations: formattedRecommendations,
-      originalStage: predictedStage,
-      originalRiskLevel: riskLevel,
-      originalConfidence: confidence,
-    });
 
     return {
       risk,

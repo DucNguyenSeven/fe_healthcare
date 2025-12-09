@@ -94,9 +94,10 @@ export function useLogin() {
         });
 
         // Role-based redirect
-        const redirectPath = userRole === 'DOCTOR'
-          ? ROUTES.DOCTOR.DASHBOARD
-          : ROUTES.PATIENT.DASHBOARD;
+        const redirectPath =
+          userRole === 'DOCTOR' ? ROUTES.DOCTOR.DASHBOARD :
+          userRole === 'ADMIN' ? ROUTES.ADMIN.DASHBOARD :
+          ROUTES.PATIENT.DASHBOARD;
 
         router.push(redirectPath);
       }

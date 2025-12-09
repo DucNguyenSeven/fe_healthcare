@@ -166,7 +166,7 @@ export const downloadPrescriptionPDF = async (
           // Decode quoted-printable: replace _ with space, decode %XX
           extractedName = mimeMatch[1]
             .replace(/_/g, ' ')
-            .replace(/=([0-9A-F]{2})/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
+            .replace(/=([0-9A-F]{2})/g, (_: string, hex: string) => String.fromCharCode(parseInt(hex, 16)));
         }
 
         filename = extractedName;

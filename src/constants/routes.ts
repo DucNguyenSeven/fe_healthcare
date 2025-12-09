@@ -33,19 +33,32 @@ export const ROUTES = {
     CONSULTATION: '/doctor/consultation',
     SCHEDULE: '/doctor/schedule',
     FORUM: '/doctor/forum'
+  },
+
+  ADMIN: {
+    ROOT: '/admin',
+    DASHBOARD: '/admin/dashboard',
+    USERS: '/admin/users',
+    APPOINTMENTS: '/admin/appointments',
+    REVENUE: '/admin/revenue',
+    PAYMENTS: '/admin/payments',
+    REPORTS: '/admin/reports',
+    SETTINGS: '/admin/settings'
   }
 } as const
 
 // Danh sách routes cần bảo vệ
 export const PROTECTED_ROUTES = [
   ...Object.values(ROUTES.PATIENT),
-  ...Object.values(ROUTES.DOCTOR)
+  ...Object.values(ROUTES.DOCTOR),
+  ...Object.values(ROUTES.ADMIN)
 ]
 
 // Default redirect sau khi đăng nhập theo role
 export const DEFAULT_REDIRECT_BY_ROLE = {
   patient: ROUTES.PATIENT.ROOT,
-  doctor: ROUTES.DOCTOR.ROOT
+  doctor: ROUTES.DOCTOR.ROOT,
+  admin: ROUTES.ADMIN.ROOT
 } as const
 
 export type UserRole = keyof typeof DEFAULT_REDIRECT_BY_ROLE
