@@ -8,92 +8,15 @@ import {
   TrendingUp,
   ArrowRight,
   ArrowUp,
-  ArrowDown
+  ArrowDown,
+  AlertCircle,
+  RefreshCw
 } from 'lucide-react';
-import type { DashboardResponse } from '@/types/admin';
+import { useDashboardOverview } from '@/hooks/admin/useDashboard';
 
 interface AdminDashboardPageProps {
   onNavigate?: (page: string) => void;
-  isLoading?: boolean;
 }
-
-// Mock data - CHÍNH XÁC với API response structure
-// Endpoint: GET /api/v1/admin/dashboard
-const mockDashboardData: DashboardResponse = {
-  statistics: {
-    totalRevenueThisMonth: 150000000,      // 150 triệu
-    totalAppointmentsThisMonth: 245,
-    totalActiveUsers: 1250,
-    growthRate: 12.5,
-  },
-  charts: {
-    revenueTrend: [
-      { date: '2025-12-01', revenue: 5000000 },
-      { date: '2025-12-02', revenue: 5500000 },
-      { date: '2025-12-03', revenue: 4800000 },
-      { date: '2025-12-04', revenue: 6200000 },
-      { date: '2025-12-05', revenue: 5900000 },
-      { date: '2025-12-06', revenue: 6500000 },
-      { date: '2025-12-07', revenue: 7200000 },
-    ],
-    appointmentsByStatus: {
-      COMPLETED: 180,
-      CONFIRMED: 45,
-      CANCELLED: 20,
-    },
-    topDoctors: [
-      {
-        doctorId: 'DOC001',
-        doctorName: 'Dr. Nguyễn Văn A',
-        specialty: 'Nội khoa',
-        totalRevenue: 25000000,
-        appointmentCount: 45,
-        rating: 4.8,
-      },
-      {
-        doctorId: 'DOC002',
-        doctorName: 'Dr. Trần Thị B',
-        specialty: 'Tim mạch',
-        totalRevenue: 22000000,
-        appointmentCount: 38,
-        rating: 4.9,
-      },
-      {
-        doctorId: 'DOC003',
-        doctorName: 'Dr. Lê Văn C',
-        specialty: 'Ngoại khoa',
-        totalRevenue: 20000000,
-        appointmentCount: 35,
-        rating: 4.7,
-      },
-      {
-        doctorId: 'DOC004',
-        doctorName: 'Dr. Phạm Thị D',
-        specialty: 'Sản phụ khoa',
-        totalRevenue: 18000000,
-        appointmentCount: 32,
-        rating: 4.6,
-      },
-      {
-        doctorId: 'DOC005',
-        doctorName: 'Dr. Hoàng Văn E',
-        specialty: 'Nhi khoa',
-        totalRevenue: 17000000,
-        appointmentCount: 30,
-        rating: 4.8,
-      },
-    ],
-    revenueByServiceType: {
-      VIDEO_CALL: 80000000,
-      IN_PERSON: 70000000,
-    },
-  },
-  recentActivities: {
-    recentUsers: [],
-    recentAppointments: [],
-    recentPayments: [],
-  },
-};
 
 // Helper function to format currency
 const formatCurrency = (amount: number): string => {
@@ -110,11 +33,65 @@ const formatNumber = (num: number): string => {
 
 export function AdminDashboardPage({
   onNavigate = () => {},
-  isLoading = false
 }: AdminDashboardPageProps) {
+  // Fetch dashboard data from API
+  const { data, isLoading, error, refetch } = useDashboardOverview();
+
+  // Error state
+  if (error) {
+    return (
+      <div className="p-4 lg:p-6">
+        <div className="bg-red-50 border border-red-200 rounded-2xl p-6">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="w-6 h-6 text-red-600 mt-0.5 flex-shrink-0" />
+            <div className="flex-1">
+              <h3 className="font-semibold text-red-900 mb-1">Không thể tải dữ liệu dashboard</h3>
+              <p className="text-red-700 text-sm mb-4">
+                {(error as any)?.response?.data?.message || (error as any)?.message || 'Đã xảy ra lỗi khi tải dữ liệu'}
+              </p>
+              <button
+                onClick={() => refetch()}
+                className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+              >
+                <RefreshCw className="w-4 h-4" />
+                Thử lại
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Loading state
+  if (isLoading || !data) {
+    return (
+      <div className="p-4 lg:p-6 space-y-6">
+        {/* Skeleton for statistics cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 animate-pulse">
+              <div className="w-12 h-12 bg-gray-200 rounded-xl mb-4" />
+              <div className="h-4 bg-gray-200 rounded w-3/4 mb-2" />
+              <div className="h-8 bg-gray-200 rounded w-1/2" />
+            </div>
+          ))}
+        </div>
+        {/* Skeleton for charts */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-gray-200 p-6 animate-pulse">
+            <div className="h-64 bg-gray-200 rounded" />
+          </div>
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 animate-pulse">
+            <div className="h-64 bg-gray-200 rounded" />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // Transform API data to UI format
-  const { statistics } = mockDashboardData;
+  const { statistics } = data;
 
   const statsCards = [
     {
@@ -239,7 +216,7 @@ export function AdminDashboardPage({
           <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
             <h2 className="text-xl font-semibold text-gray-900 mb-4">Top 5 Bác sĩ</h2>
             <div className="space-y-3">
-              {mockDashboardData.charts.topDoctors.map((doctor, index) => (
+              {data.charts.topDoctors.map((doctor, index) => (
                 <div key={doctor.doctorId} className="flex items-center space-x-3 p-3 bg-gray-50 rounded-xl">
                   <div className="w-8 h-8 bg-blue-100 text-blue-600 rounded-full
                                   flex items-center justify-center font-bold text-sm">

@@ -4,8 +4,6 @@ export type NavigationItem =
   | 'appointments'
   | 'revenue'
   | 'payments'
-  | 'reports'
-  | 'settings'
 
 export interface User {
   id: string

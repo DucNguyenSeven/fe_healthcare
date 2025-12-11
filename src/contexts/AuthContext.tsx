@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { getAccessToken, clearTokens, isTokenValid } from '@/utils/auth/token';
+import { getAccessToken, clearTokens, isTokenValid, getRoleFromToken } from '@/utils/auth/token';
 import { AuthAPI } from '@/lib/api/user';
 import type { User } from '@/types/user';
 
@@ -37,12 +37,29 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
       // Validate token before making API call
       if (token && isTokenValid(token)) {
-        try {
-          const response = await AuthAPI.getMe();
-          setUser(response.data);
-        } catch (error) {
-          // Failed to get user info - clear tokens
-          clearTokens();
+        const userRole = getRoleFromToken(token);
+        
+        // Admin không cần gọi getMe, lấy từ localStorage
+        if (userRole === 'ADMIN') {
+          try {
+            const userStr = localStorage.getItem('user');
+            if (userStr) {
+              const userData = JSON.parse(userStr);
+              setUser(userData);
+            }
+          } catch (error) {
+            // Failed to parse user data - clear tokens
+            clearTokens();
+          }
+        } else {
+          // Các role khác vẫn gọi getMe
+          try {
+            const response = await AuthAPI.getMe();
+            setUser(response.data);
+          } catch (error) {
+            // Failed to get user info - clear tokens
+            clearTokens();
+          }
         }
       } else if (token) {
         // Token exists but is expired - clear immediately without API call

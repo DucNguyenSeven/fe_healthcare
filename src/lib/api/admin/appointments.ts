@@ -3,132 +3,66 @@
  * Docs: /docs/ADMIN_API_DOCUMENTATION.md - Section 4
  */
 
-import {
-  ConsultationType,
-  AppointmentStatus,
-  type AppointmentStatistics,
-  type Appointment,
-  type AppointmentsByConsultationType,
-  type CompletedAppointmentsByDoctor,
-  type DateRangeParams,
+import api from '../client';
+import type {
+  AppointmentStatistics,
+  Appointment,
+  AppointmentsByConsultationType,
+  CompletedAppointmentsByDoctor,
 } from '@/types/admin';
-
-// ============================================
-// MOCK DATA
-// ============================================
-
-const mockAppointmentStatistics: AppointmentStatistics = {
-  totalAppointments: 245,
-  appointmentsByStatus: {
-    PENDING: 25,
-    CONFIRMED: 45,
-    COMPLETED: 150,
-    CANCELLED: 20,
-    NO_SHOW: 5,
-  },
-  appointmentsByType: {
-    VIDEO_CALL: 180,
-    IN_PERSON: 65,
-  },
-};
-
-const mockAppointments: Appointment[] = [
-  {
-    appointmentId: 'APT001',
-    patientId: 'PAT001',
-    doctorId: 'DOC001',
-    appointmentDate: '2025-12-10',
-    timeSlot: '09:00-09:30',
-    consultationType: ConsultationType.VIDEO_CALL,
-    status: AppointmentStatus.CONFIRMED,
-    createdAt: '2025-12-08T10:00:00',
-  },
-  {
-    appointmentId: 'APT002',
-    patientId: 'PAT002',
-    doctorId: 'DOC002',
-    appointmentDate: '2025-12-10',
-    timeSlot: '10:00-10:30',
-    consultationType: ConsultationType.IN_PERSON,
-    status: AppointmentStatus.COMPLETED,
-    createdAt: '2025-12-07T14:30:00',
-  },
-  {
-    appointmentId: 'APT003',
-    patientId: 'PAT003',
-    doctorId: 'DOC001',
-    appointmentDate: '2025-12-11',
-    timeSlot: '14:00-14:30',
-    consultationType: ConsultationType.VIDEO_CALL,
-    status: AppointmentStatus.PENDING,
-    createdAt: '2025-12-08T16:45:00',
-  },
-];
-
-const mockAppointmentsByConsultationType: AppointmentsByConsultationType = {
-  VIDEO_CALL: 180,
-  IN_PERSON: 65,
-};
-
-const mockCompletedAppointmentsByDoctor: CompletedAppointmentsByDoctor = {
-  DOC001: 45,
-  DOC002: 38,
-  DOC003: 32,
-  DOC004: 28,
-  DOC005: 25,
-};
-
-// ============================================
-// API FUNCTIONS
-// ============================================
 
 /**
  * Get Appointment Statistics
- * Endpoint: GET /api/v1/appointments/admin/statistics
+ * Endpoint: GET /api/v1/admin/appointments/statistics
  */
 export async function getAppointmentStatistics(
   params: { startDate: string; endDate: string }
 ): Promise<AppointmentStatistics> {
-  await new Promise((resolve) => setTimeout(resolve, 300));
-  console.log('API Call: getAppointmentStatistics', params);
-  return mockAppointmentStatistics;
+  const response = await api.get<AppointmentStatistics>(
+    '/api/v1/admin/appointments/statistics',
+    { params }
+  );
+  return response.data;
 }
 
 /**
  * Get Appointments By IDs
- * Endpoint: POST /api/v1/appointments/admin/by-ids
+ * Endpoint: POST /api/v1/admin/appointments/by-ids
  */
 export async function getAppointmentsByIds(
   appointmentIds: string[]
 ): Promise<Appointment[]> {
-  await new Promise((resolve) => setTimeout(resolve, 300));
-  console.log('API Call: getAppointmentsByIds', appointmentIds);
-
-  return mockAppointments.filter((apt) =>
-    appointmentIds.includes(apt.appointmentId)
+  const response = await api.post<Appointment[]>(
+    '/api/v1/admin/appointments/by-ids',
+    { appointmentIds }
   );
+  return response.data;
 }
 
 /**
  * Get Stats By Consultation Type
- * Endpoint: GET /api/v1/appointments/admin/by-consultation-type
+ * Endpoint: GET /api/v1/admin/appointments/stats-by-type
  */
 export async function getStatsByConsultationType(
   params: { startDate: string; endDate: string }
 ): Promise<AppointmentsByConsultationType> {
-  await new Promise((resolve) => setTimeout(resolve, 300));
-  console.log('API Call: getStatsByConsultationType', params);
-  return mockAppointmentsByConsultationType;
+  const response = await api.get<AppointmentsByConsultationType>(
+    '/api/v1/admin/appointments/stats-by-type',
+    { params }
+  );
+  return response.data;
 }
 
 /**
  * Get Completed Appointments By Doctor
- * Endpoint: GET /api/v1/appointments/admin/by-doctor
+ * Endpoint: GET /api/v1/admin/appointments/completed-by-doctor
  */
 export async function getCompletedAppointmentsByDoctor(
   params: { startDate: string; endDate: string }
 ): Promise<CompletedAppointmentsByDoctor> {
-  await new Promise((resolve) => setTimeout(resolve, 300));
-  console.log('API Call: getCompletedAppointmentsByDoctor', params);
-  return mockCompletedAppointmentsByDoctor;
+  const response = await api.get<CompletedAppointmentsByDoctor>(
+    '/api/v1/admin/appointments/completed-by-doctor',
+    { params }
+  );
+  return response.data;
 }

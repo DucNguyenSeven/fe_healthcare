@@ -25,8 +25,6 @@ export function AdminLayoutWrapper({ children }: AdminLayoutWrapperProps) {
     if (pathname.includes('/appointments')) return 'appointments'
     if (pathname.includes('/revenue')) return 'revenue'
     if (pathname.includes('/payments')) return 'payments'
-    if (pathname.includes('/reports')) return 'reports'
-    if (pathname.includes('/settings')) return 'settings'
     return 'dashboard' // default
   }
 
@@ -38,8 +36,6 @@ export function AdminLayoutWrapper({ children }: AdminLayoutWrapperProps) {
       appointments: '/admin/appointments',
       revenue: '/admin/revenue',
       payments: '/admin/payments',
-      reports: '/admin/reports',
-      settings: '/admin/settings'
     }
 
     router.push(routes[page])
@@ -56,13 +52,13 @@ export function AdminLayoutWrapper({ children }: AdminLayoutWrapperProps) {
   const transformedUser = user ? {
     id: user.userId,
     name: user.name || 'Admin',
-    avatar: user.avatar || '/api/placeholder/32/32',
+    avatar: user.avatar || null, // null để trigger fallback icon trong AdminAppLayout
     email: user.email || '',
     role: user.role || 'ADMIN'
   } : {
     id: '1',
     name: 'Admin',
-    avatar: '/api/placeholder/32/32',
+    avatar: null, // null để trigger fallback icon trong AdminAppLayout
     email: '',
     role: 'ADMIN'
   }

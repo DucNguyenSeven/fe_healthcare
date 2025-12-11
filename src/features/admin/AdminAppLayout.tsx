@@ -7,13 +7,12 @@ import {
   Calendar,
   DollarSign,
   CreditCard,
-  FileText,
-  Settings,
   Bell,
   Menu,
   X,
   ChevronRight,
-  Activity
+  Activity,
+  User
 } from 'lucide-react';
 import { NavigationItem, User as UserType } from './types';
 import { useLogout } from '@/hooks/auth/useLogout';
@@ -41,8 +40,6 @@ const navigationItems: NavigationItemConfig[] = [
   { id: 'appointments', label: 'Quản lý lịch hẹn', icon: Calendar },
   { id: 'revenue', label: 'Quản lý doanh thu', icon: DollarSign },
   { id: 'payments', label: 'Quản lý thanh toán', icon: CreditCard },
-  { id: 'reports', label: 'Báo cáo', icon: FileText },
-  { id: 'settings', label: 'Cài đặt', icon: Settings },
 ];
 
 export function AdminAppLayout({
@@ -186,11 +183,17 @@ export function AdminAppLayout({
 
               {/* User Avatar */}
               <button className="flex items-center space-x-3 p-2 rounded-lg hover:bg-gray-100 transition-colors">
-                <img
-                  src={user.avatar || '/api/placeholder/32/32'}
-                  alt={`Ảnh đại diện của ${user.name}`}
-                  className="w-8 h-8 rounded-full object-cover"
-                />
+                {user.avatar ? (
+                  <img
+                    src={user.avatar}
+                    alt={`Ảnh đại diện của ${user.name}`}
+                    className="w-8 h-8 rounded-full object-cover"
+                  />
+                ) : (
+                  <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center">
+                    <User className="w-5 h-5 text-white" />
+                  </div>
+                )}
                 <span className="hidden md:block text-sm font-medium text-gray-700">
                   {user.name}
                 </span>
