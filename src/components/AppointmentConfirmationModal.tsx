@@ -4,8 +4,8 @@
  * Shows all booking info + payment method selection
  */
 
-import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   X,
   Calendar,
@@ -18,9 +18,9 @@ import {
   CreditCard,
   DollarSign,
   Star,
-  Award
-} from 'lucide-react';
-import { PaymentMethod } from '@/types/payment.types';
+  Award,
+} from "lucide-react";
+import { PaymentMethod } from "@/types/payment.types";
 
 interface DoctorInfo {
   id: string;
@@ -49,13 +49,15 @@ interface AppointmentConfirmationModalProps {
   patientInfo: PatientInfo;
   appointmentDate: string;
   appointmentTime: string;
-  appointmentType: 'direct' | 'online' | 'lab_test' | 'follow_up';
+  appointmentType: "direct" | "online" | "lab_test" | "follow_up";
   symptoms?: string;
   note?: string;
   addressDetail?: string;
 }
 
-export const AppointmentConfirmationModal: React.FC<AppointmentConfirmationModalProps> = ({
+export const AppointmentConfirmationModal: React.FC<
+  AppointmentConfirmationModalProps
+> = ({
   isOpen,
   onClose,
   onConfirm,
@@ -67,35 +69,36 @@ export const AppointmentConfirmationModal: React.FC<AppointmentConfirmationModal
   appointmentType,
   symptoms,
   note,
-  addressDetail
+  addressDetail,
 }) => {
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethod>('CASH');
+  const [selectedPaymentMethod, setSelectedPaymentMethod] =
+    useState<PaymentMethod>("CASH");
 
   // Map appointment type to display text
   const getAppointmentTypeText = () => {
     switch (appointmentType) {
-      case 'online':
-        return 'Tư vấn online';
-      case 'lab_test':
-        return 'Xét nghiệm';
-      case 'follow_up':
-        return 'Tái khám';
-      case 'direct':
+      case "online":
+        return "Tư vấn online";
+      case "lab_test":
+        return "Xét nghiệm";
+      case "follow_up":
+        return "Tái khám";
+      case "direct":
       default:
-        return 'Khám trực tiếp';
+        return "Khám trực tiếp";
     }
   };
 
   // Get appointment type icon
   const getAppointmentTypeIcon = () => {
     switch (appointmentType) {
-      case 'online':
+      case "online":
         return <Video className="w-5 h-5 text-blue-500" />;
-      case 'lab_test':
+      case "lab_test":
         return <Stethoscope className="w-5 h-5 text-purple-500" />;
-      case 'follow_up':
+      case "follow_up":
         return <Calendar className="w-5 h-5 text-orange-500" />;
-      case 'direct':
+      case "direct":
       default:
         return <MapPin className="w-5 h-5 text-green-500" />;
     }
@@ -104,11 +107,11 @@ export const AppointmentConfirmationModal: React.FC<AppointmentConfirmationModal
   // Format date for display
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
-    return date.toLocaleDateString('vi-VN', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
+    return date.toLocaleDateString("vi-VN", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
     });
   };
 
@@ -139,8 +142,12 @@ export const AppointmentConfirmationModal: React.FC<AppointmentConfirmationModal
             {/* Header */}
             <div className="p-6 border-b border-gray-100 flex items-center justify-between">
               <div>
-                <h2 className="text-2xl font-bold text-gray-900">Xác nhận đặt lịch khám</h2>
-                <p className="text-sm text-gray-600 mt-1">Vui lòng kiểm tra thông tin trước khi xác nhận</p>
+                <h2 className="text-2xl font-bold text-gray-900">
+                  Xác nhận đặt lịch khám
+                </h2>
+                <p className="text-sm text-gray-600 mt-1">
+                  Vui lòng kiểm tra thông tin trước khi xác nhận
+                </p>
               </div>
               <button
                 onClick={handleClose}
@@ -161,27 +168,37 @@ export const AppointmentConfirmationModal: React.FC<AppointmentConfirmationModal
                 </h3>
                 <div className="flex items-start space-x-4">
                   <img
-                    src={doctorInfo.avatar || '/api/placeholder/80/80'}
+                    src={doctorInfo.avatar || "/api/placeholder/80/80"}
                     alt={doctorInfo.name}
                     className="w-20 h-20 rounded-full object-cover border-2 border-white shadow-sm"
                   />
                   <div className="flex-1">
-                    <h4 className="font-semibold text-gray-900 text-lg mb-1">{doctorInfo.name}</h4>
-                    <p className="text-sm text-gray-600 mb-2">{doctorInfo.specialty}</p>
+                    <h4 className="font-semibold text-gray-900 text-lg mb-1">
+                      {doctorInfo.name}
+                    </h4>
+                    <p className="text-sm text-gray-600 mb-2">
+                      {doctorInfo.specialty}
+                    </p>
                     <div className="flex items-center space-x-4 text-sm">
                       <div className="flex items-center space-x-1">
                         <Award className="w-4 h-4 text-blue-500" />
-                        <span className="text-gray-700">{doctorInfo.experience}</span>
+                        <span className="text-gray-700">
+                          {doctorInfo.experience}
+                        </span>
                       </div>
                       <div className="flex items-center space-x-1">
                         <Star className="w-4 h-4 text-yellow-400 fill-current" />
-                        <span className="text-gray-700">{doctorInfo.rating}</span>
+                        <span className="text-gray-700">
+                          {doctorInfo.rating}
+                        </span>
                       </div>
                     </div>
                     {doctorInfo.clinicAddress && (
                       <div className="flex items-start space-x-1 mt-2">
                         <MapPin className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
-                        <span className="text-sm text-gray-600">{doctorInfo.clinicAddress}</span>
+                        <span className="text-sm text-gray-600">
+                          {doctorInfo.clinicAddress}
+                        </span>
                       </div>
                     )}
                   </div>
@@ -197,18 +214,24 @@ export const AppointmentConfirmationModal: React.FC<AppointmentConfirmationModal
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className="text-gray-600">Họ và tên:</span>
-                    <span className="font-medium text-gray-900">{patientInfo.name}</span>
+                    <span className="font-medium text-gray-900">
+                      {patientInfo.name}
+                    </span>
                   </div>
                   {patientInfo.phone && (
                     <div className="flex justify-between">
                       <span className="text-gray-600">Số điện thoại:</span>
-                      <span className="font-medium text-gray-900">{patientInfo.phone}</span>
+                      <span className="font-medium text-gray-900">
+                        {patientInfo.phone}
+                      </span>
                     </div>
                   )}
                   {patientInfo.email && (
                     <div className="flex justify-between">
                       <span className="text-gray-600">Email:</span>
-                      <span className="font-medium text-gray-900">{patientInfo.email}</span>
+                      <span className="font-medium text-gray-900">
+                        {patientInfo.email}
+                      </span>
                     </div>
                   )}
                 </div>
@@ -223,21 +246,27 @@ export const AppointmentConfirmationModal: React.FC<AppointmentConfirmationModal
                 <div className="space-y-3 text-sm">
                   <div className="flex items-center justify-between">
                     <span className="text-gray-600">Ngày khám:</span>
-                    <span className="font-medium text-gray-900">{formatDate(appointmentDate)}</span>
+                    <span className="font-medium text-gray-900">
+                      {formatDate(appointmentDate)}
+                    </span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-gray-600 flex items-center">
                       <Clock className="w-4 h-4 mr-1" />
                       Giờ khám:
                     </span>
-                    <span className="font-medium text-gray-900">{appointmentTime}</span>
+                    <span className="font-medium text-gray-900">
+                      {appointmentTime}
+                    </span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-gray-600 flex items-center">
                       {getAppointmentTypeIcon()}
                       <span className="ml-1">Hình thức:</span>
                     </span>
-                    <span className="font-medium text-gray-900">{getAppointmentTypeText()}</span>
+                    <span className="font-medium text-gray-900">
+                      {getAppointmentTypeText()}
+                    </span>
                   </div>
                   {addressDetail && (
                     <div className="flex items-start justify-between">
@@ -245,7 +274,9 @@ export const AppointmentConfirmationModal: React.FC<AppointmentConfirmationModal
                         <MapPin className="w-4 h-4 mr-1 flex-shrink-0" />
                         Địa chỉ:
                       </span>
-                      <span className="font-medium text-gray-900 text-right max-w-xs">{addressDetail}</span>
+                      <span className="font-medium text-gray-900 text-right max-w-xs">
+                        {addressDetail}
+                      </span>
                     </div>
                   )}
                 </div>
@@ -261,7 +292,9 @@ export const AppointmentConfirmationModal: React.FC<AppointmentConfirmationModal
                   <div className="space-y-3 text-sm">
                     {symptoms && (
                       <div>
-                        <span className="text-gray-600 block mb-1">Triệu chứng:</span>
+                        <span className="text-gray-600 block mb-1">
+                          Triệu chứng:
+                        </span>
                         <p className="text-gray-900 bg-white p-3 rounded-lg border border-gray-200">
                           {symptoms}
                         </p>
@@ -269,7 +302,9 @@ export const AppointmentConfirmationModal: React.FC<AppointmentConfirmationModal
                     )}
                     {note && (
                       <div>
-                        <span className="text-gray-600 block mb-1">Ghi chú:</span>
+                        <span className="text-gray-600 block mb-1">
+                          Ghi chú:
+                        </span>
                         <p className="text-gray-900 bg-white p-3 rounded-lg border border-gray-200">
                           {note}
                         </p>
@@ -285,10 +320,12 @@ export const AppointmentConfirmationModal: React.FC<AppointmentConfirmationModal
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-2">
                       <DollarSign className="w-5 h-5 text-green-600" />
-                      <span className="font-semibold text-gray-700">Tổng chi phí:</span>
+                      <span className="font-semibold text-gray-700">
+                        Tổng chi phí:
+                      </span>
                     </div>
                     <span className="text-2xl font-bold text-green-600">
-                      {doctorInfo.examinationFee.toLocaleString('vi-VN')}đ
+                      {doctorInfo.examinationFee.toLocaleString("vi-VN")}đ
                     </span>
                   </div>
                 </div>
@@ -303,67 +340,62 @@ export const AppointmentConfirmationModal: React.FC<AppointmentConfirmationModal
                 <div className="space-y-3">
                   {/* CASH Option */}
                   <button
-                    onClick={() => setSelectedPaymentMethod('CASH')}
+                    onClick={() => setSelectedPaymentMethod("CASH")}
                     disabled={isLoading}
                     className={`w-full p-4 rounded-xl border-2 transition-all text-left ${
-                      selectedPaymentMethod === 'CASH'
-                        ? 'border-blue-500 bg-blue-50'
-                        : 'border-gray-200 hover:border-gray-300 bg-white'
+                      selectedPaymentMethod === "CASH"
+                        ? "border-blue-500 bg-blue-50"
+                        : "border-gray-200 hover:border-gray-300 bg-white"
                     } disabled:opacity-50 disabled:cursor-not-allowed`}
                   >
                     <div className="flex items-start space-x-3">
                       <div
                         className={`w-5 h-5 rounded-full border-2 flex items-center justify-center mt-0.5 flex-shrink-0 ${
-                          selectedPaymentMethod === 'CASH'
-                            ? 'border-blue-500 bg-blue-500'
-                            : 'border-gray-300'
+                          selectedPaymentMethod === "CASH"
+                            ? "border-blue-500 bg-blue-500"
+                            : "border-gray-300"
                         }`}
                       >
-                        {selectedPaymentMethod === 'CASH' && (
+                        {selectedPaymentMethod === "CASH" && (
                           <div className="w-2.5 h-2.5 rounded-full bg-white"></div>
                         )}
                       </div>
                       <div className="flex-1">
-                        <div className="font-medium text-gray-900 mb-1">Thanh toán tiền mặt</div>
-                        <p className="text-sm text-gray-600">
-                          Thanh toán trực tiếp tại phòng khám khi đến khám. Lịch hẹn sẽ được xác nhận ngay lập tức.
-                        </p>
+                        <div className="font-medium text-gray-900">
+                          Tiền mặt ( Thanh toán tại phòng khám )
+                        </div>
                       </div>
                     </div>
                   </button>
 
                   {/* BANK Option */}
                   <button
-                    onClick={() => setSelectedPaymentMethod('BANK')}
+                    onClick={() => setSelectedPaymentMethod("BANK")}
                     disabled={isLoading}
                     className={`w-full p-4 rounded-xl border-2 transition-all text-left ${
-                      selectedPaymentMethod === 'BANK'
-                        ? 'border-blue-500 bg-blue-50'
-                        : 'border-gray-200 hover:border-gray-300 bg-white'
+                      selectedPaymentMethod === "BANK"
+                        ? "border-blue-500 bg-blue-50"
+                        : "border-gray-200 hover:border-gray-300 bg-white"
                     } disabled:opacity-50 disabled:cursor-not-allowed`}
                   >
                     <div className="flex items-start space-x-3">
                       <div
                         className={`w-5 h-5 rounded-full border-2 flex items-center justify-center mt-0.5 flex-shrink-0 ${
-                          selectedPaymentMethod === 'BANK'
-                            ? 'border-blue-500 bg-blue-500'
-                            : 'border-gray-300'
+                          selectedPaymentMethod === "BANK"
+                            ? "border-blue-500 bg-blue-500"
+                            : "border-gray-300"
                         }`}
                       >
-                        {selectedPaymentMethod === 'BANK' && (
+                        {selectedPaymentMethod === "BANK" && (
                           <div className="w-2.5 h-2.5 rounded-full bg-white"></div>
                         )}
                       </div>
                       <div className="flex-1">
-                        <div className="flex items-center space-x-2 mb-1">
-                          <span className="font-medium text-gray-900">Chuyển khoản ngân hàng</span>
-                          <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs font-medium rounded">
-                            Khuyến nghị
+                        <div className="flex items-center space-x-2">
+                          <span className="font-medium text-gray-900">
+                            Chuyển khoản ngân hàng
                           </span>
                         </div>
-                        <p className="text-sm text-gray-600">
-                          Thanh toán qua PayOS (ATM/Visa/QR). An toàn, nhanh chóng. Bác sĩ sẽ nhận thông báo sau khi thanh toán thành công.
-                        </p>
                       </div>
                     </div>
                   </button>
@@ -387,12 +419,30 @@ export const AppointmentConfirmationModal: React.FC<AppointmentConfirmationModal
                   className="px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
                 >
                   {isLoading && (
-                    <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    <svg
+                      className="animate-spin h-4 w-4 text-white"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      ></circle>
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      ></path>
                     </svg>
                   )}
-                  <span>{isLoading ? 'Đang xử lý...' : 'Xác nhận đặt lịch'}</span>
+                  <span>
+                    {isLoading ? "Đang xử lý..." : "Xác nhận đặt lịch"}
+                  </span>
                 </button>
               </div>
             </div>

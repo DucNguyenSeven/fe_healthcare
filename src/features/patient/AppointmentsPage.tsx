@@ -1639,39 +1639,27 @@ export function AppointmentsPage() {
         {/* Step 4: Appointment Type - Only show after time is selected */}
         {selectedDate && selectedDoctor && selectedTime && (
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-3">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
               Hình thức khám
             </label>
-            <div className="grid grid-cols-2 gap-4">
-              <button
-                onClick={() => setAppointmentType("direct")}
-                className={`p-4 border-2 rounded-xl transition-all ${appointmentType === "direct" ? "border-green-500 bg-green-50" : "border-gray-200 hover:border-gray-300"}`}
-              >
-                <MapPin className="w-6 h-6 text-green-500 mx-auto mb-2" />
-                <span className="font-medium">Khám trực tiếp</span>
-              </button>
-              <button
-                onClick={() => setAppointmentType("online")}
-                className={`p-4 border-2 rounded-xl transition-all ${appointmentType === "online" ? "border-blue-500 bg-blue-50" : "border-gray-200 hover:border-gray-300"}`}
-              >
-                <Video className="w-6 h-6 text-blue-500 mx-auto mb-2" />
-                <span className="font-medium">Tư vấn online</span>
-              </button>
-              <button
-                onClick={() => setAppointmentType("lab_test")}
-                className={`p-4 border-2 rounded-xl transition-all ${appointmentType === "lab_test" ? "border-purple-500 bg-purple-50" : "border-gray-200 hover:border-gray-300"}`}
-              >
-                <Stethoscope className="w-6 h-6 text-purple-500 mx-auto mb-2" />
-                <span className="font-medium">Xét nghiệm</span>
-              </button>
-              <button
-                onClick={() => setAppointmentType("follow_up")}
-                className={`p-4 border-2 rounded-xl transition-all ${appointmentType === "follow_up" ? "border-orange-500 bg-orange-50" : "border-gray-200 hover:border-gray-300"}`}
-              >
-                <Calendar className="w-6 h-6 text-orange-500 mx-auto mb-2" />
-                <span className="font-medium">Tái khám</span>
-              </button>
-            </div>
+            <select
+              value={appointmentType}
+              onChange={(e) =>
+                setAppointmentType(
+                  e.target.value as
+                    | "direct"
+                    | "online"
+                    | "lab_test"
+                    | "follow_up"
+                )
+              }
+              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="direct">Khám trực tiếp</option>
+              <option value="online">Tư vấn online</option>
+              <option value="lab_test">Xét nghiệm</option>
+              <option value="follow_up">Tái khám</option>
+            </select>
           </div>
         )}
 
@@ -1695,9 +1683,6 @@ export function AppointmentsPage() {
                   rows={3}
                   maxLength={500}
                 />
-                <div className="text-right text-xs text-gray-400 mt-1">
-                  {symptoms.length}/500 ký tự
-                </div>
               </div>
 
               {/* Ghi chú */}
@@ -1713,9 +1698,6 @@ export function AppointmentsPage() {
                   rows={3}
                   maxLength={1000}
                 />
-                <div className="text-right text-xs text-gray-400 mt-1">
-                  {note.length}/1000 ký tự
-                </div>
               </div>
 
               {/* Địa chỉ mặc định cho online */}
