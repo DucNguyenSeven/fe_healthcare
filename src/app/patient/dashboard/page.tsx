@@ -51,6 +51,10 @@ export default function PatientDashboard() {
       case "telehealth":
         router.push("/patient/telehealth");
         break;
+      case "profile-medical":
+        // Navigate to profile page with medical records tab active
+        router.push("/patient/profile?tab=medical");
+        break;
       case "community":
         router.push("/patient/community");
         break;
