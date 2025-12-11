@@ -532,6 +532,10 @@ export const AppointmentAndConsultationModule = ({
   const [typeFilter, setTypeFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
 
+  // Track recently completed appointments to filter them out optimistically
+  const [recentlyCompletedAppointmentIds, setRecentlyCompletedAppointmentIds] =
+    useState<Set<string>>(new Set());
+
   // Work schedule modal states
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [scheduleForm, setScheduleForm] = useState({
@@ -595,7 +599,7 @@ export const AppointmentAndConsultationModule = ({
 • Hạn chế muối trong thức ăn
 • Tái khám sau 4 tuần
 • Liên hệ ngay nếu có triệu chứng bất thường...`);
-  const [signatureUrl, setSignatureUrl] = useState<string | null>(null);
+  const [signature, setSignature] = useState<string | null>(null);
   const getStatusColor = (status: string) => {
     switch (status) {
       case "confirmed":
@@ -847,7 +851,7 @@ export const AppointmentAndConsultationModule = ({
     }
 
     // Validate signature
-    if (!signatureUrl) {
+    if (!signature) {
       toast.error("Vui lòng ký xác nhận trước khi hoàn thành khám", {
         description: "Chữ ký bác sĩ là bắt buộc",
         duration: 4000,
@@ -930,10 +934,15 @@ export const AppointmentAndConsultationModule = ({
         doctorNote: prescriptionNotes || "", // Map từ tab Kê đơn thuốc
         followUpDate: enableFollowUp && followUpDate ? followUpDate : "",
         imageAttachments: imageAttachments || [],
-        signatureUrl: signatureUrl || "",
+        signature: signature || "", // Doctor's fullName from SignaturePad
         stage: stage ? parseInt(stage) : 0,
         statusHealth: statusHealth || "STABLE",
       };
+
+      console.log("🔍 [MedicalRecord] Sending signature to backend:", {
+        signature: medicalRecordData.signature,
+        hasSignature: !!medicalRecordData.signature,
+      });
 
       const medicalRecord = await createMedicalRecord(medicalRecordData);
 
@@ -1107,14 +1116,50 @@ export const AppointmentAndConsultationModule = ({
       setShowExaminationModal(false);
       resetFormData();
 
-      // Refresh danh sách appointments
+      // Optimistic update: Đánh dấu appointment này là đã hoàn thành ngay lập tức
+      const completedAppointmentId = appointmentId;
+      if (completedAppointmentId) {
+        setRecentlyCompletedAppointmentIds((prev) =>
+          new Set(prev).add(completedAppointmentId)
+        );
+      }
+
+      // Refresh danh sách appointments - đợi backend xử lý xong
       if (me?.userId) {
+        // Thêm delay nhỏ để đảm bảo backend đã cập nhật status thành COMPLETED
+        await new Promise((resolve) => setTimeout(resolve, 500));
+
         const { start, end } = getWeekStartEnd(currentWeek);
-        fetchDoctorAppointments({
+
+        // Fetch lại appointments và đợi hoàn thành
+        await fetchDoctorAppointments({
           doctorId: me.userId,
           startTime: start,
           endTime: end,
         });
+
+        // Nếu đang ở tab completed, cũng fetch lại completed appointments
+        if (appointmentTab === "completed") {
+          await fetchCompletedAppointments({
+            status: "COMPLETED",
+            page: 0,
+            size: 50,
+            sortBy: "appointmentDate",
+            sortDir: "DESC",
+          });
+        }
+
+        // Sau khi refetch xong, xóa appointmentId khỏi recentlyCompletedAppointmentIds
+        // vì backend đã cập nhật status, appointment sẽ tự động bị filter bởi status check
+        if (completedAppointmentId) {
+          setTimeout(() => {
+            setRecentlyCompletedAppointmentIds((prev) => {
+              const newSet = new Set(prev);
+              newSet.delete(completedAppointmentId);
+              return newSet;
+            });
+          }, 2000); // Xóa sau 2 giây để đảm bảo refetch đã hoàn thành
+        }
       }
     } catch (error: any) {
       console.error("Lỗi khi hoàn thành khám:", error);
@@ -1164,7 +1209,7 @@ export const AppointmentAndConsultationModule = ({
     setFollowUpScheduleId(null);
     setFollowUpTimeSlots([]);
     setFollowUpNote(""); // Reset ghi chú tái khám
-    setSignatureUrl(null);
+    setSignature(null);
   };
   // Chuyển dữ liệu API thành format cũ của UI
   const normalizedAppointments = React.useMemo(() => {
@@ -1191,7 +1236,14 @@ export const AppointmentAndConsultationModule = ({
         originalAppointment: apt,
       }))
       // Loại bỏ các lịch đã hoàn thành khỏi nguồn tuần để tránh trùng khi gộp với completed
-      .filter((apt) => apt.status !== "completed");
+      // Và loại bỏ các appointment vừa hoàn thành (optimistic update)
+      .filter((apt) => {
+        const isCompleted = apt.status === "completed";
+        const isRecentlyCompleted =
+          apt.appointmentId &&
+          recentlyCompletedAppointmentIds.has(apt.appointmentId);
+        return !isCompleted && !isRecentlyCompleted;
+      });
 
     // Transform completed appointments (cho tab completed)
     const completedAppointmentsNormalized = (completedAppointments ?? []).map(
@@ -1218,7 +1270,11 @@ export const AppointmentAndConsultationModule = ({
 
     // Merge cả 2 sources
     return [...weekAppointments, ...completedAppointmentsNormalized];
-  }, [doctorWeekAppointments, completedAppointments]);
+  }, [
+    doctorWeekAppointments,
+    completedAppointments,
+    recentlyCompletedAppointmentIds,
+  ]);
 
   // Helper: Categorize appointments by time - UNIFIED for all tabs (similar to patient page)
   const categorizeAppointmentsByTime = (appointments: any[]) => {
@@ -2398,7 +2454,9 @@ export const AppointmentAndConsultationModule = ({
 
                     {/* Doctor Signature */}
                     <SignaturePad
-                      onSignatureSaved={(url) => setSignatureUrl(url)}
+                      onSignatureSaved={(signatureValue) =>
+                        setSignature(signatureValue)
+                      }
                       disabled={medicalRecordLoading || prescriptionsLoading}
                     />
                   </div>

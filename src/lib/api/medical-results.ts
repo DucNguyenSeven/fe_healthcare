@@ -1,4 +1,4 @@
-import api from './client';
+import api from "./client";
 
 // Types
 export interface MedicalRecord {
@@ -12,7 +12,7 @@ export interface MedicalRecord {
   appointmentDate?: string; // The actual appointment date (added by backend)
   serviceName?: string;
   statusHealth?: string;
-  signatureUrl?: string;
+  signature?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -20,7 +20,7 @@ export interface MedicalRecord {
 export interface Prescription {
   prescriptionId: string;
   medicalRecordId: string;
-  medicalName: string;  // Backend DTO field (matches CreatePrescriptionRequest and response)
+  medicalName: string; // Backend DTO field (matches CreatePrescriptionRequest and response)
   dosage: string;
   frequency: string[];
   startDate: string;
@@ -53,7 +53,9 @@ export const getMedicalResultsByAppointment = async (
   appointmentId: string
 ): Promise<ApiResponse<MedicalResultsData>> => {
   try {
-    const response = await api.get<MedicalResultsResponse>(`/api/v1/medical-results/appointment/${appointmentId}`);
+    const response = await api.get<MedicalResultsResponse>(
+      `/api/v1/medical-results/appointment/${appointmentId}`
+    );
     return {
       success: true,
       data: response.data.data,
@@ -61,7 +63,10 @@ export const getMedicalResultsByAppointment = async (
   } catch (error: any) {
     return {
       success: false,
-      message: error.response?.data?.message || error.message || 'Có lỗi xảy ra khi lấy kết quả khám',
+      message:
+        error.response?.data?.message ||
+        error.message ||
+        "Có lỗi xảy ra khi lấy kết quả khám",
     };
   }
 };
