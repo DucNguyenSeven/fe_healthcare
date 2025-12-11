@@ -31,11 +31,13 @@ const navigationItems: NavigationItemConfig[] = [{
   id: 'appointments',
   label: 'Lịch hẹn',
   icon: Calendar
-}, {
-  id: 'telehealth',
-  label: 'Tư vấn online',
-  icon: Video
-}, {
+}, 
+// {
+//   id: 'telehealth',
+//   label: 'Tư vấn online',
+//   icon: Video
+// }, 
+{
   id: 'monitoring',
   label: 'Theo dõi',
   icon: Activity
