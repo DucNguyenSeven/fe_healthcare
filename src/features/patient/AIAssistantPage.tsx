@@ -16,6 +16,7 @@ import {
   ChevronDown,
   AlertTriangle,
   FileText,
+  RotateCcw,
 } from "lucide-react";
 import { User as UserType } from "./HealthcarePlusApp";
 import { getAccessToken } from "@/utils/auth/token";
@@ -156,7 +157,6 @@ export function AIAssistantPage({ user, onNavigate }: AIAssistantPageProps) {
 
   // Function to map API panel data to CKD form
   const mapApiPanelToCKDForm = (panel: any) => {
-
     // panel.metrics is now a Record<string, { value, unit }>
     const metrics = panel?.metrics || {};
 
@@ -204,7 +204,6 @@ export function AIAssistantPage({ user, onNavigate }: AIAssistantPageProps) {
 
   // Function to handle test selection from dropdown
   const handleTestSelection = (panelId: string) => {
-
     if (panelId === "manual") {
       // Reset to default values for manual input
       const manualData = {
@@ -411,8 +410,6 @@ export function AIAssistantPage({ user, onNavigate }: AIAssistantPageProps) {
       urine_ph: Number(ckdFormData.urine_ph) || 7.0,
       blood_pressure: Number(ckdFormData.blood_pressure_systolic) || 120.0,
       water_intake: Number(ckdFormData.water_intake) || 2.5,
-      months: Number(ckdFormData.months) || 6,
-      cluster: Number(ckdFormData.cluster) || 1,
       physical_activity: ckdFormData.physical_activity || "daily",
       diet: ckdFormData.diet || "balanced",
       smoking: ckdFormData.smoking ? "yes" : "no",
@@ -495,7 +492,7 @@ export function AIAssistantPage({ user, onNavigate }: AIAssistantPageProps) {
 
       // Display result to user
       setPredictionResult(aiPredictionResult);
-      setCurrentTab(5); // Move to results tab
+      setCurrentTab(4); // Move to results tab
 
       // ✅ Step 2: SAVE TO DATABASE immediately (follow Mobile flow)
       try {
@@ -557,12 +554,11 @@ export function AIAssistantPage({ user, onNavigate }: AIAssistantPageProps) {
 
   // Parse AI service response to our UI format
   const parseAIServiceResponse = (aiResult: any) => {
-
     // Extract stage NUMBER properly with type checking
     // Support both camelCase (predictedStage) and snake_case (predicted_stage)
     let predictedStage: number;
     const stageValue = aiResult.predicted_stage ?? aiResult.predictedStage;
-    
+
     if (typeof stageValue === "number") {
       predictedStage = stageValue;
     } else if (typeof stageValue === "string") {
@@ -575,12 +571,15 @@ export function AIAssistantPage({ user, onNavigate }: AIAssistantPageProps) {
 
     const confidence = aiResult.confidence || 0.5;
     const riskLevel = aiResult.risk_level ?? aiResult.riskLevel ?? "moderate";
-    const stageDescription = aiResult.stage_description ?? aiResult.stageDescription ?? "Cần đánh giá thêm";
+    const stageDescription =
+      aiResult.stage_description ??
+      aiResult.stageDescription ??
+      "Cần đánh giá thêm";
     const recommendations = aiResult.recommendations || [];
 
     // Convert predicted_stage and risk_level to our UI format
     let risk: "low" | "moderate" | "high";
-    
+
     // Use confidence directly from backend (convert from 0-1 to 0-100%)
     // Keep exact value without rounding to avoid showing 100% when confidence is 0.99...
     const percentage = confidence * 100;
@@ -633,28 +632,25 @@ export function AIAssistantPage({ user, onNavigate }: AIAssistantPageProps) {
           ckdFormData.serum_creatinine > 0 &&
           ckdFormData.gfr > 0 &&
           ckdFormData.bun > 0 &&
-          ckdFormData.serum_calcium > 0
-        );
-      case 2:
-        return (
+          ckdFormData.serum_calcium > 0 &&
           ckdFormData.blood_pressure_systolic > 0 &&
           ckdFormData.blood_pressure_diastolic > 0 &&
           ckdFormData.water_intake > 0
         );
-      case 3:
+      case 2:
         return (
           ckdFormData.physical_activity !== "" &&
           ckdFormData.diet !== "" &&
           ckdFormData.alcohol !== ""
         );
-      case 4:
+      case 3:
         return ckdFormData.weight_changes !== "";
       default:
         return true;
     }
   };
   const renderCKDPrediction = () => (
-    <div className="max-w-6xl mx-auto space-y-6 p-6">
+    <div className="max-w-6xl mx-auto space-y-4 px-6 pb-6 pt-2">
       {/* Header */}
       <div
         className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-6 text-white"
@@ -676,54 +672,40 @@ export function AIAssistantPage({ user, onNavigate }: AIAssistantPageProps) {
       </div>
 
       {/* Tab Navigation */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 pt-3 px-6 pb-6">
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 pt-4 px-6 pb-6">
         <div className="flex items-center justify-between mb-6">
           <div className="flex space-x-4">
-            {[1, 2, 3, 4, 5].map((tab) => (
+            {[1, 2, 3, 4].map((tab) => (
               <div
                 key={tab}
-                className={`flex items-center space-x-2 px-4 py-2 rounded-lg ${currentTab === tab ? "bg-blue-100 text-blue-700" : tab === 5 ? "bg-purple-100 text-purple-700" : "bg-gray-100 text-gray-500"}`}
+                className={`flex items-center space-x-2 px-4 py-2 rounded-lg ${currentTab === tab ? "bg-blue-100 text-blue-700" : tab === 4 ? "bg-purple-100 text-purple-700" : "bg-gray-100 text-gray-500"}`}
               >
                 <div
-                  className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${currentTab === tab ? "bg-blue-600 text-white" : tab === 5 ? "bg-purple-600 text-white" : "bg-gray-400 text-gray-100"}`}
+                  className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${currentTab === tab ? "bg-blue-600 text-white" : tab === 4 ? "bg-purple-600 text-white" : "bg-gray-400 text-gray-100"}`}
                 >
-                  {tab === 5 ? <BarChart3 className="w-3 h-3" /> : tab}
+                  {tab === 4 ? <BarChart3 className="w-3 h-3" /> : tab}
                 </div>
                 <span className="text-sm font-medium">
-                  {tab === 1 && "Xét nghiệm"}
-                  {tab === 2 && "Sức khỏe"}
-                  {tab === 3 && "Lối sống"}
-                  {tab === 4 && "Tiền sử"}
-                  {tab === 5 && "Kết quả"}
+                  {tab === 1 && "Chỉ số"}
+                  {tab === 2 && "Lối sống"}
+                  {tab === 3 && "Tiền sử"}
+                  {tab === 4 && "Kết quả"}
                 </span>
               </div>
             ))}
           </div>
-          <div className="text-sm text-gray-500">Bước {currentTab}/5</div>
-        </div>
-
-        {/* Tab Content */}
-        <div className="min-h-[500px]">
-          {/* Tab 1: Lab Results */}
-          {currentTab === 1 && (
-            <div className="space-y-6">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center space-x-2">
-                  <span className="text-2xl">🔬</span>
-                  <h3 className="text-xl font-semibold text-gray-900">
-                    Kết quả xét nghiệm gần nhất
-                  </h3>
-                </div>
-
-                {/* History Dropdown */}
+          {currentTab < 4 && (
+            <div className="flex items-center space-x-3">
+              <div className="text-sm text-gray-500">Bước {currentTab}/3</div>
+              {currentTab === 1 && (
                 <div className="relative dropdown-container">
                   <button
                     onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                    className="flex items-center space-x-2 px-4 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg border border-blue-200 transition-colors"
+                    className="flex items-center space-x-2 px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg border border-blue-200 transition-colors text-sm"
                     disabled={panelsLoading || isLoadingPanel}
                   >
-                    <Calendar className="w-4 h-4" />
-                    <span className="text-sm font-medium">
+                    <Calendar className="w-3.5 h-3.5" />
+                    <span className="text-xs font-medium">
                       {panelsLoading
                         ? "Đang tải..."
                         : isLoadingPanel
@@ -735,7 +717,7 @@ export function AIAssistantPage({ user, onNavigate }: AIAssistantPageProps) {
                               : "Chọn từ lịch sử"}
                     </span>
                     <ChevronDown
-                      className={`w-4 h-4 transition-transform ${isDropdownOpen ? "rotate-180" : ""}`}
+                      className={`w-3.5 h-3.5 transition-transform ${isDropdownOpen ? "rotate-180" : ""}`}
                     />
                   </button>
 
@@ -808,347 +790,304 @@ export function AIAssistantPage({ user, onNavigate }: AIAssistantPageProps) {
                     </div>
                   )}
                 </div>
-              </div>
-
-              <div className="grid md:grid-cols-2 gap-6">
-                <div className="space-y-4">
-                  <div className="p-4 bg-gray-50 rounded-xl">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Creatinin huyết thanh (mg/dL) *
-                    </label>
-                    <input
-                      type="number"
-                      step="0.1"
-                      value={ckdFormData.serum_creatinine}
-                      onChange={(e) =>
-                        setCkdFormData({
-                          ...ckdFormData,
-                          serum_creatinine: parseFloat(e.target.value),
-                        })
-                      }
-                      placeholder="VD: 1.8"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      required
-                    />
-                    <small className="text-gray-500">
-                      Bình thường: 0.6-1.2 mg/dL
-                    </small>
-                  </div>
-
-                  <div className="p-4 bg-gray-50 rounded-xl">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      eGFR (mL/min/1.73m²) *
-                    </label>
-                    <input
-                      type="number"
-                      value={ckdFormData.gfr}
-                      onChange={(e) =>
-                        setCkdFormData({
-                          ...ckdFormData,
-                          gfr: parseInt(e.target.value),
-                        })
-                      }
-                      placeholder="VD: 45"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      required
-                    />
-                    <small className="text-gray-500">
-                      Bình thường: &gt;90 mL/min/1.73m²
-                    </small>
-                  </div>
-
-                  <div className="p-4 bg-gray-50 rounded-xl">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Ure máu (BUN) (mg/dL) *
-                    </label>
-                    <input
-                      type="number"
-                      value={ckdFormData.bun}
-                      onChange={(e) =>
-                        setCkdFormData({
-                          ...ckdFormData,
-                          bun: parseInt(e.target.value),
-                        })
-                      }
-                      placeholder="VD: 28"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      required
-                    />
-                    <small className="text-gray-500">
-                      Bình thường: 7-20 mg/dL
-                    </small>
-                  </div>
-
-                  <div className="p-4 bg-gray-50 rounded-xl">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Canxi huyết thanh (mg/dL) *
-                    </label>
-                    <input
-                      type="number"
-                      step="0.1"
-                      value={ckdFormData.serum_calcium}
-                      onChange={(e) =>
-                        setCkdFormData({
-                          ...ckdFormData,
-                          serum_calcium: parseFloat(e.target.value),
-                        })
-                      }
-                      placeholder="VD: 9.5"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      required
-                    />
-                    <small className="text-gray-500">
-                      Bình thường: 8.5-10.5 mg/dL
-                    </small>
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  <div className="p-4 bg-gray-50 rounded-xl">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Bổ thể C3/C4 (mg/dL)
-                    </label>
-                    <input
-                      type="number"
-                      value={ckdFormData.c3_c4}
-                      onChange={(e) =>
-                        setCkdFormData({
-                          ...ckdFormData,
-                          c3_c4: parseInt(e.target.value),
-                        })
-                      }
-                      placeholder="VD: 120"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                    <small className="text-gray-500">
-                      Bình thường: 90-180 mg/dL
-                    </small>
-                  </div>
-
-                  <div className="p-4 bg-gray-50 rounded-xl">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Nồng độ oxalat (mg/day)
-                    </label>
-                    <input
-                      type="number"
-                      step="0.1"
-                      value={ckdFormData.oxalate_levels}
-                      onChange={(e) =>
-                        setCkdFormData({
-                          ...ckdFormData,
-                          oxalate_levels: parseFloat(e.target.value),
-                        })
-                      }
-                      placeholder="VD: 2.5"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-
-                  <div className="p-4 bg-gray-50 rounded-xl">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      pH nước tiểu
-                    </label>
-                    <input
-                      type="number"
-                      min="4"
-                      max="8"
-                      step="0.1"
-                      value={ckdFormData.urine_ph}
-                      onChange={(e) =>
-                        setCkdFormData({
-                          ...ckdFormData,
-                          urine_ph: parseFloat(e.target.value),
-                        })
-                      }
-                      placeholder="VD: 6.0"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                    <small className="text-gray-500">
-                      Bình thường: 4.0-8.0 (4.0 chua - 8.0 kiềm)
-                    </small>
-                  </div>
-
-                  <div className="p-4 bg-gray-50 rounded-xl">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      ANA
-                    </label>
-                    <label className="flex items-center space-x-3">
-                      <input
-                        type="checkbox"
-                        checked={ckdFormData.ana}
-                        onChange={(e) =>
-                          setCkdFormData({
-                            ...ckdFormData,
-                            ana: e.target.checked,
-                          })
-                        }
-                        className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                      />
-                      <span className="text-sm font-medium text-gray-700">
-                        Kháng thể kháng nhân (ANA) dương tính
-                      </span>
-                    </label>
-                  </div>
-
-                  <div className="p-4 bg-gray-50 rounded-xl">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Đái máu
-                    </label>
-                    <label className="flex items-center space-x-3">
-                      <input
-                        type="checkbox"
-                        checked={ckdFormData.hematuria}
-                        onChange={(e) =>
-                          setCkdFormData({
-                            ...ckdFormData,
-                            hematuria: e.target.checked,
-                          })
-                        }
-                        className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                      />
-                      <span className="text-sm font-medium text-gray-700">
-                        Có máu trong nước tiểu
-                      </span>
-                    </label>
-                  </div>
-                </div>
-              </div>
+              )}
             </div>
           )}
+        </div>
 
-          {/* Tab 2: Health Status */}
-          {currentTab === 2 && (
-            <div className="space-y-6">
-              <div className="flex items-center space-x-2 mb-4">
-                <span className="text-2xl">🩺</span>
-                <h3 className="text-xl font-semibold text-gray-900">
-                  Tình trạng sức khỏe hiện tại
-                </h3>
-              </div>
-
-              <div className="grid md:grid-cols-2 gap-6">
-                <div className="space-y-4">
-                  <div className="p-4 bg-gray-50 rounded-xl">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Huyết áp (mmHg) *
-                    </label>
-                    <div className="flex items-center space-x-2">
+        {/* Tab Content */}
+        <div className="min-h-[500px]">
+          {/* Tab 1: Lab Results & Health Status */}
+          {currentTab === 1 && (
+            <div className="space-y-8">
+              {/* Chỉ số Section */}
+              <div className="space-y-4">
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div className="space-y-3">
+                    <div className="p-3 bg-gray-50 rounded-lg">
+                      <label className="block text-xs font-medium text-gray-700 mb-1.5">
+                        Creatinin huyết thanh (mg/dL) *
+                      </label>
                       <input
                         type="number"
-                        value={ckdFormData.blood_pressure_systolic}
+                        step="0.1"
+                        value={ckdFormData.serum_creatinine}
                         onChange={(e) =>
                           setCkdFormData({
                             ...ckdFormData,
-                            blood_pressure_systolic: parseInt(e.target.value),
+                            serum_creatinine: parseFloat(e.target.value),
                           })
                         }
-                        placeholder="120"
-                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="VD: 1.8"
+                        className="w-full px-2.5 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
                         required
                       />
-                      <span className="text-gray-500">/</span>
+                      <small className="text-gray-500 text-xs mt-1 block">
+                        Bình thường: 0.6-1.2 mg/dL
+                      </small>
+                    </div>
+
+                    <div className="p-3 bg-gray-50 rounded-lg">
+                      <label className="block text-xs font-medium text-gray-700 mb-1.5">
+                        eGFR (mL/min/1.73m²) *
+                      </label>
                       <input
                         type="number"
-                        value={ckdFormData.blood_pressure_diastolic}
+                        value={ckdFormData.gfr}
                         onChange={(e) =>
                           setCkdFormData({
                             ...ckdFormData,
-                            blood_pressure_diastolic: parseInt(e.target.value),
+                            gfr: parseInt(e.target.value),
                           })
                         }
-                        placeholder="80"
-                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="VD: 45"
+                        className="w-full px-2.5 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
                         required
+                      />
+                      <small className="text-gray-500 text-xs mt-1 block">
+                        Bình thường: &gt;90 mL/min/1.73m²
+                      </small>
+                    </div>
+
+                    <div className="p-3 bg-gray-50 rounded-lg">
+                      <label className="block text-xs font-medium text-gray-700 mb-1.5">
+                        Ure máu (BUN) (mg/dL) *
+                      </label>
+                      <input
+                        type="number"
+                        value={ckdFormData.bun}
+                        onChange={(e) =>
+                          setCkdFormData({
+                            ...ckdFormData,
+                            bun: parseInt(e.target.value),
+                          })
+                        }
+                        placeholder="VD: 28"
+                        className="w-full px-2.5 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                        required
+                      />
+                      <small className="text-gray-500 text-xs mt-1 block">
+                        Bình thường: 7-20 mg/dL
+                      </small>
+                    </div>
+
+                    <div className="p-3 bg-gray-50 rounded-lg">
+                      <label className="block text-xs font-medium text-gray-700 mb-1.5">
+                        Canxi huyết thanh (mg/dL) *
+                      </label>
+                      <input
+                        type="number"
+                        step="0.1"
+                        value={ckdFormData.serum_calcium}
+                        onChange={(e) =>
+                          setCkdFormData({
+                            ...ckdFormData,
+                            serum_calcium: parseFloat(e.target.value),
+                          })
+                        }
+                        placeholder="VD: 9.5"
+                        className="w-full px-2.5 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                        required
+                      />
+                      <small className="text-gray-500 text-xs mt-1 block">
+                        Bình thường: 8.5-10.5 mg/dL
+                      </small>
+                    </div>
+
+                    <div className="p-3 bg-gray-50 rounded-lg">
+                      <label className="block text-xs font-medium text-gray-700 mb-1.5">
+                        Huyết áp (mmHg) *
+                      </label>
+                      <div className="grid grid-cols-2 gap-2 mb-1">
+                        <div>
+                          <label className="block text-xs text-gray-600 mb-1">
+                            Tâm thu
+                          </label>
+                          <input
+                            type="number"
+                            value={ckdFormData.blood_pressure_systolic}
+                            onChange={(e) =>
+                              setCkdFormData({
+                                ...ckdFormData,
+                                blood_pressure_systolic: parseInt(
+                                  e.target.value
+                                ),
+                              })
+                            }
+                            placeholder="120"
+                            className="w-full px-2.5 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-600 mb-1">
+                            Tâm trương
+                          </label>
+                          <input
+                            type="number"
+                            value={ckdFormData.blood_pressure_diastolic}
+                            onChange={(e) =>
+                              setCkdFormData({
+                                ...ckdFormData,
+                                blood_pressure_diastolic: parseInt(
+                                  e.target.value
+                                ),
+                              })
+                            }
+                            placeholder="80"
+                            className="w-full px-2.5 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                            required
+                          />
+                        </div>
+                      </div>
+                      <small className="text-gray-500 text-xs">
+                        Bình thường: &lt;130/80 mmHg
+                      </small>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <div className="p-3 bg-gray-50 rounded-lg">
+                      <label className="block text-xs font-medium text-gray-700 mb-1.5">
+                        Bổ thể C3/C4 (mg/dL)
+                      </label>
+                      <input
+                        type="number"
+                        value={ckdFormData.c3_c4}
+                        onChange={(e) =>
+                          setCkdFormData({
+                            ...ckdFormData,
+                            c3_c4: parseInt(e.target.value),
+                          })
+                        }
+                        placeholder="VD: 120"
+                        className="w-full px-2.5 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                      />
+                      <small className="text-gray-500 text-xs mt-1 block">
+                        Bình thường: 90-180 mg/dL
+                      </small>
+                    </div>
+
+                    <div className="p-3 bg-gray-50 rounded-lg">
+                      <label className="block text-xs font-medium text-gray-700 mb-1.5">
+                        Nồng độ oxalat (mg/day)
+                      </label>
+                      <input
+                        type="number"
+                        step="0.1"
+                        value={ckdFormData.oxalate_levels}
+                        onChange={(e) =>
+                          setCkdFormData({
+                            ...ckdFormData,
+                            oxalate_levels: parseFloat(e.target.value),
+                          })
+                        }
+                        placeholder="VD: 2.5"
+                        className="w-full px-2.5 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
                       />
                     </div>
-                    <small className="text-gray-500">
-                      Bình thường: &lt;130/80 mmHg
-                    </small>
-                  </div>
 
-                  <div className="p-4 bg-gray-50 rounded-xl">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Lượng nước uống hàng ngày (L) *
-                    </label>
-                    <input
-                      type="number"
-                      min="0.5"
-                      max="5"
-                      step="0.1"
-                      value={ckdFormData.water_intake}
-                      onChange={(e) =>
-                        setCkdFormData({
-                          ...ckdFormData,
-                          water_intake: parseFloat(e.target.value),
-                        })
-                      }
-                      placeholder="2.0"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      required
-                    />
-                    <small className="text-gray-500">
-                      Khuyến nghị: 2-3L/ngày
-                    </small>
-                  </div>
-                </div>
+                    <div className="p-3 bg-gray-50 rounded-lg">
+                      <label className="block text-xs font-medium text-gray-700 mb-1.5">
+                        pH nước tiểu
+                      </label>
+                      <input
+                        type="number"
+                        min="4"
+                        max="8"
+                        step="0.1"
+                        value={ckdFormData.urine_ph}
+                        onChange={(e) =>
+                          setCkdFormData({
+                            ...ckdFormData,
+                            urine_ph: parseFloat(e.target.value),
+                          })
+                        }
+                        placeholder="VD: 6.0"
+                        className="w-full px-2.5 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                      />
+                      <small className="text-gray-500 text-xs mt-1 block">
+                        Bình thường: 4.0-8.0 (4.0 chua - 8.0 kiềm)
+                      </small>
+                    </div>
 
-                <div className="space-y-4">
-                  <div className="p-4 bg-gray-50 rounded-xl">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Thời gian theo dõi bệnh (tháng)
-                    </label>
-                    <input
-                      type="number"
-                      value={ckdFormData.months}
-                      onChange={(e) =>
-                        setCkdFormData({
-                          ...ckdFormData,
-                          months: parseInt(e.target.value),
-                        })
-                      }
-                      placeholder="6"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
+                    <div className="p-3 bg-gray-50 rounded-lg">
+                      <label className="block text-xs font-medium text-gray-700 mb-1.5">
+                        Lượng nước uống hàng ngày (L) *
+                      </label>
+                      <input
+                        type="number"
+                        min="0.5"
+                        max="5"
+                        step="0.1"
+                        value={ckdFormData.water_intake}
+                        onChange={(e) =>
+                          setCkdFormData({
+                            ...ckdFormData,
+                            water_intake: parseFloat(e.target.value),
+                          })
+                        }
+                        placeholder="2.0"
+                        className="w-full px-2.5 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                        required
+                      />
+                      <small className="text-gray-500 text-xs mt-1 block">
+                        Khuyến nghị: 2-3L/ngày
+                      </small>
+                    </div>
 
-                  <div className="p-4 bg-gray-50 rounded-xl">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Nhóm phân loại (Cluster)
-                    </label>
-                    <select
-                      value={ckdFormData.cluster}
-                      onChange={(e) =>
-                        setCkdFormData({
-                          ...ckdFormData,
-                          cluster: parseInt(e.target.value),
-                        })
-                      }
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value={0}>Cluster 0 - Nguy cơ thấp</option>
-                      <option value={1}>Cluster 1 - Nguy cơ trung bình</option>
-                      <option value={2}>Cluster 2 - Nguy cơ cao</option>
-                      <option value={3}>Cluster 3 - Nguy cơ rất cao</option>
-                      <option value={4}>
-                        Cluster 4 - Cần theo dõi đặc biệt
-                      </option>
-                    </select>
+                    <div className="p-3 bg-gray-50 rounded-lg">
+                      <label className="block text-xs font-medium text-gray-700 mb-1.5">
+                        ANA
+                      </label>
+                      <label className="flex items-center space-x-2 cursor-pointer group">
+                        <input
+                          type="checkbox"
+                          checked={ckdFormData.ana}
+                          onChange={(e) =>
+                            setCkdFormData({
+                              ...ckdFormData,
+                              ana: e.target.checked,
+                            })
+                          }
+                          className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                        />
+                        <span className="text-xs font-medium text-gray-700 group-hover:text-gray-900">
+                          Kháng thể kháng nhân (ANA) dương tính
+                        </span>
+                      </label>
+                    </div>
+
+                    <div className="p-3 bg-gray-50 rounded-lg">
+                      <label className="block text-xs font-medium text-gray-700 mb-1.5">
+                        Đái máu
+                      </label>
+                      <label className="flex items-center space-x-2 cursor-pointer group">
+                        <input
+                          type="checkbox"
+                          checked={ckdFormData.hematuria}
+                          onChange={(e) =>
+                            setCkdFormData({
+                              ...ckdFormData,
+                              hematuria: e.target.checked,
+                            })
+                          }
+                          className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                        />
+                        <span className="text-xs font-medium text-gray-700 group-hover:text-gray-900">
+                          Có máu trong nước tiểu
+                        </span>
+                      </label>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
           )}
 
-          {/* Tab 3: Lifestyle */}
-          {currentTab === 3 && (
+          {/* Tab 2: Lifestyle */}
+          {currentTab === 2 && (
             <div className="space-y-6">
-              <div className="flex items-center space-x-2 mb-4">
-                <span className="text-2xl">🏃‍♂️</span>
-                <h3 className="text-xl font-semibold text-gray-900">
-                  Thông tin lối sống
-                </h3>
-              </div>
-
               <div className="grid md:grid-cols-2 gap-6">
                 <div className="space-y-4">
                   <div className="p-4 bg-gray-50 rounded-xl">
@@ -1348,16 +1287,9 @@ export function AIAssistantPage({ user, onNavigate }: AIAssistantPageProps) {
             </div>
           )}
 
-          {/* Tab 4: Medical History & Psychology */}
-          {currentTab === 4 && (
+          {/* Tab 3: Medical History & Psychology */}
+          {currentTab === 3 && (
             <div className="space-y-6">
-              <div className="flex items-center space-x-2 mb-4">
-                <span className="text-2xl">👨‍👩‍👧‍👦</span>
-                <h3 className="text-xl font-semibold text-gray-900">
-                  Tiền sử bệnh & tình trạng tâm lý
-                </h3>
-              </div>
-
               <div className="grid md:grid-cols-2 gap-6">
                 <div className="space-y-4">
                   <div className="p-4 bg-gray-50 rounded-xl">
@@ -1493,16 +1425,9 @@ export function AIAssistantPage({ user, onNavigate }: AIAssistantPageProps) {
             </div>
           )}
 
-          {/* Tab 5: Results */}
-          {currentTab === 5 && predictionResult && (
+          {/* Tab 4: Results */}
+          {currentTab === 4 && predictionResult && (
             <div className="space-y-6">
-              <div className="flex items-center space-x-2 mb-6">
-                <span className="text-2xl">📊</span>
-                <h3 className="text-xl font-semibold text-gray-900">
-                  Kết quả dự đoán bệnh thận
-                </h3>
-              </div>
-
               {/* 2-Column Layout: Stage Card + Recommendations */}
               <div className="grid lg:grid-cols-2 gap-6">
                 {/* Left Column: CKD Stage Card */}
@@ -1575,7 +1500,10 @@ export function AIAssistantPage({ user, onNavigate }: AIAssistantPageProps) {
                         Độ chính xác của dự đoán
                       </span>
                       <span className="text-lg font-bold">
-                        {(Math.floor(predictionResult.percentage * 100) / 100).toFixed(2)}% ✅
+                        {(
+                          Math.floor(predictionResult.percentage * 100) / 100
+                        ).toFixed(2)}
+                        % ✅
                       </span>
                     </div>
                     <div className="w-full bg-white/20 rounded-full h-2.5">
@@ -1634,26 +1562,27 @@ export function AIAssistantPage({ user, onNavigate }: AIAssistantPageProps) {
                   onClick={resetPrediction}
                   className="flex items-center space-x-2 px-6 py-3 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-colors"
                 >
-                  <span>🔄 Làm lại</span>
+                  <RotateCcw className="w-4 h-4" />
+                  <span>Làm lại</span>
                 </button>
-                <button className="flex items-center space-x-2 px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors">
+                <button className="flex items-center space-x-2 px-6 py-3 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-colors">
                   <FileText className="w-4 h-4" />
-                  <span>📄 In kết quả</span>
+                  <span>In kết quả</span>
                 </button>
                 <button
                   onClick={handleBookAppointment}
-                  className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-green-500 text-white rounded-xl hover:from-blue-600 hover:to-green-600 transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+                  className="flex items-center space-x-2 px-6 py-3 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-colors"
                 >
                   <Calendar className="w-4 h-4" />
-                  <span>📅 Đặt khám bác sĩ</span>
+                  <span>Đặt lịch khám</span>
                 </button>
               </div>
             </div>
           )}
         </div>
 
-        {/* Navigation Buttons - Only show for steps 1-4 */}
-        {currentTab < 5 && (
+        {/* Navigation Buttons - Only show for steps 1-3 */}
+        {currentTab < 4 && (
           <div className="flex justify-between items-center mt-8 pt-6 border-t border-gray-200">
             <button
               onClick={prevTab}
@@ -1664,7 +1593,7 @@ export function AIAssistantPage({ user, onNavigate }: AIAssistantPageProps) {
               <span>Quay lại</span>
             </button>
 
-            {currentTab < 4 ? (
+            {currentTab < 3 ? (
               <button
                 onClick={nextTab}
                 disabled={!validateCurrentTab()}
@@ -1716,7 +1645,7 @@ export function AIAssistantPage({ user, onNavigate }: AIAssistantPageProps) {
     </div>
   );
   return (
-    <div className="h-full bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 pt-3 px-4 pb-4 lg:pt-4 lg:px-6 lg:pb-6 overflow-auto">
+    <div className="h-full bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 pt-1 px-4 pb-4 lg:pt-2 lg:px-6 lg:pb-6 overflow-auto">
       {renderCKDPrediction()}
     </div>
   );

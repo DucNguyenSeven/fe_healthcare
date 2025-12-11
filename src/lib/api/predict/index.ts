@@ -6,9 +6,9 @@
  * - POST /api/v1/predicts/create-predict (Gateway - Save history to DB port 8080)
  */
 
-import { api } from '../client';  // Gateway client for saving history
-import { createAIClient } from '../createAIClient';  // AI Service client for predictions
-import type { PredictCurrentTrendsResponse } from '@/types/predict';
+import { api } from "../client"; // Gateway client for saving history
+import { createAIClient } from "../createAIClient"; // AI Service client for predictions
+import type { PredictCurrentTrendsResponse } from "@/types/predict";
 
 const aiClient = createAIClient();
 
@@ -25,8 +25,6 @@ export interface CKDPredictionRequest {
   urine_ph: number;
   blood_pressure: number;
   water_intake: number;
-  months: number;
-  cluster: number;
   physical_activity: string; // 'daily' | 'weekly' | 'rarely'
   diet: string; // 'high protein' | 'low salt' | 'balanced'
   smoking: string; // 'yes' | 'no'
@@ -107,9 +105,11 @@ export interface GetPredictResponse {
  * @param request - Request chứa 21 health metrics
  * @returns Response chứa predicted stage, confidence, recommendations
  */
-export async function predictCKD(request: CKDPredictionRequest): Promise<CKDPredictionResponse> {
+export async function predictCKD(
+  request: CKDPredictionRequest
+): Promise<CKDPredictionResponse> {
   const response = await aiClient.post<CKDPredictionResponse>(
-    '/api/v1/analysis/ckd-prediction',
+    "/api/v1/analysis/ckd-prediction",
     request
   );
   return response.data;
@@ -122,9 +122,11 @@ export async function predictCKD(request: CKDPredictionRequest): Promise<CKDPred
  * @param request - Request chứa kết quả dự đoán và health metrics
  * @returns Response chứa id và thông tin đã lưu
  */
-export async function savePredictHistory(request: SavePredictHistoryRequest): Promise<SavePredictHistoryResponse> {
+export async function savePredictHistory(
+  request: SavePredictHistoryRequest
+): Promise<SavePredictHistoryResponse> {
   const response = await api.post<SavePredictHistoryResponse>(
-    '/api/v1/predicts/create-predict',
+    "/api/v1/predicts/create-predict",
     request
   );
   return response.data;
@@ -137,7 +139,9 @@ export async function savePredictHistory(request: SavePredictHistoryRequest): Pr
  * @param patientId - ID của bệnh nhân
  * @returns Response chứa thông tin dự đoán và health metrics
  */
-export async function getPredict(patientId: string): Promise<GetPredictResponse> {
+export async function getPredict(
+  patientId: string
+): Promise<GetPredictResponse> {
   const response = await api.get<GetPredictResponse>(
     `/api/v1/predicts/get-predict/${patientId}`
   );
@@ -165,7 +169,7 @@ export async function getPredictCurrentTrends(
   }
 ): Promise<PredictCurrentTrendsResponse> {
   const response = await aiClient.post<PredictCurrentTrendsResponse>(
-    '/api/v1/analysis/predict-current-trends',
+    "/api/v1/analysis/predict-current-trends",
     {
       predictId: predictData.predictId,
       patientId: patientId,
@@ -173,7 +177,7 @@ export async function getPredictCurrentTrends(
       recommendations: predictData.recommendations,
       confidence: predictData.confidence,
       createdAt: predictData.createdAt,
-      updatedAt: predictData.updatedAt
+      updatedAt: predictData.updatedAt,
     }
   );
 
@@ -181,7 +185,7 @@ export async function getPredictCurrentTrends(
   const data = response.data;
   return {
     trend: data.trend,
-    metricComparisons: data.metricComparisons || []
+    metricComparisons: data.metricComparisons || [],
   };
 }
 
@@ -189,5 +193,5 @@ export default {
   predictCKD,
   savePredictHistory,
   getPredict,
-  getPredictCurrentTrends
+  getPredictCurrentTrends,
 };
