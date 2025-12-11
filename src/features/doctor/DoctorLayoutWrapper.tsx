@@ -3,7 +3,7 @@
 import React, { useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Menu, Bell, User, Home, Users, Calendar, Video, Clock, BookOpen, MessageSquare, Activity, ChevronRight } from 'lucide-react'
+import { Menu, User, Home, Users, Calendar, Clock, BookOpen, MessageSquare, Activity, ChevronRight } from 'lucide-react'
 import { useLogout } from '@/hooks/auth/useLogout'
 import { useGetMe } from '@/hooks/auth/useGetMe'
 import { toast } from 'sonner'
@@ -12,7 +12,7 @@ interface DoctorLayoutWrapperProps {
   children: React.ReactNode
 }
 
-type DoctorNavigationItem = 'dashboard' | 'profile' | 'patients' | 'appointments' | 'consultation' | 'schedule' | 'forum'
+type DoctorNavigationItem = 'dashboard' | 'profile' | 'patients' | 'appointments' | 'schedule' | 'forum'
 
 const navigationItems = [{
   id: 'dashboard',
@@ -30,10 +30,6 @@ const navigationItems = [{
   id: 'appointments',
   label: 'Lịch hẹn',
   icon: Calendar
-}, {
-  id: 'consultation',
-  label: 'Tư vấn trực tuyến',
-  icon: Video
 }, {
   id: 'schedule',
   label: 'Lịch làm việc',
@@ -67,7 +63,6 @@ export function DoctorLayoutWrapper({ children }: DoctorLayoutWrapperProps) {
     if (pathname.includes('/profile')) return 'profile'
     if (pathname.includes('/patients')) return 'patients'
     if (pathname.includes('/appointments')) return 'appointments'
-    if (pathname.includes('/consultation')) return 'consultation'
     if (pathname.includes('/schedule')) return 'schedule'
     if (pathname.includes('/forum')) return 'forum'
     return 'dashboard' // default
@@ -82,7 +77,6 @@ export function DoctorLayoutWrapper({ children }: DoctorLayoutWrapperProps) {
       profile: '/doctor/profile',
       patients: '/doctor/patients',
       appointments: '/doctor/appointments',
-      consultation: '/doctor/consultation',
       schedule: '/doctor/schedule',
       forum: '/doctor/forum'
     }
@@ -160,14 +154,9 @@ export function DoctorLayoutWrapper({ children }: DoctorLayoutWrapperProps) {
                 {navigationItems.find(item => item.id === activeTab)?.label}
               </h1>
             </div>
-            {/* Hide notification bell and user info when on profile page, but keep header height */}
+            {/* Hide user info when on profile page, but keep header height */}
             {activeTab !== 'profile' ? (
               <div className="flex items-center space-x-4">
-                <button className="relative p-2 rounded-lg hover:bg-gray-100 transition-colors">
-                  <Bell className="w-5 h-5 text-gray-600" />
-                  <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"></span>
-                </button>
-                
                 {/* User Profile in Header - Real data from API */}
                 <div className="flex items-center space-x-3">
                   {userData?.avatarUrl ? (
@@ -189,9 +178,6 @@ export function DoctorLayoutWrapper({ children }: DoctorLayoutWrapperProps) {
             ) : (
               <div className="flex items-center space-x-4">
                 {/* Invisible elements to maintain exact same height as when visible */}
-                <div className="p-2 opacity-0 pointer-events-none">
-                  <Bell className="w-5 h-5" />
-                </div>
                 <div className="flex items-center space-x-3 opacity-0 pointer-events-none">
                   <div className="w-8 h-8 rounded-full"></div>
                   <span className="text-sm font-medium">BS. Placeholder</span>
