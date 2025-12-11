@@ -1,9 +1,9 @@
-'use client';
+"use client";
 
-import React, { useState } from 'react';
-import { Check, FileText, PenLine } from 'lucide-react';
-import { useGetMe } from '@/hooks/auth/useGetMe';
-import { toast } from 'sonner';
+import React, { useState } from "react";
+import { Check, FileText, PenLine } from "lucide-react";
+import { useGetMe } from "@/hooks/auth/useGetMe";
+import { toast } from "sonner";
 
 interface SignaturePadProps {
   onSignatureSaved: (doctorName: string) => void;
@@ -17,20 +17,22 @@ export const SignaturePad: React.FC<SignaturePadProps> = ({
   initialSignatureUrl,
 }) => {
   const [isSigned, setIsSigned] = useState(!!initialSignatureUrl);
-  const [doctorName, setDoctorName] = useState<string | null>(initialSignatureUrl || null);
+  const [doctorName, setDoctorName] = useState<string | null>(
+    initialSignatureUrl || null
+  );
 
   const { data: me } = useGetMe();
 
   const handleSign = () => {
     if (!me?.fullName) {
-      toast.error('Không tìm thấy thông tin bác sĩ');
+      toast.error("Không tìm thấy thông tin bác sĩ");
       return;
     }
 
     setDoctorName(me.fullName);
     setIsSigned(true);
     onSignatureSaved(me.fullName);
-    toast.success('Đã ký xác nhận thành công');
+    toast.success("Đã ký xác nhận thành công");
   };
 
   const handleUnsign = () => {
@@ -41,16 +43,20 @@ export const SignaturePad: React.FC<SignaturePadProps> = ({
   return (
     <div className="bg-white rounded-2xl shadow-[0_10px_24px_rgba(16,24,40,0.08)] p-8 mt-6">
       <h4 className="font-semibold text-[#0F172A] mb-4 flex items-center gap-2">
-        <FileText className="w-5 h-5 text-blue-600" />
+        {/* <FileText className="w-5 h-5 text-blue-600" /> */}
         Chữ ký xác nhận
         <span className="text-red-500">*</span>
       </h4>
 
       <div className="space-y-4">
         {/* Signature Display Area */}
-        <div className={`relative border-2 rounded-xl p-6 min-h-[120px] flex items-center justify-center transition-colors ${
-          isSigned ? 'border-green-300 bg-green-50' : 'border-gray-200 bg-gray-50'
-        }`}>
+        <div
+          className={`relative border-2 rounded-xl p-6 min-h-[120px] flex items-center justify-center transition-colors ${
+            isSigned
+              ? "border-green-300 bg-green-50"
+              : "border-gray-200 bg-gray-50"
+          }`}
+        >
           {isSigned && doctorName ? (
             <div className="text-center">
               <p className="text-sm text-gray-600 mb-2">Bác sĩ điều trị</p>
