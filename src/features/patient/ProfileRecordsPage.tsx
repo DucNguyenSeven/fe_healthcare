@@ -394,10 +394,40 @@ export function ProfileRecordsPage(_props: ProfileRecordsPageProps = {}) {
           updateData.weight = weightNum;
         }
       }
+      
+      // Blood type: optional - only send if patient knows and provides it
       if (formData.bloodType && formData.bloodType.trim()) {
         updateData.bloodType = formData.bloodType.trim();
       }
-      if (formData.bmi && formData.bmi.trim()) {
+      
+      // BMI: auto-calculated from height and weight, or manually entered
+      // If height and weight are valid but BMI is missing, recalculate it
+      if (formData.height && formData.weight) {
+        const heightNum = parseFloat(formData.height);
+        const weightNum = parseFloat(formData.weight);
+        if (!isNaN(heightNum) && heightNum > 0 && !isNaN(weightNum) && weightNum > 0) {
+          // If BMI exists and is valid, use it; otherwise recalculate
+          if (formData.bmi && formData.bmi.trim()) {
+            const bmiNum = parseFloat(formData.bmi);
+            if (!isNaN(bmiNum) && bmiNum > 0) {
+              updateData.bmi = bmiNum;
+            } else {
+              // Recalculate if existing BMI is invalid
+              const calculatedBMI = calculateBMI(formData.height, formData.weight);
+              if (calculatedBMI) {
+                updateData.bmi = parseFloat(calculatedBMI);
+              }
+            }
+          } else {
+            // Calculate BMI if not present
+            const calculatedBMI = calculateBMI(formData.height, formData.weight);
+            if (calculatedBMI) {
+              updateData.bmi = parseFloat(calculatedBMI);
+            }
+          }
+        }
+      } else if (formData.bmi && formData.bmi.trim()) {
+        // If only BMI is provided without height/weight, send it
         const bmiNum = parseFloat(formData.bmi);
         if (!isNaN(bmiNum) && bmiNum > 0) {
           updateData.bmi = bmiNum;
