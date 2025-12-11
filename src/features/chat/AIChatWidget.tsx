@@ -53,7 +53,13 @@ export function AIChatWidget() {
         },
       ];
     }
-    return [...allMessages[currentAIGroupId]];
+    // Sort messages by timestamp to ensure correct chronological order
+    const sortedMessages = [...allMessages[currentAIGroupId]].sort((a, b) => {
+      const timeA = new Date(a.timestamp).getTime();
+      const timeB = new Date(b.timestamp).getTime();
+      return timeA - timeB; // Oldest first
+    });
+    return sortedMessages;
   }, [currentAIGroupId, allMessages]);
 
   // Handlers

@@ -1,20 +1,25 @@
-'use client'
+"use client";
 
-import React from 'react'
-import { MessageCircle } from 'lucide-react'
-import { motion } from 'framer-motion'
+import React from "react";
+import { MessageCircle } from "lucide-react";
+import { motion } from "framer-motion";
 
 interface ChatButtonProps {
-  unreadCount: number
-  onClick: () => void
-  isOpen: boolean
-  isExpanded?: boolean
+  unreadCount: number;
+  onClick: () => void;
+  isOpen: boolean;
+  isExpanded?: boolean;
 }
 
-export function ChatButton({ unreadCount, onClick, isOpen, isExpanded = false }: ChatButtonProps) {
+export function ChatButton({
+  unreadCount,
+  onClick,
+  isOpen,
+  isExpanded = false,
+}: ChatButtonProps) {
   // Hide button when expanded to prevent blocking send button
   if (isExpanded) {
-    return null
+    return null;
   }
 
   return (
@@ -23,9 +28,10 @@ export function ChatButton({ unreadCount, onClick, isOpen, isExpanded = false }:
       className={`
         fixed bottom-6 right-4 w-14 h-14 rounded-full shadow-lg
         flex items-center justify-center transition-all duration-200
-        ${isOpen
-          ? 'bg-gray-500 hover:bg-gray-600'
-          : 'bg-blue-600 hover:bg-blue-700'
+        ${
+          isOpen
+            ? "bg-gray-500 hover:bg-gray-600"
+            : "bg-blue-600 hover:bg-blue-700"
         }
         z-[9999]
       `}
@@ -36,7 +42,7 @@ export function ChatButton({ unreadCount, onClick, isOpen, isExpanded = false }:
       transition={{
         type: "spring",
         stiffness: 260,
-        damping: 20
+        damping: 20,
       }}
     >
       <MessageCircle className="w-6 h-6 text-white" />
@@ -50,10 +56,10 @@ export function ChatButton({ unreadCount, onClick, isOpen, isExpanded = false }:
           transition={{ delay: 0.2 }}
         >
           <span className="text-white text-xs font-medium px-1">
-            {unreadCount > 99 ? '99+' : unreadCount}
+            {unreadCount > 99 ? "99+" : unreadCount}
           </span>
         </motion.div>
       )}
     </motion.button>
-  )
+  );
 }
