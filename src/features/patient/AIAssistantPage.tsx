@@ -1565,10 +1565,11 @@ export function AIAssistantPage({ user, onNavigate }: AIAssistantPageProps) {
                   <RotateCcw className="w-4 h-4" />
                   <span>Làm lại</span>
                 </button>
-                <button className="flex items-center space-x-2 px-6 py-3 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-colors">
+                {/* TODO: Implement print results functionality */}
+                {/* <button className="flex items-center space-x-2 px-6 py-3 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-colors">
                   <FileText className="w-4 h-4" />
                   <span>In kết quả</span>
-                </button>
+                </button> */}
                 <button
                   onClick={handleBookAppointment}
                   className="flex items-center space-x-2 px-6 py-3 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-colors"
