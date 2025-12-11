@@ -1549,98 +1549,129 @@ export const AppointmentAndConsultationModule = ({
                     {/* Data State */}
                     {!predictLoading && !predictError && predictData ? (
                       <>
-                        <div className="bg-gradient-to-r from-[#F59E0B]/10 to-[#F57C00]/10 border border-[#F59E0B]/20 rounded-2xl p-6">
-                          <div className="flex items-center gap-3 mb-4">
-                            <div className="w-10 h-10 bg-gradient-to-r from-[#F59E0B] to-[#F57C00] rounded-full flex items-center justify-center">
-                              <AlertTriangle className="w-5 h-5 text-white" />
-                            </div>
-                            <div>
-                              <h4 className="text-lg font-bold text-[#0F172A]">
-                                Giai đoạn CKD: {predictData.stage} - Độ tin cậy:{" "}
-                                {(predictData.confidence * 100).toFixed(1)}%
-                              </h4>
-                              <p className="text-[#334155]">
-                                {predictData.stage === 1 &&
-                                  "Giai đoạn 1: Tổn thương thận nhưng chức năng thận bình thường"}
-                                {predictData.stage === 2 &&
-                                  "Giai đoạn 2: Suy giảm nhẹ chức năng thận"}
-                                {predictData.stage === 3 &&
-                                  "Giai đoạn 3: Suy giảm trung bình chức năng thận"}
-                                {predictData.stage === 4 &&
-                                  "Giai đoạn 4: Suy giảm nặng chức năng thận"}
-                                {predictData.stage === 5 &&
-                                  "Giai đoạn 5: Suy thận giai đoạn cuối"}
+                        {/* Main Prediction Card */}
+                        <div
+                          className={`rounded-2xl p-6 text-white shadow-lg ${
+                            predictData.stage <= 1
+                              ? "bg-gradient-to-br from-green-500 to-green-600"
+                              : predictData.stage === 2
+                                ? "bg-gradient-to-br from-yellow-500 to-yellow-600"
+                                : predictData.stage === 3
+                                  ? "bg-gradient-to-br from-orange-500 to-orange-600"
+                                  : "bg-gradient-to-br from-red-500 to-red-600"
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex-1">
+                              <p className="text-sm font-medium text-white/90 mb-2">
+                                🏥 TÌNH TRẠNG THẬN CỦA BỆNH NHÂN
                               </p>
+                              <div className="flex items-baseline space-x-4">
+                                <div className="flex items-center space-x-3">
+                                  <span className="text-5xl">
+                                    {predictData.stage <= 1
+                                      ? "🟢"
+                                      : predictData.stage === 2
+                                        ? "🟡"
+                                        : predictData.stage === 3
+                                          ? "🟠"
+                                          : "🔴"}
+                                  </span>
+                                  <div>
+                                    <div className="flex items-baseline space-x-2">
+                                      <span className="text-6xl font-bold tracking-tight">
+                                        {predictData.stage}
+                                      </span>
+                                      <span className="text-2xl font-semibold text-white/90">
+                                        / 5
+                                      </span>
+                                    </div>
+                                    <p className="text-sm text-white/80 mt-1">
+                                      GIAI ĐOẠN
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+                              <p className="mt-4 text-white/95 font-medium text-lg">
+                                {predictData.stage === 1 &&
+                                  "Giai đoạn 1: Tổn thương thận với GFR bình thường (≥90)"}
+                                {predictData.stage === 2 &&
+                                  "Giai đoạn 2: Suy giảm nhẹ chức năng thận (60-89)"}
+                                {predictData.stage === 3 &&
+                                  "Giai đoạn 3: Suy giảm trung bình chức năng thận (30-59)"}
+                                {predictData.stage === 4 &&
+                                  "Giai đoạn 4: Suy giảm nặng chức năng thận (15-29)"}
+                                {predictData.stage === 5 &&
+                                  "Giai đoạn 5: Suy thận giai đoạn cuối (<15)"}
+                              </p>
+                              <p className="mt-2 text-sm text-white/80">
+                                {predictData.stage <= 1
+                                  ? "Thận hoạt động tốt (≥90%)"
+                                  : predictData.stage === 2
+                                    ? "Thận hoạt động ở mức 60-89%"
+                                    : predictData.stage === 3
+                                      ? "Thận hoạt động ở mức 30-59%"
+                                      : "Thận hoạt động dưới 30%"}
+                              </p>
+                            </div>
+                            <div className="hidden md:block">
+                              <div className="w-32 h-32 bg-white/10 backdrop-blur-sm rounded-2xl flex items-center justify-center">
+                                <span className="text-7xl">🏥</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Confidence Score */}
+                          <div className="mt-6 pt-6 border-t border-white/20">
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-sm font-medium text-white/90">
+                                Độ chính xác của dự đoán
+                              </span>
+                              <span className="text-lg font-bold">
+                                {(
+                                  Math.floor(
+                                    (predictData.confidence || 0) * 10000
+                                  ) / 100
+                                ).toFixed(2)}
+                                % ✅
+                              </span>
+                            </div>
+                            <div className="w-full bg-white/20 rounded-full h-2.5">
+                              <div
+                                className="h-2.5 rounded-full bg-white transition-all duration-500"
+                                style={{
+                                  width: `${(predictData.confidence || 0) * 100}%`,
+                                }}
+                              ></div>
                             </div>
                           </div>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                          <div className="bg-white border border-gray-200 rounded-2xl p-6">
-                            <h4 className="text-lg font-semibold text-[#0F172A] mb-4 flex items-center gap-2">
-                              <Activity className="w-5 h-5 text-[#1E75FF]" />
-                              <span>Các chỉ số sức khỏe</span>
-                            </h4>
-                            <div className="space-y-3">
-                              {predictData.healthMetrics &&
-                              predictData.healthMetrics.length > 0 ? (
-                                predictData.healthMetrics.map(
-                                  (metric, index) => (
-                                    <div
-                                      key={metric.metricId || index}
-                                      className="flex items-center justify-between p-3 bg-gray-50 rounded-xl"
-                                    >
-                                      <div>
-                                        <p className="font-medium text-[#0F172A]">
-                                          {metric.metricName}
-                                        </p>
-                                        <p className="text-sm text-[#334155]">
-                                          {metric.metricValue} {metric.unit}
-                                        </p>
-                                      </div>
-                                      <div className="text-xs text-[#64748B]">
-                                        {new Date(
-                                          metric.measuredAt
-                                        ).toLocaleDateString("vi-VN")}
-                                      </div>
-                                    </div>
-                                  )
-                                )
-                              ) : (
-                                <p className="text-sm text-[#64748B] text-center py-4">
-                                  Không có dữ liệu chỉ số
-                                </p>
-                              )}
-                            </div>
-                          </div>
-
-                          <div className="bg-white border border-gray-200 rounded-2xl p-6">
-                            <h4 className="text-lg font-semibold text-[#0F172A] mb-4 flex items-center gap-2">
-                              <Brain className="w-5 h-5 text-[#1E75FF]" />
-                              <span>Khuyến nghị từ AI</span>
-                            </h4>
-                            <div className="space-y-3">
-                              {predictData.recommendations &&
-                              predictData.recommendations.length > 0 ? (
-                                predictData.recommendations.map(
-                                  (rec, index) => (
-                                    <div
-                                      key={index}
-                                      className="flex items-start gap-3 p-3 bg-[#1E75FF]/5 rounded-xl"
-                                    >
-                                      <div className="w-2 h-2 bg-[#1E75FF] rounded-full mt-2 flex-shrink-0"></div>
-                                      <p className="text-sm text-[#334155]">
-                                        {rec}
-                                      </p>
-                                    </div>
-                                  )
-                                )
-                              ) : (
-                                <p className="text-sm text-[#64748B] text-center py-4">
-                                  Không có khuyến nghị
-                                </p>
-                              )}
-                            </div>
+                        {/* Recommendations Section */}
+                        <div className="bg-white border border-gray-200 rounded-2xl p-6">
+                          <h4 className="text-lg font-semibold text-[#0F172A] mb-4 flex items-center gap-2">
+                            <Brain className="w-5 h-5 text-[#1E75FF]" />
+                            <span>Khuyến nghị từ AI</span>
+                          </h4>
+                          <div className="space-y-3">
+                            {predictData.recommendations &&
+                            predictData.recommendations.length > 0 ? (
+                              predictData.recommendations.map((rec, index) => (
+                                <div
+                                  key={index}
+                                  className="flex items-start gap-3 p-3 bg-[#1E75FF]/5 rounded-xl"
+                                >
+                                  <div className="w-2 h-2 bg-[#1E75FF] rounded-full mt-2 flex-shrink-0"></div>
+                                  <p className="text-sm text-[#334155]">
+                                    {rec}
+                                  </p>
+                                </div>
+                              ))
+                            ) : (
+                              <p className="text-sm text-[#64748B] text-center py-4">
+                                Không có khuyến nghị
+                              </p>
+                            )}
                           </div>
                         </div>
                       </>
