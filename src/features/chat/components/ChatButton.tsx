@@ -9,6 +9,7 @@ interface ChatButtonProps {
   onClick: () => void;
   isOpen: boolean;
   isExpanded?: boolean;
+  isAIWidgetExpanded?: boolean;
 }
 
 export function ChatButton({
@@ -16,9 +17,12 @@ export function ChatButton({
   onClick,
   isOpen,
   isExpanded = false,
+  isAIWidgetExpanded = false,
 }: ChatButtonProps) {
-  // Hide button when expanded to prevent blocking send button
-  if (isExpanded) {
+  // Hide button when:
+  // 1. Own widget is expanded
+  // 2. AI widget is expanded (to prevent blocking AI chat send button)
+  if (isExpanded || isAIWidgetExpanded) {
     return null;
   }
 

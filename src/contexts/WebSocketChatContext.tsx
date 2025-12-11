@@ -57,6 +57,7 @@ interface WebSocketChatState {
   // AI Chat
   currentAIGroupId: string | null; // Track AI group for chatbot
   isAIResponding: boolean; // Track if AI is processing request
+  isAIWidgetExpanded: boolean; // Track if AI widget is in expanded mode
 }
 
 type WebSocketChatAction =
@@ -79,7 +80,8 @@ type WebSocketChatAction =
   | { type: "SET_JOINING_GROUP"; payload: boolean }
   | { type: "SET_ACTIVE_WIDGET"; payload: "none" | "doctor" | "ai" }
   | { type: "SET_AI_GROUP"; payload: string | null }
-  | { type: "SET_AI_RESPONDING"; payload: boolean };
+  | { type: "SET_AI_RESPONDING"; payload: boolean }
+  | { type: "SET_AI_WIDGET_EXPANDED"; payload: boolean };
 
 // ============ Helper Functions ============
 
@@ -355,6 +357,9 @@ function webSocketChatReducer(
     case "SET_AI_RESPONDING":
       return { ...state, isAIResponding: action.payload };
 
+    case "SET_AI_WIDGET_EXPANDED":
+      return { ...state, isAIWidgetExpanded: action.payload };
+
     default:
       return state;
   }
@@ -376,6 +381,7 @@ interface WebSocketChatContextType extends WebSocketChatState {
   markAsRead: (groupId: string) => void;
   joinConversation: (groupId: string) => Promise<void>;
   setActiveWidget: (widget: "none" | "doctor" | "ai") => void;
+  setAIWidgetExpanded: (isExpanded: boolean) => void;
 
   // AI Chat Actions
   initializeAIGroup: () => Promise<string>;
@@ -414,6 +420,7 @@ export function WebSocketChatProvider({
     activeWidget: "none",
     currentAIGroupId: null,
     isAIResponding: false,
+    isAIWidgetExpanded: false,
   });
 
   // Ref to avoid circular dependency
@@ -887,6 +894,10 @@ export function WebSocketChatProvider({
     dispatch({ type: "SET_ACTIVE_WIDGET", payload: widget });
   }, []);
 
+  const setAIWidgetExpanded = useCallback((isExpanded: boolean) => {
+    dispatch({ type: "SET_AI_WIDGET_EXPANDED", payload: isExpanded });
+  }, []);
+
   // ============ AI Chat Methods ============
 
   // Storage key for AI group
@@ -1159,6 +1170,7 @@ export function WebSocketChatProvider({
     markAsRead,
     joinConversation,
     setActiveWidget,
+    setAIWidgetExpanded,
     initializeAIGroup,
     sendAIMessage,
     reconnect,

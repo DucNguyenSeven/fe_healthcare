@@ -22,6 +22,7 @@ export function ChatWidget() {
     isLoading,
     error,
     activeWidget,
+    isAIWidgetExpanded,
     setActiveConversation,
     joinConversation,
     sendChatMessage,
@@ -128,6 +129,7 @@ export function ChatWidget() {
         onClick={handleToggleWidget}
         isOpen={view !== "collapsed"}
         isExpanded={isExpanded}
+        isAIWidgetExpanded={isAIWidgetExpanded}
       />
 
       {/* Chat Widget Window */}
