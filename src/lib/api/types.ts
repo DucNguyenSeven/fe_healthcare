@@ -44,6 +44,10 @@ export type UpdateUserRequest = {
   phone?: string;
   address?: string;
   role?: string;
+  height?: number;
+  weight?: number;
+  bloodType?: string;
+  bmi?: number;
 };
 
 export type UpdateDoctorRequest = {

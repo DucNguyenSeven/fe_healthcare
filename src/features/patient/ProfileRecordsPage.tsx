@@ -291,11 +291,45 @@ export function ProfileRecordsPage(_props: ProfileRecordsPageProps = {}) {
   //   icon: FileText
   // }
   ] as any[];
+  // Helper function to calculate BMI
+  const calculateBMI = (height: string, weight: string): string => {
+    const heightNum = parseFloat(height);
+    const weightNum = parseFloat(weight);
+    
+    // Both height and weight must be valid numbers
+    if (isNaN(heightNum) || isNaN(weightNum) || heightNum <= 0 || weightNum <= 0) {
+      return '';
+    }
+    
+    // Convert height from cm to meters
+    const heightInMeters = heightNum / 100;
+    
+    // Calculate BMI: weight (kg) / (height (m))^2
+    const bmi = weightNum / (heightInMeters * heightInMeters);
+    
+    // Round to 1 decimal place
+    return bmi.toFixed(1);
+  };
+
   const handleInputChange = (field: string, value: string) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
-    }));
+    setFormData(prev => {
+      const updated = {
+        ...prev,
+        [field]: value
+      };
+      
+      // Auto-calculate BMI when height or weight changes
+      if (field === 'height' || field === 'weight') {
+        const height = field === 'height' ? value : prev.height;
+        const weight = field === 'weight' ? value : prev.weight;
+        const calculatedBMI = calculateBMI(height, weight);
+        if (calculatedBMI) {
+          updated.bmi = calculatedBMI;
+        }
+      }
+      
+      return updated;
+    });
     
     // Clear date error when user types
     if (field === 'dateOfBirth') {
@@ -345,6 +379,29 @@ export function ProfileRecordsPage(_props: ProfileRecordsPageProps = {}) {
       }
       if (formData.address && formData.address.trim()) {
         updateData.address = formData.address.trim();
+      }
+      
+      // Add height, weight, bloodType, bmi fields
+      if (formData.height && formData.height.trim()) {
+        const heightNum = parseFloat(formData.height);
+        if (!isNaN(heightNum) && heightNum > 0) {
+          updateData.height = heightNum;
+        }
+      }
+      if (formData.weight && formData.weight.trim()) {
+        const weightNum = parseFloat(formData.weight);
+        if (!isNaN(weightNum) && weightNum > 0) {
+          updateData.weight = weightNum;
+        }
+      }
+      if (formData.bloodType && formData.bloodType.trim()) {
+        updateData.bloodType = formData.bloodType.trim();
+      }
+      if (formData.bmi && formData.bmi.trim()) {
+        const bmiNum = parseFloat(formData.bmi);
+        if (!isNaN(bmiNum) && bmiNum > 0) {
+          updateData.bmi = bmiNum;
+        }
       }
       
       // Always include role for user updates
@@ -804,19 +861,80 @@ export function ProfileRecordsPage(_props: ProfileRecordsPageProps = {}) {
         <div className="grid grid-cols-4 gap-4 mt-6">
           <div className="text-center">
             <div className="text-sm text-white/80 mb-1">Chiều cao:</div>
-            <div className="font-semibold text-lg">{formData.height ? `${formData.height} cm` : '--'}</div>
+            {isEditing ? (
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  value={formData.height}
+                  onChange={e => handleInputChange('height', e.target.value)}
+                  placeholder="--"
+                  className="w-full px-3 py-2 rounded-xl bg-white border border-white/50 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-white/80 focus:border-white text-center font-semibold text-lg"
+                />
+                <span className="text-white/90 text-sm font-medium">cm</span>
+              </div>
+            ) : (
+              <div className="font-semibold text-lg">{formData.height ? `${formData.height} cm` : '--'}</div>
+            )}
           </div>
           <div className="text-center">
             <div className="text-sm text-white/80 mb-1">Cân nặng:</div>
-            <div className="font-semibold text-lg">{formData.weight ? `${formData.weight} kg` : '--'}</div>
+            {isEditing ? (
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  value={formData.weight}
+                  onChange={e => handleInputChange('weight', e.target.value)}
+                  placeholder="--"
+                  className="w-full px-3 py-2 rounded-xl bg-white border border-white/50 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-white/80 focus:border-white text-center font-semibold text-lg"
+                />
+                <span className="text-white/90 text-sm font-medium">kg</span>
+              </div>
+            ) : (
+              <div className="font-semibold text-lg">{formData.weight ? `${formData.weight} kg` : '--'}</div>
+            )}
           </div>
           <div className="text-center">
             <div className="text-sm text-white/80 mb-1">Nhóm máu:</div>
-            <div className="font-semibold text-lg">{formData.bloodType || '--'}</div>
+            {isEditing ? (
+              <select
+                value={formData.bloodType}
+                onChange={e => handleInputChange('bloodType', e.target.value)}
+                className="w-full px-3 py-2 rounded-xl bg-white border border-white/50 text-gray-900 focus:outline-none focus:ring-2 focus:ring-white/80 focus:border-white text-center font-semibold text-lg"
+              >
+                <option value="" className="text-gray-900">--</option>
+                <option value="A" className="text-gray-900">A</option>
+                <option value="B" className="text-gray-900">B</option>
+                <option value="AB" className="text-gray-900">AB</option>
+                <option value="O" className="text-gray-900">O</option>
+                <option value="A+" className="text-gray-900">A+</option>
+                <option value="A-" className="text-gray-900">A-</option>
+                <option value="B+" className="text-gray-900">B+</option>
+                <option value="B-" className="text-gray-900">B-</option>
+                <option value="AB+" className="text-gray-900">AB+</option>
+                <option value="AB-" className="text-gray-900">AB-</option>
+                <option value="O+" className="text-gray-900">O+</option>
+                <option value="O-" className="text-gray-900">O-</option>
+              </select>
+            ) : (
+              <div className="font-semibold text-lg">{formData.bloodType || '--'}</div>
+            )}
           </div>
           <div className="text-center">
             <div className="text-sm text-white/80 mb-1">BMI:</div>
-            <div className="font-semibold text-lg">{formData.bmi || '--'}</div>
+            {isEditing ? (
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  step="0.1"
+                  value={formData.bmi}
+                  onChange={e => handleInputChange('bmi', e.target.value)}
+                  placeholder="--"
+                  className="w-full px-3 py-2 rounded-xl bg-white border border-white/50 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-white/80 focus:border-white text-center font-semibold text-lg"
+                />
+              </div>
+            ) : (
+              <div className="font-semibold text-lg">{formData.bmi || '--'}</div>
+            )}
           </div>
         </div>
       </motion.div>
