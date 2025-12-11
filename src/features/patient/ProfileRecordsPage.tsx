@@ -76,7 +76,7 @@ export function ProfileRecordsPage(_props: ProfileRecordsPageProps = {}) {
   const getInitialTab = (): 'personal' | 'testHistory' | 'medical' | 'files' => {
     if (tabParam === 'test-results') return 'testHistory';
     if (tabParam === 'medical') return 'medical';
-    if (tabParam === 'files') return 'files';
+    // if (tabParam === 'files') return 'files';
     return 'personal';
   };
 
@@ -88,9 +88,10 @@ export function ProfileRecordsPage(_props: ProfileRecordsPageProps = {}) {
       setActiveTab('testHistory');
     } else if (tabParam === 'medical') {
       setActiveTab('medical');
-    } else if (tabParam === 'files') {
-      setActiveTab('files');
-    }
+    } 
+    // else if (tabParam === 'files') {
+    //   setActiveTab('files');
+    // }
   }, [tabParam]);
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -283,11 +284,13 @@ export function ProfileRecordsPage(_props: ProfileRecordsPageProps = {}) {
     id: 'medical',
     label: 'Hồ sơ khám',
     icon: FileText
-  }, {
-    id: 'files',
-    label: 'Tệp y khoa',
-    icon: FileText
-  }] as any[];
+  }, 
+  // {
+  //   id: 'files',
+  //   label: 'Tệp y khoa',
+  //   icon: FileText
+  // }
+  ] as any[];
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({
       ...prev,
@@ -1566,6 +1569,6 @@ export function ProfileRecordsPage(_props: ProfileRecordsPageProps = {}) {
       {activeTab === 'personal' && renderPersonalInfo()}
       {activeTab === 'testHistory' && renderTestHistory()}
       {activeTab === 'medical' && renderMedicalHistory()}
-      {activeTab === 'files' && renderMedicalFiles()}
+      {/* {activeTab === 'files' && renderMedicalFiles()} */}
     </div>;
 }
