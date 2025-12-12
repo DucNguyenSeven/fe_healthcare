@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Menu, X, Heart, Shield, Clock, Users, Award, Phone, Star, ChevronDown, ChevronUp, Facebook, Twitter, Instagram, Mail, MapPin } from 'lucide-react';
-import { HealthcareLogo } from '../../shared/ui/HealthcareLogo';
+import { HealthcareNavbarLogo } from '../../shared/ui/HealthcareNavbarLogo';
 import { MobileSlider } from './MobileSlider';
 const services = [{
   id: 'service-1',
@@ -137,8 +137,7 @@ export const HealthcarePlusLandingPage = ({
           <div className="flex justify-between items-center h-20">
             {/* Logo */}
             <div className="flex items-center">
-              <HealthcareLogo size="md" className="mr-3" />
-              <span className="text-xl font-bold text-blue-600">Healthcare+</span>
+              <HealthcareNavbarLogo />
             </div>
 
             {/* Desktop Menu - Hidden below 1200px */}
@@ -216,8 +215,7 @@ export const HealthcarePlusLandingPage = ({
               {/* Drawer Header */}
               <div className="flex items-center justify-between p-6 border-b border-gray-200">
                 <div className="flex items-center">
-                  <HealthcareLogo size="md" className="mr-3" />
-                  <span className="text-xl font-bold text-blue-600">Healthcare+</span>
+                  <HealthcareNavbarLogo />
                 </div>
                 <button onClick={() => setIsMenuOpen(false)} className="text-gray-500 hover:text-gray-700 p-2 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 rounded-md" style={{
               minWidth: '44px',
@@ -589,8 +587,7 @@ export const HealthcarePlusLandingPage = ({
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
             <div>
               <div className="flex items-center mb-6">
-                <HealthcareLogo size="md" className="mr-3" />
-                <span className="text-xl font-bold">Healthcare+</span>
+                <HealthcareNavbarLogo />
               </div>
               <p className="text-gray-400 mb-6">
                 <span>Chăm sóc sức khỏe toàn diện với công nghệ hiện đại và đội ngũ y tế chuyên nghiệp.</span>

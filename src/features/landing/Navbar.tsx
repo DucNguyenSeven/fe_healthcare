@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Menu, X } from 'lucide-react';
-import { HealthcareLogo } from '../../shared/ui/HealthcareLogo';
+import { HealthcareNavbarLogo } from '../../shared/ui/HealthcareNavbarLogo';
 interface NavbarProps {
   scrollToSection: (sectionId: string) => void;
 }
@@ -30,8 +30,7 @@ export const Navbar = ({
       <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-12">
         <div className="flex justify-between items-center h-20">
           <div className="flex items-center">
-            <HealthcareLogo size="md" className="mr-3" />
-            <span className="text-xl font-bold text-blue-600">Healthcare+</span>
+            <HealthcareNavbarLogo />
           </div>
 
           <div className="hidden md:block">
