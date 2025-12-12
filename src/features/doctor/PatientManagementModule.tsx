@@ -186,15 +186,9 @@ export const PatientManagementModule = () => {
   const renderPatientList = () => {
     if (isLoading) return renderLoading();
     if (patientsError) return renderError(patientsError, refetchPatients);
-    if (patientsData?.empty) return renderEmpty();
 
     return (
       <div className="p-6 space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold text-[#0F172A]">Danh sách bệnh nhân</h1>
-        </div>
-
         {/* Table Card */}
         <div className="bg-white rounded-2xl shadow-[0_10px_24px_rgba(16,24,40,0.08)] p-6">
           {/* Search & Filter */}
@@ -238,40 +232,54 @@ export const PatientManagementModule = () => {
                 </tr>
               </thead>
               <tbody>
-                {patientsData?.content.map((patient, index) => (
-                  <motion.tr
-                    key={patient.patientId}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.1 }}
-                    className="border-b border-gray-50 hover:bg-gray-50 transition-colors"
-                  >
-                    <td className="py-4 px-2">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-[#1E75FF] rounded-full flex items-center justify-center">
-                          <span className="text-white font-medium text-sm">
-                            {patient.fullName.split(' ').pop()?.charAt(0)}
-                          </span>
+                {patientsData?.empty || !patientsData?.content || patientsData.content.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="py-12 text-center">
+                      <User size={48} className="mx-auto text-gray-400 mb-4" />
+                      <h3 className="text-lg font-medium text-gray-900 mb-2">
+                        Không có bệnh nhân nào
+                      </h3>
+                      <p className="text-gray-600">
+                        {searchTerm ? 'Không tìm thấy bệnh nhân phù hợp' : 'Bạn chưa có bệnh nhân nào'}
+                      </p>
+                    </td>
+                  </tr>
+                ) : (
+                  patientsData.content.map((patient, index) => (
+                    <motion.tr
+                      key={patient.patientId}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: index * 0.1 }}
+                      className="border-b border-gray-50 hover:bg-gray-50 transition-colors"
+                    >
+                      <td className="py-4 px-2">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-[#1E75FF] rounded-full flex items-center justify-center">
+                            <span className="text-white font-medium text-sm">
+                              {patient.fullName.split(' ').pop()?.charAt(0)}
+                            </span>
+                          </div>
+                          <span className="font-medium text-[#0F172A]">{patient.fullName}</span>
                         </div>
-                        <span className="font-medium text-[#0F172A]">{patient.fullName}</span>
-                      </div>
-                    </td>
-                    <td className="py-4 px-2 text-[#334155]">{patient.age}</td>
-                    <td className="py-4 px-2 text-[#334155]">
-                      {patient.gender === 'MALE' ? 'Nam' : 'Nữ'}
-                    </td>
-                    <td className="py-4 px-2 text-[#334155]">{patient.lastVisitDate}</td>
-                    <td className="py-4 px-2">
-                      <button
-                        onClick={() => handleViewPatient(patient)}
-                        className="bg-[#1E75FF] hover:bg-[#1659C9] text-white px-4 py-2 rounded-xl font-medium flex items-center gap-2 transition-colors"
-                      >
-                        <Eye size={16} />
-                        <span>Xem</span>
-                      </button>
-                    </td>
-                  </motion.tr>
-                ))}
+                      </td>
+                      <td className="py-4 px-2 text-[#334155]">{patient.age}</td>
+                      <td className="py-4 px-2 text-[#334155]">
+                        {patient.gender === 'MALE' ? 'Nam' : 'Nữ'}
+                      </td>
+                      <td className="py-4 px-2 text-[#334155]">{patient.lastVisitDate}</td>
+                      <td className="py-4 px-2">
+                        <button
+                          onClick={() => handleViewPatient(patient)}
+                          className="bg-[#1E75FF] hover:bg-[#1659C9] text-white px-4 py-2 rounded-xl font-medium flex items-center gap-2 transition-colors"
+                        >
+                          <Eye size={16} />
+                          <span>Xem</span>
+                        </button>
+                      </td>
+                    </motion.tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>

@@ -225,8 +225,8 @@ export const DoctorDashboardPage = ({ onNavigate = () => {} }: DoctorDashboardPa
         </div>
       </div>
 
-      {/* Quick Actions */}
-      <div className="bg-white rounded-2xl shadow-[0_10px_24px_rgba(16,24,40,0.08)] p-6">
+      {/* Quick Actions - Hidden */}
+      {/* <div className="bg-white rounded-2xl shadow-[0_10px_24px_rgba(16,24,40,0.08)] p-6">
         <h2 className="text-xl font-semibold text-[#0F172A] mb-6">Thao tác nhanh</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {quickActions.map((action, index) => {
@@ -257,7 +257,7 @@ export const DoctorDashboardPage = ({ onNavigate = () => {} }: DoctorDashboardPa
             );
           })}
         </div>
-      </div>
+      </div> */}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Upcoming Appointments */}
