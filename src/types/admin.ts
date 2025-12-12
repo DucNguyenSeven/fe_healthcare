@@ -58,7 +58,7 @@ export interface RevenueTrendItem {
 export interface AppointmentsByStatus {
   COMPLETED: number;
   CONFIRMED: number;
-  CANCELLED: number;
+  CANCELED: number;
   PAYMENT_PENDING?: number;
 }
 
@@ -243,8 +243,9 @@ export interface AppointmentStatistics {
     PENDING: number;
     CONFIRMED: number;
     COMPLETED: number;
-    CANCELLED: number;
+    CANCELED: number;
     NO_SHOW: number;
+    PAYMENT_PENDING?: number;
   };
   appointmentsByType: {
     VIDEO_CALL: number;
@@ -263,10 +264,13 @@ export interface Appointment {
   createdAt: string; // ISO DateTime
 }
 
-export interface AppointmentsByConsultationType {
-  VIDEO_CALL: number;
-  IN_PERSON: number;
+export interface ConsultationTypeStats {
+  consultationType: ConsultationType;
+  totalCount: number;
+  completedCount: number;
 }
+
+export type AppointmentsByConsultationType = ConsultationTypeStats[];
 
 export interface CompletedAppointmentsByDoctor {
   [doctorId: string]: number;
@@ -356,4 +360,44 @@ export interface ErrorResponse {
   error: string;
   message: string;
   path: string;
+}
+
+
+export interface RevenueOverviewResponse {
+  totalRevenue: number;
+  totalAppointments: number;
+  averagePaymentAmount: number;
+  completedAppointments: number;
+}
+
+export interface RevenueByDateResponse {
+  date: string;
+  revenue: number;
+  count: number;
+}
+
+export interface DoctorRevenueResponse {
+  doctorId: string;
+  doctorName: string;
+  specialty: string;
+  totalRevenue: number;
+  appointmentCount: number;
+  rating: number;
+}
+
+// Alias for paginated response
+export type PaginatedDoctorRevenueResponse = PaginatedRevenueByDoctor;
+
+export interface SpecialtyRevenueResponse {
+  specialty: string;
+  totalRevenue: number;
+  appointmentCount: number;
+  percentage: number;
+}
+
+export interface ServiceTypeRevenueResponse {
+  serviceType: string;
+  totalRevenue: number;
+  appointmentCount: number;
+  percentage: number;
 }

@@ -1,8 +1,16 @@
 'use client'
 
 import { useState } from 'react';
-import { Calendar, CheckCircle, XCircle, Clock, Video, Building2, PieChart, AlertCircle, RefreshCw } from 'lucide-react';
+import { Calendar, CheckCircle, XCircle, Clock, Video, Building2, PieChart, AlertCircle, RefreshCw, DollarSign, Hourglass } from 'lucide-react';
 import { useAppointmentStatistics, useStatsByConsultationType } from '@/hooks/admin/useAppointmentsData';
+import {
+  PieChart as RechartsPieChart,
+  Pie,
+  Cell,
+  Tooltip,
+  Legend,
+  ResponsiveContainer
+} from 'recharts';
 
 // Helper to format numbers
 const formatNumber = (num: number | undefined): string => {
@@ -91,13 +99,15 @@ export default function AppointmentsPage() {
         </div>
       </div>
 
-      {/* Statistics Cards - 4 cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      {/* Statistics Cards - 6 cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {[
           { title: 'Tổng lịch hẹn', value: formatNumber(stats?.totalAppointments), icon: Calendar, color: 'bg-purple-500' },
           { title: 'Đã hoàn thành', value: formatNumber(stats?.appointmentsByStatus?.COMPLETED), icon: CheckCircle, color: 'bg-green-500' },
           { title: 'Đã xác nhận', value: formatNumber(stats?.appointmentsByStatus?.CONFIRMED), icon: Clock, color: 'bg-blue-500' },
-          { title: 'Đã hủy', value: formatNumber(stats?.appointmentsByStatus?.CANCELLED), icon: XCircle, color: 'bg-red-500' },
+          { title: 'Đã hủy', value: formatNumber(stats?.appointmentsByStatus?.CANCELED), icon: XCircle, color: 'bg-red-500' },
+          { title: 'Chờ thanh toán', value: formatNumber(stats?.appointmentsByStatus?.PAYMENT_PENDING), icon: DollarSign, color: 'bg-orange-500' },
+          { title: 'Chờ xác nhận', value: formatNumber(stats?.appointmentsByStatus?.PENDING), icon: Hourglass, color: 'bg-yellow-500' },
         ].map((stat, idx) => {
           const Icon = stat.icon;
           return (
@@ -117,24 +127,81 @@ export default function AppointmentsPage() {
         {/* Appointments by Status */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
           <h2 className="text-xl font-semibold text-gray-900 mb-4">Lịch hẹn theo trạng thái</h2>
-          <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
-            <PieChart className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-            <p className="text-gray-600 font-medium">Biểu đồ tròn trạng thái</p>
-            <p className="text-sm text-gray-500 mt-2">
-              Pie chart: Completed, Confirmed, Cancelled, Pending
-            </p>
+          <div className="h-80">
+            <ResponsiveContainer width="100%" height="100%">
+              <RechartsPieChart>
+                <Pie
+                  data={[
+                    { name: 'Đã hoàn thành', value: stats?.appointmentsByStatus?.COMPLETED || 0, fill: '#10b981' },
+                    { name: 'Đã xác nhận', value: stats?.appointmentsByStatus?.CONFIRMED || 0, fill: '#3b82f6' },
+                    { name: 'Đã hủy', value: stats?.appointmentsByStatus?.CANCELED || 0, fill: '#ef4444' },
+                    { name: 'Chờ thanh toán', value: stats?.appointmentsByStatus?.PAYMENT_PENDING || 0, fill: '#f97316' },
+                    { name: 'Chờ xác nhận', value: stats?.appointmentsByStatus?.PENDING || 0, fill: '#eab308' }
+                  ].filter(item => item.value > 0)}
+                  cx="50%"
+                  cy="50%"
+                  labelLine={false}
+                  label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                  outerRadius={100}
+                  dataKey="value"
+                >
+                  {[
+                    { name: 'Đã hoàn thành', value: stats?.appointmentsByStatus?.COMPLETED || 0, fill: '#10b981' },
+                    { name: 'Đã xác nhận', value: stats?.appointmentsByStatus?.CONFIRMED || 0, fill: '#3b82f6' },
+                    { name: 'Đã hủy', value: stats?.appointmentsByStatus?.CANCELED || 0, fill: '#ef4444' },
+                    { name: 'Chờ thanh toán', value: stats?.appointmentsByStatus?.PAYMENT_PENDING || 0, fill: '#f97316' },
+                    { name: 'Chờ xác nhận', value: stats?.appointmentsByStatus?.PENDING || 0, fill: '#eab308' }
+                  ].filter(item => item.value > 0).map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.fill} />
+                  ))}
+                </Pie>
+                <Tooltip />
+                <Legend />
+              </RechartsPieChart>
+            </ResponsiveContainer>
           </div>
         </div>
 
         {/* Appointments by Consultation Type */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
           <h2 className="text-xl font-semibold text-gray-900 mb-4">Lịch hẹn theo loại tư vấn</h2>
-          <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
-            <PieChart className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-            <p className="text-gray-600 font-medium">Biểu đồ tròn loại tư vấn</p>
-            <p className="text-sm text-gray-500 mt-2">
-              Pie chart: Video Call, In-Person
-            </p>
+          <div className="h-80">
+            {typeLoading ? (
+              <div className="flex items-center justify-center h-full">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
+              </div>
+            ) : statsByType && statsByType.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <RechartsPieChart>
+                  <Pie
+                    data={statsByType.map(type => ({
+                      name: type.consultationType === 'VIDEO_CALL' ? 'Tư vấn video' : 'Khám trực tiếp',
+                      value: type.totalCount,
+                      fill: type.consultationType === 'VIDEO_CALL' ? '#3b82f6' : '#a855f7'
+                    }))}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                    outerRadius={100}
+                    dataKey="value"
+                  >
+                    {statsByType.map((type, index) => (
+                      <Cell
+                        key={`cell-${index}`}
+                        fill={type.consultationType === 'VIDEO_CALL' ? '#3b82f6' : '#a855f7'}
+                      />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                  <Legend />
+                </RechartsPieChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex items-center justify-center h-full">
+                <p className="text-gray-500">Không có dữ liệu</p>
+              </div>
+            )}
           </div>
         </div>
       </div>

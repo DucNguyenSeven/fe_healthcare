@@ -105,6 +105,10 @@ export default function PaymentReturnPage() {
         localStorage.removeItem('pending_payment_id');
 
         // Set final status
+        // IMPORTANT: Even if backend status is still PENDING (webhook delayed),
+        // if PayOS redirected with status=PAID, we should trust that
+        const isPayOSConfirmedPaid = paymentStatus === 'PAID';
+
         switch (paymentData.status) {
           case 'PAID':
             setStatus('success');
@@ -113,9 +117,16 @@ export default function PaymentReturnPage() {
             setStatus('expired');
             break;
           case 'PENDING':
-            // Still pending after polling, might be delayed
-            setStatus('loading');
-            setError('Thanh toán đang được xử lý. Vui lòng kiểm tra lại sau ít phút.');
+            // If PayOS confirmed payment but backend still PENDING (webhook delay)
+            if (isPayOSConfirmedPaid) {
+              console.warn('⚠️ [PaymentReturn] PayOS confirmed PAID but backend still PENDING - webhook delayed');
+              setStatus('success');
+              setError('Thanh toán thành công! Hệ thống đang cập nhật...');
+            } else {
+              // Actually still pending, treat as failed to avoid confusion
+              setStatus('failed');
+              setError('Thanh toán chưa hoàn tất. Vui lòng kiểm tra lại trong mục Lịch hẹn hoặc liên hệ hỗ trợ.');
+            }
             break;
           default:
             setStatus('failed');
@@ -218,6 +229,12 @@ export default function PaymentReturnPage() {
                     </div>
                   )}
                 </div>
+              </div>
+            )}
+
+            {error && (
+              <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 mb-6">
+                <p className="text-sm text-yellow-800">{error}</p>
               </div>
             )}
 

@@ -305,7 +305,7 @@ export function AdminDashboardPage({
                 data={[
                   { status: 'Đã xác nhận', value: data.charts.appointmentsByStatus.CONFIRMED || 0, fill: '#3b82f6' },
                   { status: 'Đã hoàn thành', value: data.charts.appointmentsByStatus.COMPLETED || 0, fill: '#10b981' },
-                  { status: 'Đã hủy', value: data.charts.appointmentsByStatus.CANCELLED || 0, fill: '#ef4444' },
+                  { status: 'Đã hủy', value: data.charts.appointmentsByStatus.CANCELED || 0, fill: '#ef4444' },
                   { status: 'Chờ thanh toán', value: data.charts.appointmentsByStatus.PAYMENT_PENDING || 0, fill: '#f59e0b' }
                 ]}
               >
@@ -331,7 +331,7 @@ export function AdminDashboardPage({
                   {[
                     { status: 'Đã xác nhận', value: data.charts.appointmentsByStatus.CONFIRMED || 0, fill: '#3b82f6' },
                     { status: 'Đã hoàn thành', value: data.charts.appointmentsByStatus.COMPLETED || 0, fill: '#10b981' },
-                    { status: 'Đã hủy', value: data.charts.appointmentsByStatus.CANCELLED || 0, fill: '#ef4444' },
+                    { status: 'Đã hủy', value: data.charts.appointmentsByStatus.CANCELED || 0, fill: '#ef4444' },
                     { status: 'Chờ thanh toán', value: data.charts.appointmentsByStatus.PAYMENT_PENDING || 0, fill: '#f59e0b' }
                   ].map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={entry.fill} />
