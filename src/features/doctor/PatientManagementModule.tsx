@@ -54,6 +54,16 @@ const getBMICategory = (bmi: number | null | undefined): string => {
   return 'Béo phì';
 };
 
+// Helper function: Translate frequency to Vietnamese
+const translateFrequency = (freq: string): string => {
+  const mapping: Record<string, string> = {
+    MORNING: 'Sáng',
+    AFTERNOON: 'Chiều',
+    EVENING: 'Tối',
+  };
+  return mapping[freq.toUpperCase()] || freq;
+};
+
 // @component: PatientManagementModule
 export const PatientManagementModule = () => {
   // ==================== State Management ====================
@@ -652,12 +662,34 @@ export const PatientManagementModule = () => {
 
           return (
             <div key={record.recordId} className="bg-gray-50 rounded-xl p-6">
-              <div className="flex items-center justify-between mb-4">
+              <div className="space-y-2 mb-4">
+                <div className="flex items-center gap-4 flex-wrap">
+                  <div>
+                    <span className="text-xs text-gray-500 font-medium">Ngày khám:</span>
+                    <p className="text-sm font-semibold text-[#0F172A]">
+                      {formatDate(record.appointmentDate)}
+                    </p>
+                  </div>
+                  {record.episodeType && (
+                    <div>
+                      <span className="text-xs text-gray-500 font-medium">Hình thức khám:</span>
+                      <p className="text-sm font-semibold text-[#0F172A]">
+                        {record.episodeType === 'INITIAL' ? 'Khám đầu' : 'Tái khám'}
+                      </p>
+                    </div>
+                  )}
+                  {record.serviceName && (
+                    <div>
+                      <span className="text-xs text-gray-500 font-medium">Dịch vụ:</span>
+                      <p className="text-sm font-semibold text-[#0F172A]">
+                        {record.serviceName}
+                      </p>
+                    </div>
+                  )}
+                </div>
                 <div>
-                  <h4 className="font-semibold text-[#0F172A]">
-                    {formatDate(record.appointmentDate)} - {record.serviceName}
-                  </h4>
-                  <p className="text-sm text-gray-600 mt-1">{record.diagnosis}</p>
+                  <span className="text-xs text-gray-500 font-medium">Chẩn đoán:</span>
+                  <p className="text-sm text-gray-700 mt-1">{record.diagnosis}</p>
                 </div>
               </div>
 
@@ -673,7 +705,7 @@ export const PatientManagementModule = () => {
                             {prescription.medicalName} - {prescription.dosage}
                           </h6>
                           <p className="text-sm text-gray-600 mt-1">
-                            Tần suất: {prescription.frequency.join(', ')}
+                            Tần suất: {prescription.frequency.map(translateFrequency).join(', ')}
                           </p>
                           <p className="text-sm text-gray-600">
                             Thời gian: {formatDate(prescription.startDate)} -{' '}
