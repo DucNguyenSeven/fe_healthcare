@@ -1,4 +1,6 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
+import { createPortal } from "react-dom";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Plus,
   Calendar,
@@ -22,6 +24,8 @@ import {
   ChevronDown,
   Brain,
   ClipboardList,
+  X,
+  Save,
 } from "lucide-react";
 import type {
   HealthMetricLatest,
@@ -35,6 +39,8 @@ import { PrescriptionGroupModal } from "./PrescriptionGroupModal";
 import { MedicalResultModal } from "@/components/MedicalResultModal";
 import { usePatientHealthPanels } from "@/hooks/health-metrics/usePatientPanels";
 import { usePanelByDate } from "@/hooks/health-metrics/usePanelByDate";
+import { useCreateHealthMetricPanel } from "@/hooks/health-metrics/useCreatePanel";
+import { toast } from "sonner";
 import {
   getEGFRAlert,
   getCreatinineAlert,
@@ -82,6 +88,45 @@ export function DashboardPage({
     specialty?: string;
     id?: string;
   } | null>(null);
+
+  // State for test result modal
+  const [showTestModal, setShowTestModal] = useState(false);
+  const [isAddingTest, setIsAddingTest] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  const { createPanel, isLoading: isCreatingPanel } =
+    useCreateHealthMetricPanel();
+  const { refetchPanels } = usePatientHealthPanels(patientId);
+
+  interface NewTestResult {
+    date: string;
+    creatinine: string;
+    egfr: string;
+    bun: string;
+    serumCalcium: string;
+    ana: string;
+    c3c4: string;
+    hematuria: string;
+    oxalateLevels: string;
+    urinePH: string;
+  }
+
+  const [newTestData, setNewTestData] = useState<NewTestResult>({
+    date: "",
+    creatinine: "",
+    egfr: "",
+    bun: "",
+    serumCalcium: "",
+    ana: "",
+    c3c4: "",
+    hematuria: "",
+    oxalateLevels: "",
+    urinePH: "",
+  });
+
+  useEffect(() => {
+    setMounted(true);
+    return () => setMounted(false);
+  }, []);
 
   // Lấy tất cả panels để tạo dropdown
   const { panels, loading: panelsLoading } = usePatientHealthPanels(patientId);
@@ -424,13 +469,140 @@ export function DashboardPage({
     setTimeout(() => setSelectedPrescriptionGroup(null), 300); // Delay to allow modal animation
   };
 
+  const handleNewTestInputChange = (
+    field: keyof NewTestResult,
+    value: string
+  ) => {
+    setNewTestData((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
+
+  const handleAddTestResult = async () => {
+    if (!patientId) return;
+    setIsAddingTest(true);
+
+    const measuredAtIso = (() => {
+      try {
+        return new Date(newTestData.date).toISOString();
+      } catch {
+        return new Date().toISOString();
+      }
+    })();
+
+    const toNumber = (v: string) => {
+      const n = Number(String(v ?? "").replace(",", "."));
+      return Number.isFinite(n) ? n : NaN;
+    };
+
+    const egfrNum = toNumber(newTestData.egfr);
+    const creaNum = toNumber(newTestData.creatinine);
+    const bunNum = toNumber(newTestData.bun);
+    const caNum = toNumber(newTestData.serumCalcium);
+    const c3c4Num = toNumber(newTestData.c3c4);
+    const oxalateNum = toNumber(newTestData.oxalateLevels);
+    const urinePhNum = toNumber(newTestData.urinePH);
+
+    const invalid = [egfrNum, creaNum, bunNum].some((n) => isNaN(n));
+    if (invalid) {
+      setIsAddingTest(false);
+      alert(
+        "Vui lòng nhập số hợp lệ cho các trường bắt buộc (dùng dấu '.' cho phần thập phân)."
+      );
+      return;
+    }
+
+    const payload = {
+      patientId: patientId,
+      measuredAt: measuredAtIso,
+      metrics: [
+        { name: "gfr", value: egfrNum, unit: "ml/min" },
+        { name: "serum_creatinine", value: creaNum, unit: "mg/dL" },
+        { name: "bun", value: bunNum, unit: "mg/dL" },
+        ...(caNum && !isNaN(caNum)
+          ? [{ name: "serum_calcium", value: caNum, unit: "mg/dL" }]
+          : []),
+        ...(newTestData.ana
+          ? [{ name: "ana", value: Number(newTestData.ana), unit: "0|1" }]
+          : []),
+        ...(c3c4Num && !isNaN(c3c4Num)
+          ? [{ name: "c3_c4", value: c3c4Num, unit: "mg/dL" }]
+          : []),
+        ...(newTestData.hematuria
+          ? [
+              {
+                name: "hematuria",
+                value: Number(newTestData.hematuria),
+                unit: "0|1",
+              },
+            ]
+          : []),
+        ...(oxalateNum && !isNaN(oxalateNum)
+          ? [{ name: "oxalate_levels", value: oxalateNum, unit: "mg/day" }]
+          : []),
+        ...(urinePhNum && !isNaN(urinePhNum)
+          ? [{ name: "urine_ph", value: urinePhNum, unit: "pH" }]
+          : []),
+      ],
+    } as any;
+
+    const ok = await createPanel(payload);
+
+    if (ok) {
+      refetchPanels();
+      setNewTestData({
+        date: "",
+        creatinine: "",
+        egfr: "",
+        bun: "",
+        serumCalcium: "",
+        ana: "",
+        c3c4: "",
+        hematuria: "",
+        oxalateLevels: "",
+        urinePH: "",
+      });
+      setShowTestModal(false);
+      setIsAddingTest(false);
+
+      // Show success toast
+      toast.success("Đã thêm kết quả xét nghiệm thành công!", {
+        description: "Kết quả xét nghiệm đã được lưu vào hồ sơ của bạn",
+        duration: 3000,
+      });
+    } else {
+      setIsAddingTest(false);
+      toast.error("Thêm kết quả xét nghiệm thất bại", {
+        description: "Vui lòng thử lại sau",
+        duration: 3000,
+      });
+    }
+  };
+
+  const handleCancelAddTest = () => {
+    setShowTestModal(false);
+    setNewTestData({
+      date: "",
+      creatinine: "",
+      egfr: "",
+      bun: "",
+      serumCalcium: "",
+      ana: "",
+      c3c4: "",
+      hematuria: "",
+      oxalateLevels: "",
+      urinePH: "",
+    });
+  };
+
   const quickActions = [
     {
       id: "input-metrics",
       label: "Nhập chỉ số",
       icon: Plus,
       color: "bg-blue-500",
-      onClick: () => onNavigate("monitoring"),
+      onClick: () => setShowTestModal(true),
     },
     {
       id: "book-appointment",
@@ -1137,6 +1309,268 @@ export function DashboardPage({
           doctorInfo={selectedDoctorInfo ?? undefined}
         />
       )}
+
+      {/* Add Test Result Modal */}
+      {mounted &&
+        createPortal(
+          <AnimatePresence>
+            {showTestModal && (
+              <>
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="fixed inset-0 bg-black/60 z-[9998]"
+                  onClick={handleCancelAddTest}
+                />
+                <motion.div
+                  initial={{ scale: 0.95, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{ scale: 0.95, opacity: 0 }}
+                  className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="bg-white rounded-2xl p-8 w-full max-w-2xl max-h-[90vh] overflow-y-auto relative">
+                    <div className="flex items-center justify-between mb-6">
+                      <h2 className="text-2xl font-semibold text-[#0F172A]">
+                        Thêm kết quả xét nghiệm mới
+                      </h2>
+                      <button
+                        onClick={handleCancelAddTest}
+                        className="p-2 hover:bg-gray-100 rounded-xl transition-colors"
+                      >
+                        <X size={20} className="text-gray-500" />
+                      </button>
+                    </div>
+
+                    <form
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        handleAddTestResult();
+                      }}
+                      className="space-y-6"
+                    >
+                      <div className="space-y-6">
+                        <div>
+                          <label className="block text-sm font-medium text-[#334155] mb-2">
+                            Ngày xét nghiệm{" "}
+                            <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="date"
+                            value={newTestData.date}
+                            onChange={(e) =>
+                              handleNewTestInputChange("date", e.target.value)
+                            }
+                            className="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent transition-all"
+                            required
+                          />
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          <div>
+                            <label className="block text-sm font-medium text-[#334155] mb-2">
+                              Creatinin huyết thanh (mg/dL){" "}
+                              <span className="text-red-500">*</span>
+                            </label>
+                            <input
+                              type="number"
+                              step="0.1"
+                              value={newTestData.creatinine}
+                              onChange={(e) =>
+                                handleNewTestInputChange(
+                                  "creatinine",
+                                  e.target.value
+                                )
+                              }
+                              className="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent transition-all"
+                              placeholder="1.0"
+                              required
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-medium text-[#334155] mb-2">
+                              eGFR (ml/min){" "}
+                              <span className="text-red-500">*</span>
+                            </label>
+                            <input
+                              type="number"
+                              step="0.1"
+                              value={newTestData.egfr}
+                              onChange={(e) =>
+                                handleNewTestInputChange("egfr", e.target.value)
+                              }
+                              className="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent transition-all"
+                              placeholder="95.0"
+                              required
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-medium text-[#334155] mb-2">
+                              Ure máu (BUN) (mg/dL){" "}
+                              <span className="text-red-500">*</span>
+                            </label>
+                            <input
+                              type="number"
+                              step="0.1"
+                              value={newTestData.bun}
+                              onChange={(e) =>
+                                handleNewTestInputChange("bun", e.target.value)
+                              }
+                              className="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent transition-all"
+                              placeholder="15.0"
+                              required
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-medium text-[#334155] mb-2">
+                              Canxi huyết thanh (mg/dL)
+                            </label>
+                            <input
+                              type="number"
+                              step="0.1"
+                              value={newTestData.serumCalcium}
+                              onChange={(e) =>
+                                handleNewTestInputChange(
+                                  "serumCalcium",
+                                  e.target.value
+                                )
+                              }
+                              className="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent transition-all"
+                              placeholder="10.0"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-medium text-[#334155] mb-2">
+                              ANA
+                            </label>
+                            <select
+                              value={newTestData.ana}
+                              onChange={(e) =>
+                                handleNewTestInputChange("ana", e.target.value)
+                              }
+                              className="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent transition-all"
+                            >
+                              <option value="">Chọn kết quả</option>
+                              <option value="1">Dương tính</option>
+                              <option value="0">Âm tính</option>
+                            </select>
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-medium text-[#334155] mb-2">
+                              Bổ thể C3/C4 (mg/dL)
+                            </label>
+                            <input
+                              type="number"
+                              step="0.1"
+                              value={newTestData.c3c4}
+                              onChange={(e) =>
+                                handleNewTestInputChange("c3c4", e.target.value)
+                              }
+                              className="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent transition-all"
+                              placeholder="130.0"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-medium text-[#334155] mb-2">
+                              Đái máu
+                            </label>
+                            <select
+                              value={newTestData.hematuria}
+                              onChange={(e) =>
+                                handleNewTestInputChange(
+                                  "hematuria",
+                                  e.target.value
+                                )
+                              }
+                              className="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent transition-all"
+                            >
+                              <option value="">Chọn kết quả</option>
+                              <option value="1">Dương tính</option>
+                              <option value="0">Âm tính</option>
+                            </select>
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-medium text-[#334155] mb-2">
+                              Nồng độ oxalat (mg/day)
+                            </label>
+                            <input
+                              type="number"
+                              step="0.1"
+                              value={newTestData.oxalateLevels}
+                              onChange={(e) =>
+                                handleNewTestInputChange(
+                                  "oxalateLevels",
+                                  e.target.value
+                                )
+                              }
+                              className="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent transition-all"
+                              placeholder="2.0"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-medium text-[#334155] mb-2">
+                              pH nước tiểu
+                            </label>
+                            <input
+                              type="number"
+                              step="0.1"
+                              value={newTestData.urinePH}
+                              onChange={(e) =>
+                                handleNewTestInputChange(
+                                  "urinePH",
+                                  e.target.value
+                                )
+                              }
+                              className="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent transition-all"
+                              placeholder="7.0"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex gap-4 pt-4">
+                        <button
+                          type="button"
+                          onClick={handleCancelAddTest}
+                          className="flex-1 px-6 py-3 border border-gray-200 text-gray-700 rounded-2xl hover:bg-gray-50 transition-colors font-medium"
+                        >
+                          Hủy
+                        </button>
+                        <button
+                          type="submit"
+                          disabled={isAddingTest || isCreatingPanel}
+                          className="flex-1 px-6 py-3 bg-[#1E75FF] text-white rounded-2xl hover:bg-[#1659C9] transition-colors font-medium flex items-center justify-center gap-2 disabled:opacity-50"
+                        >
+                          {isAddingTest || isCreatingPanel ? (
+                            <>
+                              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                              <span>Đang lưu...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Save size={16} />
+                              <span>Lưu kết quả</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                </motion.div>
+              </>
+            )}
+          </AnimatePresence>,
+          document.body
+        )}
     </div>
   );
 }
