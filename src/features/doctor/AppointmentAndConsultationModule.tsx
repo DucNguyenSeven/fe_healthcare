@@ -290,12 +290,15 @@ export const AppointmentAndConsultationModule = ({
       "🔍 [AppointmentModule] Socket event received, refetching appointments..."
     );
     if (me?.userId) {
-      const { start, end } = getWeekStartEnd(currentWeek);
-      console.log("🔍 [AppointmentModule] Fetching appointments for week:", {
-        start,
-        end,
-        doctorId: me.userId,
-      });
+      const { start, end } = getWideDateRange();
+      console.log(
+        "🔍 [AppointmentModule] Fetching appointments for wide date range:",
+        {
+          start,
+          end,
+          doctorId: me.userId,
+        }
+      );
       fetchDoctorAppointments({
         doctorId: me.userId,
         startTime: start,
@@ -380,7 +383,7 @@ export const AppointmentAndConsultationModule = ({
 
     if (success) {
       if (me?.userId) {
-        const { start, end } = getWeekStartEnd(currentWeek);
+        const { start, end } = getWideDateRange();
         fetchDoctorAppointments({
           doctorId: me.userId,
           startTime: start,
@@ -487,6 +490,21 @@ export const AppointmentAndConsultationModule = ({
     };
   };
 
+  // Utility function để lấy date range rộng (từ hôm nay đến 2 năm sau) - dùng cho fetch TẤT CẢ appointments
+  const getWideDateRange = () => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const twoYearsLater = new Date(today);
+    twoYearsLater.setFullYear(today.getFullYear() + 2);
+    twoYearsLater.setHours(23, 59, 59, 999);
+
+    return {
+      start: today.toISOString().split("T")[0], // YYYY-MM-DD
+      end: twoYearsLater.toISOString().split("T")[0], // YYYY-MM-DD
+    };
+  };
+
   const formatWeekRange = (date: Date) => {
     const { start, end } = getWeekStartEnd(date);
     const startDate = new Date(start);
@@ -501,13 +519,13 @@ export const AppointmentAndConsultationModule = ({
   // Fetch appointments when currentWeek or doctorId changes
   React.useEffect(() => {
     if (!me?.userId) return;
-    const { start, end } = getWeekStartEnd(currentWeek);
+    const { start, end } = getWideDateRange();
     fetchDoctorAppointments({
       doctorId: me.userId,
       startTime: start,
       endTime: end,
     });
-  }, [me?.userId, currentWeek, fetchDoctorAppointments]);
+  }, [me?.userId, fetchDoctorAppointments]);
 
   // Debug: Log appointments when they change
   React.useEffect(() => {
@@ -662,9 +680,9 @@ export const AppointmentAndConsultationModule = ({
     // Schedule data đã được xử lý trong modal và gọi API
     // Modal sẽ tự động đóng sau khi API thành công
 
-    // Refresh appointments data cho tuần hiện tại
+    // Refresh appointments data
     if (me?.userId) {
-      const { start, end } = getWeekStartEnd(currentWeek);
+      const { start, end } = getWideDateRange();
       fetchDoctorAppointments({
         doctorId: me.userId,
         startTime: start,
@@ -1129,7 +1147,7 @@ export const AppointmentAndConsultationModule = ({
         // Thêm delay nhỏ để đảm bảo backend đã cập nhật status thành COMPLETED
         await new Promise((resolve) => setTimeout(resolve, 500));
 
-        const { start, end } = getWeekStartEnd(currentWeek);
+        const { start, end } = getWideDateRange();
 
         // Fetch lại appointments và đợi hoàn thành
         await fetchDoctorAppointments({
