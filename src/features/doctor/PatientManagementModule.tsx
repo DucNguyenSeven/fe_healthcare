@@ -332,7 +332,7 @@ export const PatientManagementModule = () => {
         >
           <ChevronLeft size={24} className="text-[#334155]" />
         </button>
-        <h1 className="text-3xl font-bold text-[#0F172A]">Chi tiết bệnh nhân</h1>
+        <h1 className="text-2xl font-bold text-[#0F172A]">Chi tiết bệnh nhân</h1>
       </div>
 
       {/* Detail Card */}
@@ -359,7 +359,7 @@ export const PatientManagementModule = () => {
           <div className="flex">
             {[
               { id: 'profile', label: 'Hồ sơ', icon: User },
-              { id: 'lab', label: 'Xét nghiệm', icon: Activity },
+              // { id: 'lab', label: 'Xét nghiệm', icon: Activity }, // Hidden tab
               { id: 'consultations', label: 'Tư vấn', icon: Calendar },
               { id: 'treatment', label: 'Phác đồ', icon: FileText }
             ].map((tab) => {
