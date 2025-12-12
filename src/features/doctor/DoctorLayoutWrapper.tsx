@@ -7,6 +7,7 @@ import { Menu, User, Home, Users, Calendar, Clock, BookOpen, MessageSquare, Acti
 import { useLogout } from '@/hooks/auth/useLogout'
 import { useGetMe } from '@/hooks/auth/useGetMe'
 import { toast } from 'sonner'
+import { HealthcareSidebarLogo } from '@/shared/ui/HealthcareSidebarLogo'
 
 interface DoctorLayoutWrapperProps {
   children: React.ReactNode
@@ -97,13 +98,8 @@ export function DoctorLayoutWrapper({ children }: DoctorLayoutWrapperProps) {
         }} transition={{
           duration: 0.3
         }} className="w-70 bg-white border-r border-gray-200 flex flex-col h-full">
-            <div className="p-6 border-b border-gray-200">
-              <div className="flex items-center space-x-3">
-                <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-                  <Activity className="w-5 h-5 text-white" />
-                </div>
-                <h1 className="text-xl font-bold text-gray-900">HealthCare+</h1>
-              </div>
+            <div className="flex items-center justify-center h-16 border-b border-gray-200">
+              <HealthcareSidebarLogo />
             </div>
 
             <nav className="flex-1 px-4 py-6">
@@ -144,8 +140,8 @@ export function DoctorLayoutWrapper({ children }: DoctorLayoutWrapperProps) {
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col h-full overflow-hidden">
-        <header className="bg-white shadow-sm border-b border-gray-200 px-4 lg:px-6" style={{ paddingTop: '22px', paddingBottom: '22px' }}>
-          <div className="flex items-center justify-between">
+        <header className="bg-white shadow-sm border-b border-gray-200 px-4 lg:px-6 h-16 flex items-center">
+          <div className="flex items-center justify-between w-full">
             <div className="flex items-center space-x-4">
               <button onClick={() => setSidebarOpen(!sidebarOpen)} className="lg:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors">
                 <Menu className="w-5 h-5 text-gray-600" />

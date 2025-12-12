@@ -10,6 +10,7 @@ import { AppointmentAndConsultationModule } from './AppointmentAndConsultationMo
 import { ForumModule } from './ForumModule';
 import { useLogout } from '@/hooks/auth/useLogout';
 import { toast } from 'sonner';
+import { HealthcareSidebarLogo } from '@/shared/ui/HealthcareSidebarLogo';
 const navigationItems = [{
   id: 'dashboard',
   label: "Tổng quan",
@@ -89,14 +90,9 @@ export const DoctorAppLayout = () => {
         stiffness: 200
       }} className="fixed md:relative z-30 h-full w-64 bg-white shadow-lg flex flex-col">
             {/* Logo & Close Button */}
-            <div className="flex items-center justify-between p-6 border-b border-gray-200">
-              <div className="flex items-center space-x-3">
-                <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-                  <Activity className="w-5 h-5 text-white" />
-                </div>
-                <h1 className="text-xl font-bold text-gray-900">HealthCare+</h1>
-              </div>
-              <button onClick={() => setSidebarOpen(false)} className="md:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors" aria-label="Đóng menu">
+            <div className="flex items-center justify-center h-16 border-b border-gray-200 relative">
+              <HealthcareSidebarLogo />
+              <button onClick={() => setSidebarOpen(false)} className="md:hidden absolute right-4 p-2 rounded-lg hover:bg-gray-100 transition-colors" aria-label="Đóng menu">
                 <X className="w-5 h-5 text-gray-600" />
               </button>
             </div>
@@ -145,8 +141,8 @@ export const DoctorAppLayout = () => {
       {/* Main Content */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Top App Bar */}
-        <header className="bg-white shadow-sm border-b border-gray-200 px-4 lg:px-6 py-4">
-          <div className="flex items-center justify-between">
+        <header className="bg-white shadow-sm border-b border-gray-200 px-4 lg:px-6 h-16 flex items-center">
+          <div className="flex items-center justify-between w-full">
             <div className="flex items-center space-x-4">
               <button onClick={() => setSidebarOpen(true)} className="lg:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors" aria-label="Mở menu">
                 <Menu className="w-5 h-5 text-gray-600" />
