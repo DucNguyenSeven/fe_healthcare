@@ -32,6 +32,7 @@ import type { MedicalRecordWithPrescriptions } from "@/types/medical-record";
 import { format } from "date-fns";
 import { vi } from "date-fns/locale";
 import { PrescriptionGroupModal } from "./PrescriptionGroupModal";
+import { MedicalResultModal } from "@/components/MedicalResultModal";
 import { usePatientHealthPanels } from "@/hooks/health-metrics/usePatientPanels";
 import { usePanelByDate } from "@/hooks/health-metrics/usePanelByDate";
 import {
@@ -71,6 +72,16 @@ export function DashboardPage({
     useState<PrescriptionGroup | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
+
+  // State for medical result modal
+  const [showResultModal, setShowResultModal] = useState(false);
+  const [selectedAppointmentId, setSelectedAppointmentId] =
+    useState<string>("");
+  const [selectedDoctorInfo, setSelectedDoctorInfo] = useState<{
+    name: string;
+    specialty?: string;
+    id?: string;
+  } | null>(null);
 
   // Lấy tất cả panels để tạo dropdown
   const { panels, loading: panelsLoading } = usePatientHealthPanels(patientId);
@@ -957,7 +968,20 @@ export function DashboardPage({
                           )}
                         </p>
                       </div>
-                      <button className="text-blue-600 hover:text-blue-700 text-sm font-medium whitespace-nowrap">
+                      <button
+                        onClick={() => {
+                          if (record.appointmentId) {
+                            setSelectedAppointmentId(record.appointmentId);
+                            setSelectedDoctorInfo({
+                              name: record.doctorName || "Bác sĩ",
+                              specialty: record.serviceName || undefined,
+                              id: record.doctorId || undefined,
+                            });
+                            setShowResultModal(true);
+                          }
+                        }}
+                        className="text-blue-600 hover:text-blue-700 text-sm font-medium whitespace-nowrap"
+                      >
                         Xem lại
                       </button>
                     </div>
@@ -1094,6 +1118,25 @@ export function DashboardPage({
         onClose={closePrescriptionModal}
         prescriptionGroup={selectedPrescriptionGroup}
       />
+
+      {/* Medical Result Modal */}
+      {selectedAppointmentId && (
+        <MedicalResultModal
+          isOpen={showResultModal}
+          onClose={() => {
+            setShowResultModal(false);
+            setSelectedAppointmentId("");
+            setSelectedDoctorInfo(null);
+          }}
+          appointmentId={selectedAppointmentId}
+          patientInfo={{
+            name: user.fullName || user.name || "Bệnh nhân",
+            id: patientId || "",
+            email: user.email || "",
+          }}
+          doctorInfo={selectedDoctorInfo ?? undefined}
+        />
+      )}
     </div>
   );
 }
