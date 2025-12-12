@@ -229,7 +229,7 @@ export function AIChatWidget() {
                   </div>
                 </div>
 
-                <div className="flex items-center space-x-1">
+                <div className="flex items-center space-x-2">
                   <button
                     onClick={handleToggleExpand}
                     className="p-1.5 hover:bg-white/20 rounded-lg transition-colors"

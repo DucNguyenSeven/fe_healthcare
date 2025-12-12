@@ -665,7 +665,7 @@ export function AIAssistantPage({ user, onNavigate }: AIAssistantPageProps) {
           <div>
             <h1 className="text-2xl font-bold">Dự đoán nguy cơ CKD</h1>
             <p className="text-blue-100">
-              Đánh giá nguy cơ bệnh thận mạn dựa trên 21 yếu tố chính xác
+              Đánh giá nguy cơ bệnh thận mạn dựa trên 19 yếu tố chính xác
             </p>
           </div>
         </div>

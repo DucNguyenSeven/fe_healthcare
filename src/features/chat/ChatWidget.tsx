@@ -154,7 +154,7 @@ export function ChatWidget() {
             `}
           >
             {/* Header controls */}
-            <div className="absolute top-3 right-3 z-10 flex items-center space-x-1">
+            <div className="absolute top-3 right-4 z-10 flex items-center space-x-2">
               {/* Expand button */}
               <button
                 onClick={handleToggleExpand}
