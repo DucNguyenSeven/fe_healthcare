@@ -1612,12 +1612,12 @@ export function AIAssistantPage({ user, onNavigate }: AIAssistantPageProps) {
                 {isCalculatingPrediction ? (
                   <>
                     <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    <span>🤖 ĐANG XỬ LÝ...</span>
+                    <span>ĐANG XỬ LÝ...</span>
                   </>
                 ) : (
                   <>
                     <Calculator className="w-4 h-4" />
-                    <span>🔮 DỰ ĐOÁN KẾT QUẢ</span>
+                    <span>DỰ ĐOÁN KẾT QUẢ</span>
                   </>
                 )}
               </button>
