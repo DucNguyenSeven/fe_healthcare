@@ -10,9 +10,25 @@ import {
   ArrowUp,
   ArrowDown,
   AlertCircle,
-  RefreshCw
+  RefreshCw,
+  Star
 } from 'lucide-react';
 import { useDashboardOverview } from '@/hooks/admin/useDashboard';
+import {
+  LineChart,
+  Line,
+  BarChart,
+  Bar,
+  PieChart,
+  Pie,
+  Cell,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer
+} from 'recharts';
 
 interface AdminDashboardPageProps {
   onNavigate?: (page: string) => void;
@@ -32,7 +48,7 @@ const formatNumber = (num: number): string => {
 };
 
 export function AdminDashboardPage({
-  onNavigate = () => {},
+  onNavigate = () => { },
 }: AdminDashboardPageProps) {
   // Fetch dashboard data from API
   const { data, isLoading, error, refetch } = useDashboardOverview();
@@ -204,9 +220,43 @@ export function AdminDashboardPage({
               </button>
             </div>
 
-            {/* Chart placeholder - sẽ thay bằng Recharts */}
-            <div className="h-64 bg-gray-50 rounded-xl flex items-center justify-center">
-              <p className="text-gray-500">Revenue Trend Chart (30 ngày)</p>
+            {/* Revenue Trend Chart */}
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={data.charts.revenueTrend}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                  <XAxis
+                    dataKey="date"
+                    stroke="#6b7280"
+                    tick={{ fontSize: 12 }}
+                  />
+                  <YAxis
+                    stroke="#6b7280"
+                    tick={{ fontSize: 12 }}
+                    tickFormatter={(value) => `${(value / 1000000).toFixed(0)}M`}
+                  />
+                  <Tooltip
+                    formatter={(value: number) => [formatCurrency(value), 'Doanh thu']}
+                    labelStyle={{ color: '#374151' }}
+                    contentStyle={{
+                      backgroundColor: 'white',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: '8px',
+                      padding: '8px 12px'
+                    }}
+                  />
+                  <Legend />
+                  <Line
+                    type="monotone"
+                    dataKey="revenue"
+                    stroke="#3b82f6"
+                    strokeWidth={2}
+                    name="Doanh thu"
+                    dot={{ fill: '#3b82f6', r: 4 }}
+                    activeDot={{ r: 6 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
             </div>
           </div>
         </div>
@@ -217,24 +267,118 @@ export function AdminDashboardPage({
             <h2 className="text-xl font-semibold text-gray-900 mb-4">Top 5 Bác sĩ</h2>
             <div className="space-y-3">
               {data.charts.topDoctors.map((doctor, index) => (
-                <div key={doctor.doctorId} className="flex items-center space-x-3 p-3 bg-gray-50 rounded-xl">
+                <div key={doctor.doctorId} className="flex items-start space-x-3 p-3 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
                   <div className="w-8 h-8 bg-blue-100 text-blue-600 rounded-full
-                                  flex items-center justify-center font-bold text-sm">
+                                  flex items-center justify-center font-bold text-sm flex-shrink-0">
                     {index + 1}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium text-gray-900">{doctor.doctorName}</p>
-                    <p className="text-sm text-gray-600">{doctor.specialty}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm font-semibold text-gray-900">
-                      {(doctor.totalRevenue / 1000000).toFixed(0)}M đ
-                    </p>
-                    <p className="text-xs text-gray-500">{doctor.appointmentCount} lịch</p>
+                    <div className="flex items-center justify-between mb-1">
+                      <p className="font-medium text-gray-900 truncate">{doctor.doctorName}</p>
+                      <div className="flex items-center gap-1 ml-2 flex-shrink-0">
+                        <Star className="w-3.5 h-3.5 text-yellow-500 fill-yellow-500" />
+                        <span className="text-sm font-semibold text-gray-700">{doctor.rating.toFixed(1)}</span>
+                      </div>
+                    </div>
+                    <p className="text-sm text-gray-600 mb-2">{doctor.specialty}</p>
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-gray-500">{doctor.appointmentCount} lịch hẹn</span>
+                      <span className="font-semibold text-blue-600">
+                        {formatCurrency(doctor.totalRevenue)}
+                      </span></div>
                   </div>
                 </div>
               ))}
             </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Charts Row 2: Appointments & Revenue by Service Type */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Appointments by Status */}
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+          <h2 className="text-xl font-semibold text-gray-900 mb-4">Lịch hẹn theo trạng thái</h2>
+          <div className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                data={[
+                  { status: 'Đã xác nhận', value: data.charts.appointmentsByStatus.CONFIRMED || 0, fill: '#3b82f6' },
+                  { status: 'Đã hoàn thành', value: data.charts.appointmentsByStatus.COMPLETED || 0, fill: '#10b981' },
+                  { status: 'Đã hủy', value: data.charts.appointmentsByStatus.CANCELLED || 0, fill: '#ef4444' },
+                  { status: 'Chờ thanh toán', value: data.charts.appointmentsByStatus.PAYMENT_PENDING || 0, fill: '#f59e0b' }
+                ]}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <XAxis
+                  dataKey="status"
+                  stroke="#6b7280"
+                  tick={{ fontSize: 12 }}
+                />
+                <YAxis
+                  stroke="#6b7280"
+                  tick={{ fontSize: 12 }}
+                />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: 'white',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '8px',
+                    padding: '8px 12px'
+                  }}
+                />
+                <Bar dataKey="value" name="Số lượng" radius={[8, 8, 0, 0]}>
+                  {[
+                    { status: 'Đã xác nhận', value: data.charts.appointmentsByStatus.CONFIRMED || 0, fill: '#3b82f6' },
+                    { status: 'Đã hoàn thành', value: data.charts.appointmentsByStatus.COMPLETED || 0, fill: '#10b981' },
+                    { status: 'Đã hủy', value: data.charts.appointmentsByStatus.CANCELLED || 0, fill: '#ef4444' },
+                    { status: 'Chờ thanh toán', value: data.charts.appointmentsByStatus.PAYMENT_PENDING || 0, fill: '#f59e0b' }
+                  ].map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.fill} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* Revenue by Service Type */}
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+          <h2 className="text-xl font-semibold text-gray-900 mb-4">Doanh thu theo loại dịch vụ</h2>
+          <div className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={[
+                    { name: 'Video Call', value: data.charts.revenueByServiceType.VIDEO_CALL, fill: '#3b82f6' },
+                    { name: 'Trực tiếp', value: data.charts.revenueByServiceType.IN_PERSON, fill: '#10b981' }
+                  ]}
+                  cx="50%"
+                  cy="50%"
+                  labelLine={false}
+                  label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                  outerRadius={80}
+                  dataKey="value"
+                >
+                  {[
+                    { name: 'Video Call', value: data.charts.revenueByServiceType.VIDEO_CALL, fill: '#3b82f6' },
+                    { name: 'Trực tiếp', value: data.charts.revenueByServiceType.IN_PERSON, fill: '#10b981' }
+                  ].map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.fill} />
+                  ))}
+                </Pie>
+                <Tooltip
+                  formatter={(value: number) => formatCurrency(value)}
+                  contentStyle={{
+                    backgroundColor: 'white',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '8px',
+                    padding: '8px 12px'
+                  }}
+                />
+                <Legend />
+              </PieChart>
+            </ResponsiveContainer>
           </div>
         </div>
       </div>

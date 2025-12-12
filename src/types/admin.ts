@@ -59,6 +59,7 @@ export interface AppointmentsByStatus {
   COMPLETED: number;
   CONFIRMED: number;
   CANCELLED: number;
+  PAYMENT_PENDING?: number;
 }
 
 export interface TopDoctor {
@@ -339,7 +340,7 @@ export interface UserFilterParams extends PaginationParams {
   search?: string;
 }
 
-export interface RevenueByDoctorParams extends DateRangeParams, PaginationParams {}
+export interface RevenueByDoctorParams extends DateRangeParams, PaginationParams { }
 
 export interface TopPerformersParams extends DateRangeParams {
   limit?: number; // Default: 10, Max: 50
