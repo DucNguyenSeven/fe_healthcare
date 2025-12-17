@@ -1054,23 +1054,6 @@ export const DoctorProfilePage = () => {
             {(certifications || []).length === 0 ? <div className="text-center py-12 bg-gray-50 rounded-2xl">
                 <Award size={48} className="text-gray-400 mx-auto mb-4" />
                 <p className="text-[#334155] mb-4">Chưa có chứng chỉ nào</p>
-                <button 
-                  onClick={() => setShowCertificateModal(true)} 
-                  disabled={isAddingCertification}
-                  className="bg-[#1E75FF] hover:bg-[#1659C9] text-white px-6 py-3 rounded-2xl font-medium flex items-center gap-2 mx-auto transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isAddingCertification ? (
-                    <>
-                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      <span>Đang thêm...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Plus size={20} />
-                      <span>Thêm chứng chỉ mới</span>
-                    </>
-                  )}
-                </button>
               </div> : <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {(certifications || []).map((certificate: Certification) => <motion.div key={certificate.id} initial={{
               opacity: 0,
