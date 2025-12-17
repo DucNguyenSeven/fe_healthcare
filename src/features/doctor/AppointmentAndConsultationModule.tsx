@@ -1086,6 +1086,7 @@ export const AppointmentAndConsultationModule = ({
             note:
               followUpNote ||
               `Tái khám theo chỉ định của bác sĩ - ${followUpType}`, // Optional
+            payment_method: 'CASH' as const, // Default to CASH for doctor-scheduled follow-ups
           };
 
           const followUpResult = await scheduleFollowUp(

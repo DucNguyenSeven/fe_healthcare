@@ -220,6 +220,7 @@ export interface ScheduleFollowUpByDoctorRequest {
   slotId: number;            // Time slot ID (REQUIRED)
   appointmentDate: string;   // Appointment date YYYY-MM-DD (REQUIRED)
   note?: string;             // Optional note (default: "Tái khám theo chỉ định của bác sĩ")
+  payment_method?: 'CASH' | 'BANK';  // Payment method (default: CASH for doctor-scheduled follow-ups)
 }
 
 /**
