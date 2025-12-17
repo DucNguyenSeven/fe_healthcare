@@ -1342,20 +1342,23 @@ export function DashboardPage({
                   className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
                   onClick={(e) => e.stopPropagation()}
                 >
-                  <div className="bg-white rounded-2xl p-8 w-full max-w-2xl max-h-[90vh] overflow-y-auto relative">
-                    <div className="flex items-center justify-between mb-6">
+                  <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl">
+                    {/* Header - Fixed */}
+                    <div className="flex items-center justify-between p-8 pb-6 flex-shrink-0">
                       <h2 className="text-2xl font-semibold text-[#0F172A]">
                         Thêm kết quả xét nghiệm mới
                       </h2>
                       <button
                         onClick={handleCancelAddTest}
-                        className="p-2 hover:bg-gray-100 rounded-xl transition-colors"
+                        className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
                       >
                         <X size={20} className="text-gray-500" />
                       </button>
                     </div>
 
-                    <form
+                    {/* Scrollable Content */}
+                    <div className="overflow-y-auto px-8 pb-8 flex-1">
+                      <form
                       onSubmit={(e) => {
                         e.preventDefault();
                         handleAddTestResult();
@@ -1576,6 +1579,7 @@ export function DashboardPage({
                         </button>
                       </div>
                     </form>
+                    </div>
                   </div>
                 </motion.div>
               </>
