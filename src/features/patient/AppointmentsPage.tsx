@@ -1164,9 +1164,9 @@ export function AppointmentsPage() {
                   {/* PENDING: Allow reschedule and cancel */}
                   {backendStatus === "PENDING" && (
                     <>
-                      <button className="px-4 py-2 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors text-sm">
+                      {/* <button className="px-4 py-2 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors text-sm">
                         Đổi lịch
-                      </button>
+                      </button> */}
                       <button
                         onClick={() => handleOpenCancelModal(appointment)}
                         className="px-4 py-2 border border-red-300 text-red-700 rounded-xl hover:bg-red-50 transition-colors text-sm"
@@ -1184,9 +1184,9 @@ export function AppointmentsPage() {
                           Vào phòng tư vấn
                         </button>
                       )}
-                      <button className="px-4 py-2 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors text-sm">
+                      {/* <button className="px-4 py-2 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors text-sm">
                         Đổi lịch
-                      </button>
+                      </button> */}
                       <button
                         onClick={() => handleOpenCancelModal(appointment)}
                         className="px-4 py-2 border border-red-300 text-red-700 rounded-xl hover:bg-red-50 transition-colors text-sm"
