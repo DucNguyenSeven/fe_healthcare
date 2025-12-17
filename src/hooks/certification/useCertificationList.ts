@@ -16,9 +16,9 @@ export const useCertificationList = (userId: string): {
   updateError: string | null;
   deleteError: string | null;
   batchUpdateError: string | null;
-  addCertification: (certData: AddCertificationRequest) => void;
-  updateCertification: (params: { certificationId: string; certData: UpdateCertificationRequest }) => void;
-  deleteCertification: (certificationId: string) => void;
+  addCertification: (certData: AddCertificationRequest, options?: { onSuccess?: (data: Certification) => void; onError?: (error: Error) => void }) => void;
+  updateCertification: (params: { certificationId: string; certData: UpdateCertificationRequest }, options?: { onSuccess?: (data: Certification) => void; onError?: (error: Error) => void }) => void;
+  deleteCertification: (certificationId: string, options?: { onSuccess?: (data: string) => void; onError?: (error: Error) => void }) => void;
   batchUpdateCertifications: (certifications: Certification[]) => void;
   refetch: () => void;
   resetAddError: () => void;
@@ -144,10 +144,16 @@ export const useCertificationList = (userId: string): {
     deleteError: deleteCertificationMutation.error?.message || null,
     batchUpdateError: batchUpdateCertificationsMutation.error?.message || null,
     
-    // Actions
-    addCertification: addCertificationMutation.mutate,
-    updateCertification: updateCertificationMutation.mutate,
-    deleteCertification: deleteCertificationMutation.mutate,
+    // Actions - wrapper functions để hỗ trợ options callback
+    addCertification: (certData: AddCertificationRequest, options?: { onSuccess?: (data: Certification) => void; onError?: (error: Error) => void }) => {
+      addCertificationMutation.mutate(certData, options);
+    },
+    updateCertification: (params: { certificationId: string; certData: UpdateCertificationRequest }, options?: { onSuccess?: (data: Certification) => void; onError?: (error: Error) => void }) => {
+      updateCertificationMutation.mutate(params, options);
+    },
+    deleteCertification: (certificationId: string, options?: { onSuccess?: (data: string) => void; onError?: (error: Error) => void }) => {
+      deleteCertificationMutation.mutate(certificationId, options);
+    },
     batchUpdateCertifications: batchUpdateCertificationsMutation.mutate,
     refetch,
     
