@@ -40,27 +40,9 @@ export class DashboardAPI {
         { params }
       );
 
-      // Log success for debugging
-      console.log('✅ Dashboard API success:', {
-        doctorId,
-        date: date || 'today',
-        statistics: response.data.data.statistics,
-        appointmentsCount: response.data.data.upcomingAppointments.length,
-        patientsCount: response.data.data.recentPatients.length
-      });
-
       return response.data;
 
     } catch (error: any) {
-      // Detailed error logging
-      console.error('❌ Dashboard API error:', {
-        doctorId,
-        date,
-        status: error.response?.status,
-        statusText: error.response?.statusText,
-        message: error.response?.data?.message,
-        fullError: error.response?.data
-      });
 
       // Re-throw error for React Query to handle
       throw error;

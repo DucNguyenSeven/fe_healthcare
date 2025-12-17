@@ -36,12 +36,6 @@ export default function PaymentCancelPage() {
         const cancel = searchParams.get('cancel');
         const paymentStatus = searchParams.get('status');
 
-        console.log('🔍 [PaymentCancel] Query params:', {
-          orderCode: orderCodeParam,
-          cancel,
-          status: paymentStatus
-        });
-
         // Validation
         if (!orderCodeParam) {
           throw new Error('Không tìm thấy mã đơn hàng. Vui lòng liên hệ hỗ trợ.');
@@ -54,11 +48,9 @@ export default function PaymentCancelPage() {
         setOrderCode(orderCodeParam);
 
         // Call backend API to cancel payment and update appointment
-        console.log('🔄 [PaymentCancel] Calling cancel API...');
         const result = await cancelPaymentByOrderCode(orderCodeParam);
 
         if (result.success) {
-          console.log('✅ [PaymentCancel] Payment cancelled successfully');
           setStatus('success');
           setRedirectCountdown(5);
         } else {

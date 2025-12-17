@@ -59,7 +59,7 @@ export default function PatientDashboard() {
         router.push("/patient/community");
         break;
       default:
-        console.log("Navigate to:", page);
+      // no-op
     }
   };
 

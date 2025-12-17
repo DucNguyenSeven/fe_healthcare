@@ -37,12 +37,6 @@ export default function PaymentReturnPage() {
         const paymentStatus = searchParams.get('status');
         const isCancelled = searchParams.get('cancel') === 'true';
 
-        console.log('🔍 [PaymentReturn] Query params:', {
-          orderCode,
-          paymentStatus,
-          isCancelled
-        });
-
         // Validation
         if (!orderCode) {
           throw new Error('Không tìm thấy mã đơn hàng. Vui lòng liên hệ hỗ trợ.');
@@ -56,7 +50,6 @@ export default function PaymentReturnPage() {
         }
 
         // Poll payment status from backend (wait for webhook to update)
-        console.log('🔄 [PaymentReturn] Polling payment status...');
 
         // We need to get paymentId from orderCode
         // Since we don't have a direct API endpoint for this, we'll need to handle this differently
@@ -70,7 +63,6 @@ export default function PaymentReturnPage() {
 
         if (!storedPaymentId) {
           // Fallback: just show success based on query params
-          console.warn('⚠️ [PaymentReturn] No stored paymentId, using query params');
           if (paymentStatus === 'PAID') {
             setStatus('success');
             setPayment({
@@ -98,7 +90,6 @@ export default function PaymentReturnPage() {
           throw new Error('Không thể lấy trạng thái thanh toán. Vui lòng kiểm tra lại trong mục Lịch hẹn.');
         }
 
-        console.log('✅ [PaymentReturn] Payment status:', paymentData.status);
         setPayment(paymentData);
 
         // Clear stored paymentId
@@ -119,7 +110,6 @@ export default function PaymentReturnPage() {
           case 'PENDING':
             // If PayOS confirmed payment but backend still PENDING (webhook delay)
             if (isPayOSConfirmedPaid) {
-              console.warn('⚠️ [PaymentReturn] PayOS confirmed PAID but backend still PENDING - webhook delayed');
               setStatus('success');
               setError('Thanh toán thành công! Hệ thống đang cập nhật...');
             } else {

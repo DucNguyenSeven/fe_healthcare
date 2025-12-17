@@ -90,18 +90,11 @@ export const useDoctorSchedule = (): UseDoctorScheduleReturn => {
         throw new Error('Định dạng ngày không hợp lệ. Vui lòng sử dụng định dạng yyyy-MM-dd');
       }
 
-      console.log('🔄 [refreshAvailableSlots] Fetching doctor schedule...', { doctorId, date });
-
       const response = await DoctorScheduleApi.getDoctorScheduleByDate({ doctorId, date });
-
-      console.log('📦 [refreshAvailableSlots] API Response:', response);
 
       if (response.success && response.data) {
         // Lưu scheduleId
         const latestScheduleId = response.data.scheduleId || response.data.id || '';
-
-        console.log('🔑 [refreshAvailableSlots] Extracted scheduleId:', latestScheduleId);
-        console.log('📋 [refreshAvailableSlots] Full response.data:', response.data);
 
         setScheduleId(latestScheduleId);
 
@@ -115,13 +108,8 @@ export const useDoctorSchedule = (): UseDoctorScheduleReturn => {
           mapping[timeString] = slot.slotId;
         });
 
-        console.log('⏰ [refreshAvailableSlots] TimeSlot Mapping:', mapping);
-        console.log('⏰ [refreshAvailableSlots] Available slots:', slots);
-
         setTimeSlots(slots);
         setTimeSlotMapping(mapping);
-
-        console.log('✅ [refreshAvailableSlots] State updated successfully');
 
         // Return dữ liệu mới nhất để caller có thể dùng ngay
         return {
@@ -134,10 +122,6 @@ export const useDoctorSchedule = (): UseDoctorScheduleReturn => {
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Có lỗi xảy ra khi làm mới lịch làm việc';
-      console.error('❌ [refreshAvailableSlots] Error:', {
-        errorMessage,
-        fullError: err
-      });
       setError(errorMessage);
       setTimeSlots([]);
       setScheduleId('');

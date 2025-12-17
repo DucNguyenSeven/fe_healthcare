@@ -36,16 +36,7 @@ export const createPrescription = async (
   data: CreatePrescriptionRequest
 ): Promise<ApiResponse<CreatePrescriptionResponse>> => {
   try {
-    console.log('🔍 [API - createPrescription] Request data:', data);
-    console.log('🔍 [API - createPrescription] Field check:', {
-      has_medical_name: 'medical_name' in data,
-      medical_name_value: (data as any).medical_name,
-      has_medicationName: 'medicationName' in data,
-      medicationName_value: (data as any).medicationName,
-      all_keys: Object.keys(data)
-    });
     const response = await api.post('/api/v1/prescriptions/create', data);
-    console.log('✅ [API - createPrescription] Response:', response.data);
     return {
       success: true,
       data: response.data.data, // Lấy data.data thay vì data
@@ -108,7 +99,6 @@ export const getPrescriptionGroups = async (
     );
     return response.data;
   } catch (error: any) {
-    console.error('Error fetching prescription groups:', error);
     throw {
       code: error.response?.status || 500,
       message: error.response?.data?.message || error.message || 'Không thể tải danh sách toa thuốc',

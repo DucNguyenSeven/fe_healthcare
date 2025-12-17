@@ -27,12 +27,7 @@ export const useScheduleFollowUp = () => {
     setSuccess(false);
 
     try {
-      console.log('🔍 [useScheduleFollowUp] Scheduling follow-up:', data);
-
       const response = await scheduleFollowUpByDoctor(data);
-
-      console.log('🔍 [useScheduleFollowUp] Success:', response);
-
       setSuccess(true);
       setLoading(false);
       return response;

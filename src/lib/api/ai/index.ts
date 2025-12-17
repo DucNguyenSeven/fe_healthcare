@@ -29,16 +29,9 @@ export async function askAI(request: AskAIRequest): Promise<AskAIResponse> {
   const token = getAccessToken();
   const url = `${API_BASE_URL}/api/v1/chat/ask`;
 
-  console.log('🌐 [AI-API] ========== START AI API CALL ==========');
-  console.log('🌐 [AI-API] URL:', url);
-  console.log('🌐 [AI-API] Request:', request);
-  console.log('🌐 [AI-API] Token present:', !!token);
-
   const startTime = Date.now();
 
   try {
-    console.log('📞 [AI-API] Sending fetch request (NO TIMEOUT - waiting for AI service)...');
-
     const response = await fetch(url, {
       method: 'POST',
       headers: {
@@ -49,9 +42,6 @@ export async function askAI(request: AskAIRequest): Promise<AskAIResponse> {
     });
 
     const elapsed = Date.now() - startTime;
-    console.log('⏱️ [AI-API] Response received in', elapsed, 'ms');
-    console.log('📊 [AI-API] Response status:', response.status);
-    console.log('📊 [AI-API] Response headers:', Object.fromEntries(response.headers.entries()));
 
     if (!response.ok) {
       const errorText = await response.text().catch(() => '');
@@ -64,14 +54,6 @@ export async function askAI(request: AskAIRequest): Promise<AskAIResponse> {
     }
 
     const data = await response.json();
-    console.log('✅ [AI-API] Response parsed successfully');
-    console.log('✅ [AI-API] Response data:', {
-      hasResponse: !!data.response,
-      responseLength: data.response?.length,
-      responsePreview: data.response?.substring(0, 100)
-    });
-    console.log('🌐 [AI-API] ========== END AI API CALL ==========\n');
-
     return data;
 
   } catch (error: any) {

@@ -34,11 +34,7 @@ export const useDoctorOfDate = (): UseDoctorOfDateReturn => {
       // Gọi API mới - Trả về danh sách bác sĩ kèm scheduleId trong 1 lần
       const response = await getDoctorsWithDetailsByDate({ date });
 
-      console.log('🔍 [DEBUG] API Response:', JSON.stringify(response, null, 2));
-      console.log('🔍 [DEBUG] Doctors count:', response.data?.length);
-
       if (response.success && response.data) {
-        console.log('🔍 [DEBUG] First doctor data:', response.data[0]);
         // Transform dữ liệu từ DoctorScheduleInfo sang DoctorInfo format
         const doctors: DoctorInfo[] = response.data.map((doc) => ({
           id: doc.doctorId,
@@ -64,10 +60,6 @@ export const useDoctorOfDate = (): UseDoctorOfDateReturn => {
         response.data.forEach(doc => {
           scheduleMap[doc.doctorId] = doc.scheduleId;
         });
-
-        console.log('✅ [DEBUG] Transformed doctors:', doctors);
-        console.log('✅ [DEBUG] First transformed doctor:', doctors[0]);
-        console.log('✅ [DEBUG] Schedule ID map:', scheduleMap);
 
         setDoctors(doctors);
         setScheduleIdMap(scheduleMap);

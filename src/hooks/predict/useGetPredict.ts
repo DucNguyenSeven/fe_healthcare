@@ -24,18 +24,13 @@ export const useGetPredict = (): UseGetPredictReturn => {
       setLoading(true);
       setError(null);
 
-      console.log('🔍 [useGetPredict] Fetching predict data for patient:', patientId);
-
       const response: GetPredictResponse = await getPredict(patientId);
-
-      console.log('🔍 [useGetPredict] Predict response:', response);
 
       if (response.success && response.data) {
         setData(response.data);
       } else {
         // Không có dữ liệu predict - không phải là lỗi
         setData(null);
-        console.log('ℹ️ [useGetPredict] No predict data available for patient');
       }
     } catch (err: any) {
       console.error('❌ [useGetPredict] Error fetching predict:', err);

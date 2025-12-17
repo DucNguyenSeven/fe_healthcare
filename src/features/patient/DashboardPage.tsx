@@ -306,7 +306,6 @@ export function DashboardPage({
 
     // Nếu có lỗi hoặc không có data → Fallback về default
     if (selectedPanelError || !selectedPanelData) {
-      console.warn("⚠️ No data for selected date, using default");
       return defaultHealthMetrics;
     }
 

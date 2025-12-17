@@ -1451,10 +1451,6 @@ export function ProfileRecordsPage(_props: ProfileRecordsPageProps = {}) {
   const renderMedicalHistory = () => {
     // Simplified handler - MedicalResultModal will handle timeline fetching
     const handleViewDetail = (record: MedicalRecordWithPrescriptions) => {
-      console.log(
-        "🔍 [ProfileRecordsPage] Opening detail modal for record:",
-        record.recordId
-      );
       setSelectedRecord(record);
       setShowRecordDetailModal(true);
     };
@@ -1715,8 +1711,6 @@ export function ProfileRecordsPage(_props: ProfileRecordsPageProps = {}) {
       ],
     } as const;
 
-    // Debug: log payload to help diagnose backend validation errors
-    console.debug("[create-panel] payload", payload);
     const ok = await createPanel(payload as any);
 
     if (ok) {

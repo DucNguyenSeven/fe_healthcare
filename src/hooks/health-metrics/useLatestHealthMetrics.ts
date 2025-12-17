@@ -110,7 +110,6 @@ function calculateAlert(metric: HealthMetricResponse): MetricAlert {
 function transformHealthMetrics(data: HealthMetricResponse[]): HealthMetricLatest[] {
   // ✅ FIX: Add null/undefined check
   if (!data || !Array.isArray(data)) {
-    console.warn('⚠️ transformHealthMetrics received invalid data:', data);
     return [];
   }
 
@@ -126,27 +125,14 @@ function transformHealthMetrics(data: HealthMetricResponse[]): HealthMetricLates
  * Hook để lấy chỉ số sức khỏe mới nhất với màu sắc cảnh báo
  */
 export function useLatestHealthMetrics(patientId: string | undefined) {
-  // 🔍 DEBUG: Log hook execution
-  console.log('🔍 useLatestHealthMetrics called:', {
-    patientId,
-    enabled: !!patientId
-  });
-
   return useQuery({
     queryKey: ['health-metrics', 'latest', patientId],
     queryFn: async () => {
-      console.log('🔍 Fetching health metrics for patientId:', patientId);
-
       if (!patientId) {
         throw new Error('Patient ID is required');
       }
 
       const response = await HealthMetricsApi.getLatestHealthMetrics(patientId);
-
-      console.log('🔍 API Response (FULL):', response);
-      console.log('🔍 API Response.data:', response.data);
-      console.log('🔍 Type of response:', typeof response);
-      console.log('🔍 Type of response.data:', typeof response.data);
 
       // ✅ FIX: Handle different response structures
       let rawData: HealthMetricResponse[];
@@ -159,21 +145,10 @@ export function useLatestHealthMetrics(patientId: string | undefined) {
         rawData = response.data;
       } else {
         // Case 3: Unexpected structure
-        console.warn('⚠️ Unexpected API response structure:', response);
         rawData = [];
       }
 
-      console.log('🔍 Raw Data to Transform:', rawData);
-      console.log('🔍 Is Array?', Array.isArray(rawData));
-      console.log('🔍 Array length:', rawData.length);
-
       const transformed = transformHealthMetrics(rawData);
-
-      console.log('🔍 Transformed Data:', {
-        count: transformed.length,
-        metrics: transformed.map(m => ({ name: m.metricName, value: m.metricValue }))
-      });
-
       return transformed;
     },
     enabled: !!patientId,
@@ -199,12 +174,6 @@ export function useLatestHealthMetrics(patientId: string | undefined) {
         !isNaN(metric.metricValue)
       );
 
-      console.log('🔍 Valid metrics after filter:', {
-        total: data.length,
-        valid: validMetrics.length,
-        filtered: validMetrics.map(m => m.displayName)
-      });
-
       // Sort theo thứ tự ưu tiên
       const sorted = validMetrics.sort((a, b) => {
         const indexA = priorityOrder.indexOf(a.displayName);
@@ -225,11 +194,6 @@ export function useLatestHealthMetrics(patientId: string | undefined) {
 
       // Chỉ lấy top 4 cho dashboard
       const topMetrics = sorted.slice(0, 4);
-
-      console.log('🔍 Top 4 metrics for dashboard:',
-        topMetrics.map(m => ({ name: m.displayName, value: m.metricValue }))
-      );
-
       return topMetrics;
     }
   });

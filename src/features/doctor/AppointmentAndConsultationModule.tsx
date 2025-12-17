@@ -218,12 +218,7 @@ export const AppointmentAndConsultationModule = ({
   const { data: me } = useGetMe();
 
   useEffect(() => {
-    console.log("🔍 [AppointmentModule] Component mounted", {
-      activeView,
-      user: me
-        ? { userId: me.userId, role: me.role, fullName: me.fullName }
-        : null,
-    });
+    // Component mounted
   }, [me, activeView]);
   const {
     appointments: doctorWeekAppointments,
@@ -286,19 +281,8 @@ export const AppointmentAndConsultationModule = ({
   const [isRejecting, setIsRejecting] = useState(false);
 
   useAppointmentSocket(() => {
-    console.log(
-      "🔍 [AppointmentModule] Socket event received, refetching appointments..."
-    );
     if (me?.userId) {
       const { start, end } = getWideDateRange();
-      console.log(
-        "🔍 [AppointmentModule] Fetching appointments for wide date range:",
-        {
-          start,
-          end,
-          doctorId: me.userId,
-        }
-      );
       fetchDoctorAppointments({
         doctorId: me.userId,
         startTime: start,
@@ -306,9 +290,6 @@ export const AppointmentAndConsultationModule = ({
       });
 
       if (appointmentTab === "completed") {
-        console.log(
-          "🔍 [AppointmentModule] Also fetching completed appointments"
-        );
         fetchCompletedAppointments({
           status: "COMPLETED",
           page: 0,
@@ -317,10 +298,6 @@ export const AppointmentAndConsultationModule = ({
           sortDir: "DESC",
         });
       }
-    } else {
-      console.warn(
-        "⚠️ [AppointmentModule] Cannot refetch - user ID not available"
-      );
     }
   });
 
@@ -331,7 +308,6 @@ export const AppointmentAndConsultationModule = ({
         try {
           await fetchDoctorSchedule(me.userId, followUpDate);
         } catch (error) {
-          console.error("Error fetching follow-up time slots:", error);
           toast.error("Không thể tải lịch làm việc");
         } finally {
           setLoadingFollowUpSlots(false);
@@ -421,9 +397,6 @@ export const AppointmentAndConsultationModule = ({
       const patientId = selectedAppointmentForAction.patientId;
 
       if (!patientId) {
-        console.error("❌ [Reject Appointment] Patient ID not found:", {
-          selectedAppointment: selectedAppointmentForAction,
-        });
         throw new Error(
           "Không tìm thấy thông tin bệnh nhân. Vui lòng thử lại sau."
         );
@@ -453,8 +426,6 @@ export const AppointmentAndConsultationModule = ({
       // Note: WebSocket response sẽ được handle bởi WebSocketAppointmentContext
       // và sẽ tự động refetch appointments và hiển thị toast success/error
     } catch (error: any) {
-      console.error("Failed to reject appointment:", error);
-
       // Dismiss loading toast nếu có lỗi
       const appointmentId =
         selectedAppointmentForAction?.appointmentId ||
@@ -701,10 +672,6 @@ export const AppointmentAndConsultationModule = ({
 
     // Fetch predict data if appointment has prediction
     if (appointment.hasAIPrediction && actualPatientId) {
-      console.log(
-        "🔍 [openPatientExamination] Fetching predict data for patient:",
-        actualPatientId
-      );
       fetchPredict(actualPatientId);
     }
 
@@ -957,18 +924,12 @@ export const AppointmentAndConsultationModule = ({
         statusHealth: statusHealth || "STABLE",
       };
 
-      console.log("🔍 [MedicalRecord] Sending signature to backend:", {
-        signature: medicalRecordData.signature,
-        hasSignature: !!medicalRecordData.signature,
-      });
-
       const medicalRecord = await createMedicalRecord(medicalRecordData);
 
       // Kiểm tra recordId từ response (theo type definition chỉ có recordId field)
       const recordId = medicalRecord?.recordId;
 
       if (!medicalRecord || !recordId) {
-        console.error("Medical record response:", medicalRecord);
         throw new Error("Không thể tạo hồ sơ khám - không nhận được recordId");
       }
 
@@ -976,11 +937,6 @@ export const AppointmentAndConsultationModule = ({
       medicalRecord.recordId = recordId;
 
       // BƯỚC 2: Tạo prescriptions (chỉ những dòng có thuốc)
-      console.log(
-        "🔍 [Prescriptions] Raw prescription rows:",
-        prescriptionRows
-      );
-
       const validPrescriptions = prescriptionRows
         .filter(
           (row) => row.drug && row.drug.trim() !== "" && row.dosage && row.usage
@@ -995,15 +951,6 @@ export const AppointmentAndConsultationModule = ({
           notes: row.notes || "",
         }));
 
-      console.log(
-        "🔍 [Prescriptions] Valid prescriptions count:",
-        validPrescriptions.length
-      );
-      console.log(
-        "🔍 [Prescriptions] Valid prescriptions data:",
-        validPrescriptions
-      );
-
       // Kiểm tra nếu có prescription rows nhưng không valid → thiếu thông tin
       if (validPrescriptions.length === 0 && prescriptionRows.length > 0) {
         // Tìm các dòng thiếu thông tin
@@ -1015,11 +962,6 @@ export const AppointmentAndConsultationModule = ({
         });
 
         if (incompletedRows.length > 0) {
-          console.warn(
-            "⚠️ [Prescriptions] Found incomplete prescription rows:",
-            incompletedRows
-          );
-
           toast.error("Đơn thuốc chưa đầy đủ thông tin", {
             description:
               "Vui lòng điền đầy đủ: Tên thuốc, Liều lượng và Cách dùng cho từng loại thuốc. Hoặc xóa các dòng thuốc trống.",
@@ -1030,38 +972,15 @@ export const AppointmentAndConsultationModule = ({
       }
 
       if (validPrescriptions.length > 0) {
-        console.log("🔍 [Prescriptions] Calling createPrescriptions API...");
         const prescriptionResult =
           await createPrescriptions(validPrescriptions);
 
-        console.log("🔍 [Prescriptions] Result:", {
-          successful: prescriptionResult.successful.length,
-          failed: prescriptionResult.failed.length,
-          successfulData: prescriptionResult.successful,
-          failedData: prescriptionResult.failed,
-        });
-
         if (prescriptionResult.failed.length > 0) {
-          console.warn(
-            "⚠️ [Prescriptions] Some prescriptions failed to create:",
-            prescriptionResult.failed
-          );
-
           toast.warning("Một số đơn thuốc không thể lưu", {
             description: `Đã lưu ${prescriptionResult.successful.length}/${prescriptionRows.length} đơn thuốc`,
             duration: 5000,
           });
         }
-
-        if (prescriptionResult.successful.length > 0) {
-          console.log(
-            "✅ [Prescriptions] Successfully created:",
-            prescriptionResult.successful.length,
-            "prescriptions"
-          );
-        }
-      } else {
-        console.log("⚠️ [Prescriptions] No valid prescriptions to create");
       }
 
       // BƯỚC 3: Đặt lịch tái khám (NẾU CÓ) - SỬ DỤNG API MỚI
@@ -1072,8 +991,6 @@ export const AppointmentAndConsultationModule = ({
         followUpScheduleId
       ) {
         try {
-          console.log("🔍 [Đặt lịch tái khám] Bắt đầu với recordId:", recordId);
-
           // Dùng API mới scheduleFollowUpByDoctor
           // Backend tự động set consultationType = FOLLOW_UP, status = CONFIRMED
           const followUpAppointmentData = {
@@ -1086,7 +1003,7 @@ export const AppointmentAndConsultationModule = ({
             note:
               followUpNote ||
               `Tái khám theo chỉ định của bác sĩ - ${followUpType}`, // Optional
-            payment_method: 'CASH' as const, // Default to CASH for doctor-scheduled follow-ups
+            payment_method: "CASH" as const, // Default to CASH for doctor-scheduled follow-ups
           };
 
           const followUpResult = await scheduleFollowUp(
@@ -1098,20 +1015,12 @@ export const AppointmentAndConsultationModule = ({
               (s) => s.slotId === followUpTimeSlot
             );
 
-            console.log("🔍 [Đặt lịch tái khám] Thành công:", {
-              appointmentId: followUpResult.data.appointmentId,
-              consultationType: followUpResult.data.consultationType,
-              status: followUpResult.data.status,
-              relatedRecordId: followUpResult.data.relatedRecordId,
-            });
-
             toast.success("Đã đặt lịch tái khám thành công!", {
               description: `${new Date(followUpDate).toLocaleDateString("vi-VN")} - ${selectedSlot?.startTime.substring(0, 5)} (Tự động xác nhận)`,
               duration: 4000,
             });
           }
         } catch (followUpError: any) {
-          console.error("🔍 [Đặt lịch tái khám] Lỗi:", followUpError);
           toast.warning("Đã lưu hồ sơ khám nhưng không thể đặt lịch tái khám", {
             description:
               followUpError.response?.data?.message ||
@@ -1181,7 +1090,6 @@ export const AppointmentAndConsultationModule = ({
         }
       }
     } catch (error: any) {
-      console.error("Lỗi khi hoàn thành khám:", error);
       toast.error("Có lỗi xảy ra khi khám bệnh", {
         description: error.message || "Không thể hoàn thành khám bệnh",
         duration: 5000,

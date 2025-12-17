@@ -23,7 +23,6 @@ export const useBookingAppointment = (): UseBookingAppointmentReturn => {
 
   const handleBookingAppointment = useCallback(async (data: BookingAppointmentRequest): Promise<BookingAppointmentResponse | null> => {
     try {
-      console.log('🔍 [useBookingAppointment] Starting booking with payment method:', data.payment_method);
       setLoading(true);
       setError(null);
       setSuccess(false);
@@ -35,7 +34,6 @@ export const useBookingAppointment = (): UseBookingAppointmentReturn => {
 
       if (paymentMethod === 'CASH') {
         // ========== CASH FLOW: WebSocket Booking (Keep Original) ==========
-        console.log('🔍 [useBookingAppointment] Using CASH flow (WebSocket)');
         try {
           // Check WebSocket connection first
           if (!webSocketAppointmentService.isConnected()) {
@@ -52,21 +50,7 @@ export const useBookingAppointment = (): UseBookingAppointmentReturn => {
             skipRefetchForUserId: me?.userId // Skip refetch for patient who just booked
           };
 
-          console.log('🔍 [useBookingAppointment] Sending WebSocket event:', wsEvent);
-          console.log('🔍🔍🔍 [DEBUG - WebSocket] createAppointmentRequest:', wsEvent.createAppointmentRequest);
-          console.log('🔍🔍🔍 [DEBUG - WebSocket] payment_method in request:', wsEvent.createAppointmentRequest.payment_method);
-          console.log('🔍🔍🔍 [DEBUG - WebSocket] payment_method type:', typeof wsEvent.createAppointmentRequest.payment_method);
-          console.log('🔍🔍🔍 [DEBUG - WebSocket] Full request JSON:', JSON.stringify(wsEvent.createAppointmentRequest, null, 2));
-          console.log('🔍🔍🔍 [DEBUG - WebSocket] Event details:', {
-            hasPredict: wsEvent.hasPredict,
-            hasPredictType: typeof wsEvent.hasPredict,
-            fromRequestData: data.hasPredict,
-            skipRefetchForUserId: me?.userId,
-            isConnected: webSocketAppointmentService.isConnected()
-          });
-
           webSocketAppointmentService.sendScheduleEvent(wsEvent);
-          console.log('✅ [useBookingAppointment] WebSocket event sent successfully (CASH flow)');
 
           setSuccess(true);
 
@@ -74,33 +58,11 @@ export const useBookingAppointment = (): UseBookingAppointmentReturn => {
           // WebSocketAppointmentContext sẽ nhận response và hiển thị toast
           return null;
         } catch (wsError: any) {
-          console.error('❌ [useBookingAppointment] Failed to send WebSocket event:', wsError);
           throw new Error(wsError.message || 'Không thể gửi yêu cầu đặt lịch qua WebSocket');
         }
       } else {
         // ========== ONLINE FLOW: REST API Booking (New) ==========
-        console.log('🔍 [useBookingAppointment] Using ONLINE flow (REST API)');
-
-        // 🔍 DEBUG: Log request data BEFORE sending to backend
-        console.log('🔍🔍🔍 [API - useBookingAppointment] Sending REST API booking request:', {
-          endpoint: '/api/v1/appointments/booking-appointment',
-          method: 'POST',
-          hasPredict: data.hasPredict,
-          hasPredictType: typeof data.hasPredict,
-          payment_method: data.payment_method,
-          fullRequestData: data
-        });
-
         const response = await bookingAppointment(data);
-
-        // 🔍 DEBUG: Log response from backend
-        console.log('🔍🔍🔍 [API - useBookingAppointment] Received response from backend:', {
-          status: 'success',
-          data: response
-        });
-
-        console.log('✅ [useBookingAppointment] REST API booking successful (ONLINE flow)');
-        console.log('✅ [useBookingAppointment] Appointment created with ID:', response.data.appointmentId);
 
         setSuccess(true);
 
@@ -110,11 +72,6 @@ export const useBookingAppointment = (): UseBookingAppointmentReturn => {
     } catch (err: any) {
       // Extract detailed error information
       const errorMessage = err.message || 'Có lỗi xảy ra khi đặt lịch khám';
-
-      console.error('❌ [useBookingAppointment] Booking failed:', {
-        message: errorMessage,
-        fullError: err
-      });
 
       setError(errorMessage);
 

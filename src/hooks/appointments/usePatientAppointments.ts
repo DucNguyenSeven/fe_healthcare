@@ -83,16 +83,12 @@ const enrichAppointmentsWithDoctorInfo = async (appointments: AppointmentRespons
     }
 
     // OPTIMIZED: Use batch API instead of individual calls (N calls → 1 call)
-    console.log(`🔍 [usePatientAppointments] Fetching info for ${doctorIds.length} doctors using batch API`);
-
     const doctorInfoMap = new Map<string, any>();
 
     try {
       const doctorInfoResponse = await getDoctorsInfo(doctorIds);
 
       if (doctorInfoResponse.success && doctorInfoResponse.data) {
-        console.log(`✅ [usePatientAppointments] Successfully fetched ${doctorInfoResponse.data.length} doctor info`);
-
         doctorInfoResponse.data.forEach(doctorInfo => {
           const doctorId = doctorInfo.userId || doctorInfo.id;
           if (doctorId) {
@@ -101,16 +97,12 @@ const enrichAppointmentsWithDoctorInfo = async (appointments: AppointmentRespons
         });
       }
     } catch (error) {
-      console.error('❌ [usePatientAppointments] Error fetching batch doctor info:', error);
       // Fallback to individual calls if batch fails
-      console.warn('⚠️ [usePatientAppointments] Falling back to individual getDoctorInfo calls');
-
       const doctorInfoPromises = doctorIds.map(async (doctorId) => {
         try {
           const doctorResponse = await getDoctorInfo(doctorId);
           return doctorResponse.success ? { id: doctorId, info: doctorResponse.data } : null;
         } catch (error) {
-          console.error(`Error fetching doctor info for ID ${doctorId}:`, error);
           return null;
         }
       });
@@ -350,7 +342,6 @@ export const transformAppointmentToTimelineFormat = (appointment: AppointmentRes
 
       // CASE 2: Only doctorId exists (partial data)
       if (appointment.doctorId) {
-        console.warn('[transform] ⚠️ Partial doctor data for appointment:', appointment.appointmentId, '- only doctorId available');
         return {
           doctorId: appointment.doctorId,
           id: appointment.doctorId,
@@ -361,7 +352,6 @@ export const transformAppointmentToTimelineFormat = (appointment: AppointmentRes
       }
 
       // CASE 3: No doctor data at all
-      console.error('[transform] ❌ No doctor data available for appointment:', appointment.appointmentId);
       return null;
     })(), // Preserve full object for chat functionality
     doctorId: doctorId, // Lưu doctorId để dễ dàng truy cập

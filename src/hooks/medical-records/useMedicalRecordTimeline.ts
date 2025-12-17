@@ -22,16 +22,9 @@ export const useMedicalRecordTimeline = (recordId?: string) => {
     setError(null);
 
     try {
-      console.log('🔍 [useMedicalRecordTimeline] Fetching timeline for:', id);
-
       const response = await getMedicalRecordTimeline(id);
 
       if (response.success && response.data) {
-        console.log('🔍 [useMedicalRecordTimeline] Timeline fetched:', {
-          rootRecordId: response.data.rootRecord?.recordId,
-          followUpCount: response.data.followUpRecords?.length || 0,
-        });
-
         setData(response.data);
         setError(null);
       } else {

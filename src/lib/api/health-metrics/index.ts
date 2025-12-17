@@ -63,23 +63,13 @@ export const HealthMetricsApi = {
    */
   async getLatestHealthMetrics(patientId: string): Promise<GetLatestHealthMetricsResponse> {
     try {
-      console.log('🔍 [API] Fetching health metrics for patient:', patientId);
-
       const response = await api.get<GetLatestHealthMetricsResponse>(
         `/api/v1/health-metrics/get-health-metrics-latest/${patientId}`
       );
 
-      console.log('🔍 [API] Raw Axios Response:', {
-        status: response.status,
-        statusText: response.statusText,
-        data: response.data,
-        headers: response.headers
-      });
-
       // ✅ FIX: Handle different response structures
       // If API returns array directly (no wrapper)
       if (Array.isArray(response.data)) {
-        console.log('🔍 [API] Response is array, wrapping it');
         return {
           code: 200,
           message: 'Success',
@@ -89,7 +79,6 @@ export const HealthMetricsApi = {
       }
 
       // If API returns wrapped response { code, message, data }
-      console.log('🔍 [API] Response is object, returning as-is');
       return response.data;
 
     } catch (error: any) {

@@ -200,19 +200,9 @@ export const getMedicalRecordTimeline = async (
   recordId: string
 ): Promise<ApiResponse<MedicalRecordTimelineResponse>> => {
   try {
-    console.log(
-      "🔍 [API - getMedicalRecordTimeline] Fetching timeline for record:",
-      recordId
-    );
-
     const response = await api.get<ApiResponse<MedicalRecordTimelineResponse>>(
       `/api/v1/medical-records/${recordId}/timeline`
     );
-
-    console.log("🔍 [API - getMedicalRecordTimeline] Response:", {
-      rootRecordId: response.data.data?.rootRecord?.recordId,
-      followUpCount: response.data.data?.followUpRecords?.length || 0,
-    });
 
     return {
       success: true,
@@ -220,7 +210,6 @@ export const getMedicalRecordTimeline = async (
       message: response.data.message,
     };
   } catch (error: any) {
-    console.error("🔍 [API] Get timeline error:", error);
     return {
       success: false,
       message:
@@ -263,19 +252,9 @@ export const getPatientEpisodes = async (params: {
       order,
     });
 
-    console.log(
-      "🔍 [API - getPatientEpisodes] Fetching episodes for patient:",
-      patientId
-    );
-
     const response = await api.get<ApiResponse<GetMedicalRecordsResponse>>(
       `/api/v1/medical-records/patient/${patientId}/episodes?${queryParams.toString()}`
     );
-
-    console.log("🔍 [API - getPatientEpisodes] Response:", {
-      totalRecords: response.data.data?.pagination?.totalRecords,
-      currentPage: response.data.data?.pagination?.currentPage,
-    });
 
     return {
       success: true,
@@ -283,7 +262,6 @@ export const getPatientEpisodes = async (params: {
       message: response.data.message,
     };
   } catch (error: any) {
-    console.error("🔍 [API] Get episodes error:", error);
     return {
       success: false,
       message:
@@ -305,20 +283,9 @@ export const getFullTimeline = async (
   recordId: string
 ): Promise<ApiResponse<MedicalRecordFullTimelineResponse>> => {
   try {
-    console.log(
-      "🔍 [API - getFullTimeline] Fetching full timeline for record:",
-      recordId
-    );
-
     const response = await api.get<
       ApiResponse<MedicalRecordFullTimelineResponse>
     >(`/api/v1/medical-records/${recordId}/full-timeline`);
-
-    console.log("🔍 [API - getFullTimeline] Response:", {
-      totalVisits: response.data.data?.totalVisits || 0,
-      totalEpisodes: response.data.data?.totalEpisodes || 0,
-      episodesCount: response.data.data?.episodes?.length || 0,
-    });
 
     // Assuming response structure: { code, message, success, data }
     if (response.data.success && response.data.data) {
@@ -331,7 +298,6 @@ export const getFullTimeline = async (
 
     throw new Error(response.data.message || "Failed to fetch full timeline");
   } catch (error: any) {
-    console.error("🔍 [API] Get full timeline error:", error);
     return {
       success: false,
       message:
@@ -446,49 +412,10 @@ export const getMedicalHistoryByDoctor = async (
 
     const queryString = queryParams.toString();
     const url = `/api/v1/medical-records/doctor/${params.doctorId}/patient/${params.patientId}/history${queryString ? "?" + queryString : ""}`;
-
-    console.log("🔍 [Medical History API] Fetching consultation history:", {
-      endpoint: url,
-      fullURL: `${url}`,
-      doctorId: params.doctorId,
-      patientId: params.patientId,
-      page: params.page,
-      size: params.size,
-      timestamp: new Date().toISOString(),
-    });
-
     const response = await api.get<ApiResponse<MedicalHistoryResponse>>(url);
-
-    console.log("✅ [Medical History API] Success - Response received:", {
-      totalRecords: response.data.data?.totalElements || 0,
-      totalPages: response.data.data?.totalPages || 0,
-      recordsCount: response.data.data?.content?.length || 0,
-      firstRecord: response.data.data?.content?.[0]
-        ? {
-            appointmentDate: response.data.data.content[0].appointmentDate,
-            diagnosis: response.data.data.content[0].diagnosis,
-            hasSymptoms: !!response.data.data.content[0].symptoms,
-            hasTreatment: !!response.data.data.content[0].treatment,
-            serviceName: response.data.data.content[0].serviceName,
-          }
-        : null,
-      timestamp: new Date().toISOString(),
-    });
 
     return response.data;
   } catch (error: any) {
-    console.error(
-      "❌ [Medical History API] Error fetching consultation history:",
-      {
-        status: error.response?.status,
-        statusText: error.response?.statusText,
-        message: error.response?.data?.message,
-        errorData: error.response?.data,
-        doctorId: params.doctorId,
-        patientId: params.patientId,
-        timestamp: new Date().toISOString(),
-      }
-    );
     return {
       success: false,
       message:

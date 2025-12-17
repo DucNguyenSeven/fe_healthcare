@@ -50,30 +50,15 @@ export const usePayment = (): UsePaymentReturn => {
     data: CreatePaymentRequest
   ): Promise<{ paymentUrl: string; paymentId: string } | null> => {
     try {
-      console.log('🔍 [usePayment] Creating payment:', data);
       setLoading(true);
       setError(null);
 
       const response = await createPaymentApi(data);
 
-      // DEBUG: Log toàn bộ response từ payment service (flat structure)
-      console.log('🔍 [usePayment] Payment API response:', {
-        hasData: !!response.data,
-        responseKeys: Object.keys(response),
-        fullResponse: response
-      });
-
       // Check if payment was created successfully (response.data contains paymentId and paymentUrl)
       if (!response.data?.paymentId || !response.data?.paymentUrl) {
         throw new Error(response.message || 'Không thể tạo thanh toán');
       }
-
-      console.log('✅ [usePayment] Payment created successfully:', {
-        paymentId: response.data.paymentId,
-        paymentUrl: response.data.paymentUrl,
-        orderCode: response.data.orderCode,
-        status: response.data.status
-      });
 
       // Update payment state with created payment info
       const paymentInfo: PaymentStatusResponse = {
@@ -96,7 +81,6 @@ export const usePayment = (): UsePaymentReturn => {
       };
     } catch (err: any) {
       const errorMessage = err.message || 'Có lỗi xảy ra khi tạo thanh toán';
-      console.error('❌ [usePayment] Create payment failed:', errorMessage);
       setError(errorMessage);
       return null;
     } finally {
@@ -111,7 +95,6 @@ export const usePayment = (): UsePaymentReturn => {
     paymentId: string
   ): Promise<PaymentStatusResponse | null> => {
     try {
-      console.log('🔍 [usePayment] Checking payment status:', paymentId);
       setLoading(true);
       setError(null);
 
@@ -120,11 +103,6 @@ export const usePayment = (): UsePaymentReturn => {
       if (!response.success) {
         throw new Error(response.message || 'Không thể lấy trạng thái thanh toán');
       }
-
-      console.log('✅ [usePayment] Payment status retrieved:', {
-        paymentId,
-        status: response.data.status
-      });
 
       setPayment(response.data);
       return response.data;
@@ -146,7 +124,6 @@ export const usePayment = (): UsePaymentReturn => {
     appointmentId: string
   ): Promise<PaymentStatusResponse | null> => {
     try {
-      console.log('🔍 [usePayment] Checking payment by appointment:', appointmentId);
       setLoading(true);
       setError(null);
 
@@ -156,17 +133,10 @@ export const usePayment = (): UsePaymentReturn => {
         throw new Error(response.message || 'Không tìm thấy thanh toán');
       }
 
-      console.log('✅ [usePayment] Payment found for appointment:', {
-        appointmentId,
-        paymentId: response.data.paymentId,
-        status: response.data.status
-      });
-
       setPayment(response.data);
       return response.data;
     } catch (err: any) {
       const errorMessage = err.message || 'Không tìm thấy thanh toán cho lịch hẹn này';
-      console.error('❌ [usePayment] Check payment by appointment failed:', errorMessage);
       setError(errorMessage);
       return null;
     } finally {
@@ -183,25 +153,15 @@ export const usePayment = (): UsePaymentReturn => {
     maxAttempts: number = 10
   ): Promise<PaymentStatusResponse | null> => {
     try {
-      console.log('🔄 [usePayment] Polling payment status:', {
-        paymentId,
-        maxAttempts
-      });
       setLoading(true);
       setError(null);
 
       const finalStatus = await pollPaymentStatusApi(paymentId, maxAttempts, 2000);
 
-      console.log('✅ [usePayment] Payment polling completed:', {
-        paymentId,
-        finalStatus: finalStatus.status
-      });
-
       setPayment(finalStatus);
       return finalStatus;
     } catch (err: any) {
       const errorMessage = err.message || 'Không thể kiểm tra trạng thái thanh toán';
-      console.error('❌ [usePayment] Poll payment status failed:', errorMessage);
       setError(errorMessage);
       return null;
     } finally {

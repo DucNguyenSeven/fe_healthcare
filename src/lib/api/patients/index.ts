@@ -102,27 +102,9 @@ export const getPatientsListByDoctorId = async (
       queryParams.append('namePatient', params.namePatient);
     }
 
-    console.log('🔍 [Patient API] Fetching simple patients:', {
-      doctorId: params.doctorId,
-      frontendPage: params.page,
-      backendPage: backendPage,
-      pageIsValid: params.page >= 0,
-      size: params.size,
-      sortBy: params.sortBy,
-      sortDir: params.sortDir,
-      namePatient: params.namePatient,
-      fullQueryString: queryParams.toString()
-    });
-
     const response = await api.get<ApiResponse<PaginationResponse>>(
       `/api/v1/patients/getPatientsListByDoctorId?${queryParams.toString()}`
     );
-
-    console.log('✅ [Patient API] Success:', {
-      totalElements: response.data.data.totalElements,
-      totalPages: response.data.data.totalPages,
-      currentPage: response.data.data.number
-    });
 
     return response.data;
   } catch (error: any) {
@@ -150,27 +132,12 @@ export const getPatientProfile = async (
   patientId: string
 ): Promise<ApiResponse<PatientProfile>> => {
   try {
-    console.log('🔍 [Patient API] Fetching patient profile:', {
-      doctorId,
-      patientId
-    });
-
     const response = await api.get<ApiResponse<PatientProfile>>(
       `/api/v1/patients/doctor/${doctorId}/patient/${patientId}/profile`
     );
 
-    console.log('✅ [Patient API] Profile success:', {
-      patientId: response.data.data.patientId,
-      fullName: response.data.data.fullName
-    });
-
     return response.data;
   } catch (error: any) {
-    console.error('❌ [Patient API] Error fetching profile:', {
-      status: error.response?.status,
-      message: error.response?.data?.message,
-      error: error.response?.data
-    });
     throw error;
   }
 };

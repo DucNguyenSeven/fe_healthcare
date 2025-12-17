@@ -42,7 +42,6 @@ export const usePatientEpisodes = (params: UsePatientEpisodesParams = {}) => {
     const finalPatientId = fetchParams?.patientId || patientId;
 
     if (!finalPatientId) {
-      console.warn('[usePatientEpisodes] No patientId provided');
       return;
     }
 
@@ -50,8 +49,6 @@ export const usePatientEpisodes = (params: UsePatientEpisodesParams = {}) => {
     setError(null);
 
     try {
-      console.log('🔍 [usePatientEpisodes] Fetching episodes for patient:', finalPatientId);
-
       const response = await getPatientEpisodes({
         patientId: finalPatientId,
         page: fetchParams?.page ?? page,
@@ -61,12 +58,6 @@ export const usePatientEpisodes = (params: UsePatientEpisodesParams = {}) => {
       });
 
       if (response.success && response.data) {
-        console.log('🔍 [usePatientEpisodes] Episodes fetched:', {
-          totalRecords: response.data.pagination?.totalRecords,
-          currentPage: response.data.pagination?.currentPage,
-          recordsCount: response.data.records?.length,
-        });
-
         setData(response.data);
         setError(null);
       } else {

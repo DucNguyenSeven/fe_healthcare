@@ -29,7 +29,6 @@ export function usePanelByDate(patientId?: string, measuredAt?: string | null) {
       const payload: any = (response as any)?.data ?? response as any;
       
       if (!payload || !Array.isArray(payload) || payload.length === 0) {
-        console.warn('⚠️ [usePanelByDate] No data found for date:', measuredAt);
         return null;
       }
 

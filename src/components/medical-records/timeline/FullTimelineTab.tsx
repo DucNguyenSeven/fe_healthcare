@@ -31,16 +31,9 @@ export const FullTimelineTab: React.FC<FullTimelineTabProps> = ({ recordId }) =>
       setLoading(true);
       setError(null);
 
-      console.log('🔍 [FullTimelineTab] Fetching timeline for recordId:', recordId);
-
       const response = await getFullTimeline(recordId);
 
       if (response.success && response.data) {
-        console.log('✅ [FullTimelineTab] Timeline fetched successfully:', {
-          totalVisits: response.data.totalVisits,
-          totalEpisodes: response.data.totalEpisodes
-        });
-
         setData(response.data);
 
         // Auto-expand current episode
@@ -49,7 +42,6 @@ export const FullTimelineTab: React.FC<FullTimelineTabProps> = ({ recordId }) =>
           setExpandedEpisodes(new Set([currentEpisode.episodeId]));
         }
       } else {
-        console.warn('⚠️ [FullTimelineTab] Timeline fetch failed:', response.message);
         setError(response.message || 'Không thể tải lịch sử khám');
       }
     } catch (err: any) {

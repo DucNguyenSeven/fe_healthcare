@@ -89,19 +89,15 @@ async function ensureConnection(): Promise<void> {
  * Mobile-compatible: ensures WebSocket is ready before operations
  */
 async function waitForWebSocketReady(timeout: number = 5000): Promise<void> {
-  console.log("[waitForWebSocketReady] Waiting for WebSocket to be ready...");
   const startTime = Date.now();
 
   while (!webSocketChatService.isReady()) {
     if (Date.now() - startTime > timeout) {
       const error = new Error(`WebSocket not ready after ${timeout}ms timeout`);
-      console.error("[waitForWebSocketReady] Timeout:", error);
       throw error;
     }
     await new Promise((resolve) => setTimeout(resolve, 100));
   }
-
-  console.log("[waitForWebSocketReady] WebSocket is ready!");
 }
 
 /**
@@ -473,13 +469,6 @@ export async function sendMessageViaREST(
   messageType: "TEXT" | "IMAGE" | "FILE" = "TEXT",
   tempMessageId?: string
 ): Promise<Message> {
-  console.log("[sendMessageViaREST] Sending message:", {
-    groupId,
-    senderId,
-    content: content.substring(0, 30),
-    tempMessageId,
-  });
-
   try {
     const response = await chatApi.post<Message>(
       "/api/communication/messages",
@@ -492,16 +481,9 @@ export async function sendMessageViaREST(
       }
     );
 
-    console.log(
-      "[sendMessageViaREST] Success:",
-      response.data.messageId,
-      "tempId:",
-      response.data.tempMessageId
-    );
     return response.data;
   } catch (error: any) {
     const message = error.response?.data?.message || error.message;
-    console.error("[sendMessageViaREST] Failed:", message);
     throw new Error(`Failed to send message: ${message}`);
   }
 }

@@ -75,41 +75,13 @@ export interface BookingAppointmentApiResponse {
  */
 export const bookingAppointment = async (data: BookingAppointmentRequest): Promise<BookingAppointmentApiResponse> => {
   try {
-    // 🔍 DEBUG: Log request data BEFORE sending to backend
-    console.log('🔍🔍🔍 [API - bookingAppointment] Sending request to backend:', {
-      endpoint: '/api/v1/appointments/booking-appointment',
-      method: 'POST',
-      hasPredict: data.hasPredict,
-      hasPredictType: typeof data.hasPredict,
-      fullRequestData: data
-    });
-
-    // 🔍 DEBUG: Log payment_method specifically
-    console.log('🔍🔍🔍 [API - Before POST] Request data:', data);
-    console.log('🔍🔍🔍 [API - Before POST] payment_method value:', data.payment_method);
-    console.log('🔍🔍🔍 [API - Before POST] payment_method type:', typeof data.payment_method);
-    console.log('🔍🔍🔍 [API - Before POST] JSON stringified:', JSON.stringify(data, null, 2));
-
     const response = await api.post<BookingAppointmentApiResponse>(
       '/api/v1/appointments/booking-appointment',
       data
     );
 
-    // 🔍 DEBUG: Log response from backend
-    console.log('🔍🔍🔍 [API - bookingAppointment] Received response from backend:', {
-      status: response.status,
-      data: response.data
-    });
-
     return response.data;
   } catch (error: any) {
-    // Enhanced error handling: extract meaningful info from axios error
-    console.error('🔍 [API] Booking appointment error:', {
-      status: error.response?.status,
-      statusText: error.response?.statusText,
-      message: error.response?.data?.message,
-      data: error.response?.data
-    });
 
     // Re-throw with original error structure to preserve all information
     // Caller will handle specific status codes (409, 400, 404, etc.)
@@ -202,7 +174,6 @@ export const getAppointmentDetail = async (appointmentId: string): Promise<Appoi
     }
   } catch (error: any) {
     // Nếu endpoint trên không work, sử dụng thông tin có sẵn
-    console.warn('Không thể lấy appointment detail, sử dụng fallback');
     throw new Error('Không thể lấy thông tin chi tiết appointment');
   }
 };
@@ -258,30 +229,13 @@ export const scheduleFollowUpByDoctor = async (
   data: ScheduleFollowUpByDoctorRequest
 ): Promise<ScheduleFollowUpApiResponse> => {
   try {
-    console.log('🔍 [API - scheduleFollowUpByDoctor] Sending request:', {
-      endpoint: '/api/v1/appointments/schedule-follow-up-by-doctor',
-      method: 'POST',
-      data
-    });
-
     const response = await api.post<ScheduleFollowUpApiResponse>(
       '/api/v1/appointments/schedule-follow-up-by-doctor',
       data
     );
 
-    console.log('🔍 [API - scheduleFollowUpByDoctor] Received response:', {
-      status: response.status,
-      data: response.data
-    });
-
     return response.data;
   } catch (error: any) {
-    console.error('🔍 [API] Schedule follow-up error:', {
-      status: error.response?.status,
-      statusText: error.response?.statusText,
-      message: error.response?.data?.message,
-      data: error.response?.data
-    });
 
     throw error;
   }
