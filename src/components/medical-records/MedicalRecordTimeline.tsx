@@ -7,6 +7,7 @@ import { useDownloadPrescription } from '@/hooks/use-download-prescription';
 
 interface MedicalRecordTimelineProps {
   allRecords: MedicalRecordWithEpisode[];
+  onRecordClick?: (record: MedicalRecordWithEpisode) => void;
 }
 
 /**
@@ -15,6 +16,7 @@ interface MedicalRecordTimelineProps {
  */
 export const MedicalRecordTimeline: React.FC<MedicalRecordTimelineProps> = ({
   allRecords,
+  onRecordClick,
 }) => {
   // Hook for downloading prescription PDF
   const { downloadPDF, isDownloading } = useDownloadPrescription();
@@ -80,7 +82,12 @@ export const MedicalRecordTimeline: React.FC<MedicalRecordTimelineProps> = ({
           </div>
 
           {/* Content Card */}
-          <div className="flex-1 bg-white border border-gray-200 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow">
+          <div
+            className={`flex-1 bg-white border border-gray-200 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow ${
+              onRecordClick ? 'cursor-pointer' : ''
+            }`}
+            onClick={onRecordClick ? () => onRecordClick(record) : undefined}
+          >
             {/* Header */}
             <div className="flex items-center justify-between mb-3">
               <div>

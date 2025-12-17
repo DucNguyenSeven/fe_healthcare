@@ -37,6 +37,7 @@ import { format } from "date-fns";
 import { vi } from "date-fns/locale";
 import { PrescriptionGroupModal } from "./PrescriptionGroupModal";
 import { MedicalResultModal } from "@/components/MedicalResultModal";
+import { MedicalHistoryModal } from "@/components/medical-records/MedicalHistoryModal";
 import { usePatientHealthPanels } from "@/hooks/health-metrics/usePatientPanels";
 import { usePanelByDate } from "@/hooks/health-metrics/usePanelByDate";
 import { useCreateHealthMetricPanel } from "@/hooks/health-metrics/useCreatePanel";
@@ -93,6 +94,9 @@ export function DashboardPage({
   const [showTestModal, setShowTestModal] = useState(false);
   const [isAddingTest, setIsAddingTest] = useState(false);
   const [mounted, setMounted] = useState(false);
+
+  // State for medical history modal
+  const [showMedicalHistoryModal, setShowMedicalHistoryModal] = useState(false);
   const { createPanel, isLoading: isCreatingPanel } =
     useCreateHealthMetricPanel();
   const { refetchPanels } = usePatientHealthPanels(patientId);
@@ -623,7 +627,7 @@ export function DashboardPage({
       label: "Xem lịch sử khám",
       icon: ClipboardList,
       color: "bg-orange-500",
-      onClick: () => onNavigate("profile-medical"),
+      onClick: () => setShowMedicalHistoryModal(true),
     },
   ];
 
@@ -1309,6 +1313,14 @@ export function DashboardPage({
           doctorInfo={selectedDoctorInfo ?? undefined}
         />
       )}
+
+      {/* Medical History Modal */}
+      <MedicalHistoryModal
+        isOpen={showMedicalHistoryModal}
+        onClose={() => setShowMedicalHistoryModal(false)}
+        patientId={patientId || ""}
+        patientName={user.fullName || user.name}
+      />
 
       {/* Add Test Result Modal */}
       {mounted &&
