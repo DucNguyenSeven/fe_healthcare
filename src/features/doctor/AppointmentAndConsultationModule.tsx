@@ -69,6 +69,7 @@ import { webSocketAppointmentService } from "@/services/websocket-appointment";
 import { MedicalResultModal } from "@/components/MedicalResultModal";
 import { SignaturePad } from "@/components/SignaturePad";
 import type { MedicalRecordWithPrescriptions } from "@/types/medical-record";
+import { filterPastTimeSlots, isTimeSlotPast, getTimeSlotDisabledReason } from "@/utils/timeSlot";
 // Sample patient data for examination modal
 const patientData = {
   "patient-001": {
@@ -2325,22 +2326,67 @@ export const AppointmentAndConsultationModule = ({
                               ) : followUpTimeSlots &&
                                 followUpTimeSlots.length > 0 ? (
                                 <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 gap-2">
-                                  {followUpTimeSlots.map((slot) => (
-                                    <button
-                                      key={slot.slotId}
-                                      type="button"
-                                      onClick={() =>
-                                        setFollowUpTimeSlot(slot.slotId)
-                                      }
-                                      className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
-                                        followUpTimeSlot === slot.slotId
-                                          ? "bg-[#1E75FF] text-white shadow-md"
-                                          : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                                      }`}
-                                    >
-                                      {slot.startTime.substring(0, 5)}
-                                    </button>
-                                  ))}
+                                  {(() => {
+                                    // Chuyển đổi followUpTimeSlots thành array of time strings
+                                    const timeStrings = followUpTimeSlots.map(
+                                      (slot) => slot.startTime.substring(0, 5)
+                                    );
+
+                                    // Lọc bỏ các slot đã qua giờ cho ngày hôm nay (buffer 30 phút)
+                                    const filteredTimeStrings = filterPastTimeSlots(
+                                      timeStrings,
+                                      followUpDate,
+                                      30 // 30-minute buffer
+                                    );
+
+                                    return followUpTimeSlots.map((slot) => {
+                                      const timeString = slot.startTime.substring(0, 5);
+                                      const isAvailable = filteredTimeStrings.includes(timeString);
+                                      const isPast = isTimeSlotPast(timeString, followUpDate, 30);
+                                      const isSelected = followUpTimeSlot === slot.slotId;
+
+                                      // Xác định slot có bị disable không
+                                      const isDisabled = !isAvailable || isPast;
+
+                                      // Lấy lý do disable để hiển thị tooltip
+                                      const disabledReason = getTimeSlotDisabledReason(
+                                        timeString,
+                                        timeStrings.includes(timeString),
+                                        isPast
+                                      );
+
+                                      return (
+                                        <div key={slot.slotId} className="relative group">
+                                          <button
+                                            type="button"
+                                            onClick={() =>
+                                              !isDisabled && setFollowUpTimeSlot(slot.slotId)
+                                            }
+                                            disabled={isDisabled}
+                                            className={`w-full px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                                              isSelected
+                                                ? "bg-[#1E75FF] text-white shadow-md"
+                                                : !isDisabled
+                                                  ? "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                                                  : isPast
+                                                    ? "bg-gray-50 text-gray-400 cursor-not-allowed opacity-60"
+                                                    : "bg-gray-100 text-gray-400 cursor-not-allowed"
+                                            }`}
+                                          >
+                                            {timeString}
+                                          </button>
+
+                                          {/* Tooltip cho slot bị disable */}
+                                          {isDisabled && disabledReason && (
+                                            <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10">
+                                              {disabledReason}
+                                              <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-800"></div>
+                                            </div>
+                                          )}
+                                        </div>
+                                      );
+                                    });
+                                  })()}
                                 </div>
                               ) : (
                                 <div className="text-sm text-gray-600 py-4 px-4 bg-gray-50 rounded-lg border border-gray-200">

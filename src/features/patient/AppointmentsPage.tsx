@@ -41,6 +41,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { AppointmentConfirmationModal } from "@/components/AppointmentConfirmationModal";
 import { usePayment } from "@/hooks/usePayment";
 import { PaymentMethod } from "@/types/payment.types";
+import { filterPastTimeSlots, isTimeSlotPast, getTimeSlotDisabledReason } from "@/utils/timeSlot";
 
 interface Doctor {
   id: string;
@@ -1596,7 +1597,7 @@ export function AppointmentsPage() {
                   const allTimeSlots = [];
                   for (let hour = 8; hour <= 17; hour++) {
                     for (let minute = 0; minute < 60; minute += 30) {
-                      if (hour === 17 && minute > 0) break; // Dừng ở 17:30
+                      if (hour === 17 && minute > 30) break; // Dừng sau 17:30
                       const timeString = `${hour.toString().padStart(2, "0")}:${minute.toString().padStart(2, "0")}`;
                       allTimeSlots.push(timeString);
                     }
@@ -1609,25 +1610,54 @@ export function AppointmentsPage() {
                     ? availableTimeSlots
                     : [];
 
+                  // Lọc bỏ các slot đã qua giờ cho ngày hôm nay (buffer 30 phút)
+                  const filteredAvailableSlots = filterPastTimeSlots(
+                    safeAvailableTimeSlots,
+                    selectedDate,
+                    30 // 30-minute buffer
+                  );
+
                   return allTimeSlots.map((time) => {
-                    const isAvailable = safeAvailableTimeSlots.includes(time);
+                    const isAvailableFromAPI = filteredAvailableSlots.includes(time);
+                    const isPast = isTimeSlotPast(time, selectedDate, 30);
                     const isSelected = selectedTime === time;
 
+                    // Xác định slot có bị disable không
+                    const isDisabled = !isAvailableFromAPI || isPast;
+
+                    // Lấy lý do disable để hiển thị tooltip
+                    const disabledReason = getTimeSlotDisabledReason(
+                      time,
+                      safeAvailableTimeSlots.includes(time),
+                      isPast
+                    );
+
                     return (
-                      <button
-                        key={time}
-                        onClick={() => isAvailable && handleTimeChange(time)}
-                        disabled={!isAvailable}
-                        className={`p-2 rounded-lg text-sm font-medium transition-all ${
-                          isSelected
-                            ? "bg-blue-600 text-white shadow-md"
-                            : isAvailable
-                              ? "border border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400"
-                              : "border border-gray-200 text-gray-400 bg-gray-100 cursor-not-allowed"
-                        }`}
-                      >
-                        {time}
-                      </button>
+                      <div key={time} className="relative group">
+                        <button
+                          onClick={() => !isDisabled && handleTimeChange(time)}
+                          disabled={isDisabled}
+                          className={`w-full p-2 rounded-lg text-sm font-medium transition-all ${
+                            isSelected
+                              ? "bg-blue-600 text-white shadow-md"
+                              : !isDisabled
+                                ? "border border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400"
+                                : isPast
+                                  ? "border border-gray-200 text-gray-400 bg-gray-50 cursor-not-allowed opacity-60"
+                                  : "border border-gray-200 text-gray-400 bg-gray-100 cursor-not-allowed"
+                          }`}
+                        >
+                          {time}
+                        </button>
+
+                        {/* Tooltip cho slot bị disable */}
+                        {isDisabled && disabledReason && (
+                          <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10">
+                            {disabledReason}
+                            <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-800"></div>
+                          </div>
+                        )}
+                      </div>
                     );
                   });
                 })()}
