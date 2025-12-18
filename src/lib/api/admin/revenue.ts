@@ -8,8 +8,8 @@ import type {
   RevenueOverview,
   RevenueByTimeItem,
   PaginatedRevenueByDoctor,
-  RevenueBySpecialty,
-  RevenueByServiceTypeItem,
+  SpecialtyRevenueResponse,
+  ServiceTypeRevenueResponse,
   RevenueByDoctor,
   DateRangeParams,
   RevenueByDoctorParams,
@@ -61,8 +61,8 @@ export async function getRevenueByDoctor(
  */
 export async function getRevenueBySpecialty(
   params: DateRangeParams
-): Promise<RevenueBySpecialty[]> {
-  const response = await api.get<RevenueBySpecialty[]>('/api/v1/admin/revenue/by-specialty', {
+): Promise<SpecialtyRevenueResponse[]> {
+  const response = await api.get<SpecialtyRevenueResponse[]>('/api/v1/admin/revenue/by-specialty', {
     params,
   });
   return response.data;
@@ -74,8 +74,8 @@ export async function getRevenueBySpecialty(
  */
 export async function getRevenueByServiceType(
   params: DateRangeParams
-): Promise<RevenueByServiceTypeItem[]> {
-  const response = await api.get<RevenueByServiceTypeItem[]>('/api/v1/admin/revenue/by-service-type', {
+): Promise<ServiceTypeRevenueResponse[]> {
+  const response = await api.get<ServiceTypeRevenueResponse[]>('/api/v1/admin/revenue/by-service-type', {
     params,
   });
   return response.data;

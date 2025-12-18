@@ -8,7 +8,7 @@ export type NavigationItem =
 export interface User {
   id: string
   name: string
-  avatar: string
+  avatar: string | null
   email: string
   role: string
 }

@@ -3,20 +3,20 @@
  */
 
 import { useQuery } from '@tanstack/react-query';
+import { getDashboardOverview } from '@/lib/api/admin/dashboard';
 import {
-  getDashboardOverview,
   getRevenueByTime,
   getRevenueByDoctor,
   getRevenueBySpecialty,
   getRevenueByServiceType,
-  type DateRangeParams
-} from '@/lib/api/admin/dashboard';
+} from '@/lib/api/admin/revenue';
 import type {
   DashboardResponse,
   RevenueByDateResponse,
   PaginatedRevenueByDoctor,
   SpecialtyRevenueResponse,
-  ServiceTypeRevenueResponse
+  ServiceTypeRevenueResponse,
+  DateRangeParams
 } from '@/types/admin';
 
 /**

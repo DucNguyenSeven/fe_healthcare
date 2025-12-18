@@ -131,13 +131,9 @@ export const getPatientProfile = async (
   doctorId: string,
   patientId: string
 ): Promise<ApiResponse<PatientProfile>> => {
-  try {
-    const response = await api.get<ApiResponse<PatientProfile>>(
-      `/api/v1/patients/doctor/${doctorId}/patient/${patientId}/profile`
-    );
+  const response = await api.get<ApiResponse<PatientProfile>>(
+    `/api/v1/patients/doctor/${doctorId}/patient/${patientId}/profile`
+  );
 
-    return response.data;
-  } catch (error: any) {
-    throw error;
-  }
+  return response.data;
 };

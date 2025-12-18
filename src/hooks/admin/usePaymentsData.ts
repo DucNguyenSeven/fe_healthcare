@@ -7,7 +7,6 @@ import {
   getRevenueStatistics,
   getRevenueByDate,
   getPaidPayments,
-  getPaymentsByStatus,
 } from '@/lib/api/admin/payments';
 import type { DateRangeParams } from '@/types/admin';
 
@@ -48,21 +47,6 @@ export function usePaidPayments(params: DateRangeParams) {
   return useQuery({
     queryKey: ['admin', 'payments', 'paid', params],
     queryFn: () => getPaidPayments(params),
-    retry: (failureCount, error: any) => {
-      if (error.response?.status >= 400 && error.response?.status < 500) return false;
-      return failureCount < 2;
-    },
-    staleTime: 5 * 60 * 1000,
-  });
-}
-
-/**
- * Hook to fetch payments by status
- */
-export function usePaymentsByStatus(params: DateRangeParams) {
-  return useQuery({
-    queryKey: ['admin', 'payments', 'by-status', params],
-    queryFn: () => getPaymentsByStatus(params),
     retry: (failureCount, error: any) => {
       if (error.response?.status >= 400 && error.response?.status < 500) return false;
       return failureCount < 2;

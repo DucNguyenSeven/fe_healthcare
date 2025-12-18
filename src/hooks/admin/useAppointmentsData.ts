@@ -7,7 +7,6 @@ import {
   getAppointmentStatistics,
   getStatsByConsultationType,
   getCompletedAppointmentsByDoctor,
-  getAppointmentsByStatus,
 } from '@/lib/api/admin/appointments';
 import type { DateRangeParams } from '@/types/admin';
 
@@ -48,21 +47,6 @@ export function useCompletedAppointmentsByDoctor(params: DateRangeParams) {
   return useQuery({
     queryKey: ['admin', 'appointments', 'completed-by-doctor', params],
     queryFn: () => getCompletedAppointmentsByDoctor(params),
-    retry: (failureCount, error: any) => {
-      if (error.response?.status >= 400 && error.response?.status < 500) return false;
-      return failureCount < 2;
-    },
-    staleTime: 5 * 60 * 1000,
-  });
-}
-
-/**
- * Hook to fetch appointments by status
- */
-export function useAppointmentsByStatus(params: DateRangeParams) {
-  return useQuery({
-    queryKey: ['admin', 'appointments', 'by-status', params],
-    queryFn: () => getAppointmentsByStatus(params),
     retry: (failureCount, error: any) => {
       if (error.response?.status >= 400 && error.response?.status < 500) return false;
       return failureCount < 2;

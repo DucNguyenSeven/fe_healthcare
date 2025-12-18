@@ -11,6 +11,7 @@ export interface AppointmentWeekFilterResponse {
     slotId: number;
     startTime: string;
     endTime: string;
+    room?: string | null;
   } | null;
   note?: string | null;
   symptoms?: string | null; // Patient symptoms
@@ -74,19 +75,12 @@ export interface BookingAppointmentApiResponse {
  * @returns Promise<BookingAppointmentApiResponse>
  */
 export const bookingAppointment = async (data: BookingAppointmentRequest): Promise<BookingAppointmentApiResponse> => {
-  try {
-    const response = await api.post<BookingAppointmentApiResponse>(
-      '/api/v1/appointments/booking-appointment',
-      data
-    );
+  const response = await api.post<BookingAppointmentApiResponse>(
+    '/api/v1/appointments/booking-appointment',
+    data
+  );
 
-    return response.data;
-  } catch (error: any) {
-
-    // Re-throw with original error structure to preserve all information
-    // Caller will handle specific status codes (409, 400, 404, etc.)
-    throw error;
-  }
+  return response.data;
 };
 
 /**
@@ -228,15 +222,10 @@ export interface ScheduleFollowUpApiResponse {
 export const scheduleFollowUpByDoctor = async (
   data: ScheduleFollowUpByDoctorRequest
 ): Promise<ScheduleFollowUpApiResponse> => {
-  try {
-    const response = await api.post<ScheduleFollowUpApiResponse>(
-      '/api/v1/appointments/schedule-follow-up-by-doctor',
-      data
-    );
+  const response = await api.post<ScheduleFollowUpApiResponse>(
+    '/api/v1/appointments/schedule-follow-up-by-doctor',
+    data
+  );
 
-    return response.data;
-  } catch (error: any) {
-
-    throw error;
-  }
+  return response.data;
 };

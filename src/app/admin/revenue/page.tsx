@@ -314,7 +314,7 @@ export default function RevenuePage() {
             <div className="border border-gray-200 rounded-lg p-8 text-center animate-pulse">
               <div className="h-32 bg-gray-200 rounded" />
             </div>
-          ) : revenueBySpecialty && revenueBySpecialty.length > 0 ? (
+          ) : Array.isArray(revenueBySpecialty) && revenueBySpecialty.length > 0 ? (
             <div className="space-y-3">
               {revenueBySpecialty.map((specialty, idx) => {
                 return (
@@ -354,7 +354,7 @@ export default function RevenuePage() {
               <div className="h-4 bg-gray-200 rounded w-1/3 mx-auto" />
             </div>
           </div>
-        ) : revenueByServiceType && revenueByServiceType.length > 0 ? (
+        ) : Array.isArray(revenueByServiceType) && revenueByServiceType.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {revenueByServiceType.map((service, idx) => {
               return (

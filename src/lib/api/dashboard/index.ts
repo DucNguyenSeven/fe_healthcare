@@ -30,23 +30,16 @@ export class DashboardAPI {
     doctorId: string,
     date?: string
   ): Promise<DoctorDashboardApiResponse> {
-    try {
-      // Build query params
-      const params = date ? { date } : {};
+    // Build query params
+    const params = date ? { date } : {};
 
-      // Make API request
-      const response = await api.get<DoctorDashboardApiResponse>(
-        `/api/v1/dashboard/doctor/${doctorId}`,
-        { params }
-      );
+    // Make API request
+    const response = await api.get<DoctorDashboardApiResponse>(
+      `/api/v1/dashboard/doctor/${doctorId}`,
+      { params }
+    );
 
-      return response.data;
-
-    } catch (error: any) {
-
-      // Re-throw error for React Query to handle
-      throw error;
-    }
+    return response.data;
   }
 }
 
