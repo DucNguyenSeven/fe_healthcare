@@ -60,6 +60,7 @@ import {
 import { useCreateMultiplePrescriptions } from "@/hooks/prescriptions";
 import { useDoctorSchedule } from "@/hooks/doctor-schedules";
 import { getAppointmentDetail } from "@/lib/api/appointments";
+import { getDoctorScheduleByDoctorIdAndDate } from "@/lib/api/doctor-schedules";
 import { useUpdateAppointmentStatus } from "@/hooks/appointments/useUpdateAppointmentStatus";
 import { useAppointmentSocket } from "@/hooks/appointments/useAppointmentSocket";
 import { useGetPredict } from "@/hooks/predict";
@@ -70,6 +71,7 @@ import { MedicalResultModal } from "@/components/MedicalResultModal";
 import { SignaturePad } from "@/components/SignaturePad";
 import type { MedicalRecordWithPrescriptions } from "@/types/medical-record";
 import { filterPastTimeSlots, isTimeSlotPast, getTimeSlotDisabledReason } from "@/utils/timeSlot";
+import { AppointmentTooltip } from "@/components/AppointmentTooltip";
 // Sample patient data for examination modal
 const patientData = {
   "patient-001": {
@@ -261,6 +263,11 @@ export const AppointmentAndConsultationModule = ({
   const { scheduleFollowUp } = useScheduleFollowUp();
   const { timeSlots, scheduleId, timeSlotMapping, fetchDoctorSchedule } =
     useDoctorSchedule();
+
+  // NEW: State for week schedules (available time slots)
+  const [weekSchedulesMap, setWeekSchedulesMap] = useState<Map<string, any>>(new Map());
+  const [schedulesLoading, setSchedulesLoading] = useState(false);
+  const [schedulesError, setSchedulesError] = useState<string | null>(null);
 
   const [enableFollowUp, setEnableFollowUp] = useState(false);
   const [followUpDate, setFollowUpDate] = useState("");
@@ -498,6 +505,64 @@ export const AppointmentAndConsultationModule = ({
       endTime: end,
     });
   }, [me?.userId, fetchDoctorAppointments]);
+
+  // NEW: Fetch week schedules when currentWeek changes (for schedule page)
+  React.useEffect(() => {
+    if (!me?.userId || activeView !== 'schedule') return;
+
+    const fetchWeekSchedules = async () => {
+      setSchedulesLoading(true);
+      setSchedulesError(null);
+
+      try {
+        // Helper to get week dates (Monday-Sunday)
+        const getWeekDates = () => {
+          const startOfWeek = new Date(currentWeek);
+          const day = startOfWeek.getDay();
+          const diff = startOfWeek.getDate() - day + (day === 0 ? -6 : 1);
+          startOfWeek.setDate(diff);
+
+          const weekDays = [];
+          for (let i = 0; i < 7; i++) {
+            const date = new Date(startOfWeek);
+            date.setDate(startOfWeek.getDate() + i);
+            weekDays.push(date);
+          }
+          return weekDays;
+        };
+
+        const weekDates = getWeekDates();
+
+        // Fetch all 7 days in parallel
+        const schedulePromises = weekDates.map(date => {
+          const dateStr = date.toISOString().split('T')[0];
+          return getDoctorScheduleByDoctorIdAndDate({
+            doctorId: me.userId,
+            date: dateStr
+          }).catch(() => null); // Handle gracefully if no schedule exists
+        });
+
+        const schedules = await Promise.all(schedulePromises);
+
+        // Build map: date string -> schedule data
+        const newMap = new Map<string, any>();
+        weekDates.forEach((date, index) => {
+          const dateStr = date.toISOString().split('T')[0];
+          if (schedules[index]?.data) {
+            newMap.set(dateStr, schedules[index].data);
+          }
+        });
+
+        setWeekSchedulesMap(newMap);
+      } catch (error) {
+        setSchedulesError('Không thể tải lịch làm việc');
+      } finally {
+        setSchedulesLoading(false);
+      }
+    };
+
+    fetchWeekSchedules();
+  }, [currentWeek, me?.userId, activeView]);
 
   // Debug: Log appointments when they change
   React.useEffect(() => {
@@ -3227,12 +3292,12 @@ export const AppointmentAndConsultationModule = ({
 
     // Removed debug logs
     return (
-      <div className="p-6 space-y-6">
+      <div className="p-4 space-y-4">
         {/* Remove duplicate title - header already shows "Lịch làm việc" */}
 
         <div className="bg-white rounded-2xl shadow-[0_10px_24px_rgba(16,24,40,0.08)]">
           {/* Clean header - only show "Lịch làm việc" */}
-          <div className="p-6 border-b border-gray-200">
+          <div className="p-4 border-b border-gray-200">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-4">
                 <div className="flex items-center space-x-2">
@@ -3265,45 +3330,84 @@ export const AppointmentAndConsultationModule = ({
                   </div>
                 )}
 
+                {/* NEW: Schedules loading indicator */}
+                {schedulesLoading && (
+                  <div className="flex items-center space-x-2 text-sm text-blue-600">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                    <span>Đang tải lịch làm việc...</span>
+                  </div>
+                )}
+
                 {/* Error indicator */}
                 {doctorAptError && (
                   <div className="text-sm text-red-600 bg-red-50 px-3 py-1 rounded-lg">
                     Lỗi: {doctorAptError}
                   </div>
                 )}
+
+                {/* NEW: Schedules error indicator */}
+                {schedulesError && (
+                  <div className="text-sm text-red-600 bg-red-50 px-3 py-1 rounded-lg">
+                    {schedulesError}
+                  </div>
+                )}
               </div>
 
               {/* Legend + Register button */}
               <div className="flex items-center gap-4">
-                {/* Legend - hidden on very small screens */}
-                <div className="hidden md:flex items-center gap-3 text-xs text-[#334155]">
-                  <div className="flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full bg-[#1E75FF]"></span>
-                    <span>Đã xác nhận</span>
+                {/* Improved Legend with card-style design - Increased size */}
+                <div className="hidden lg:flex items-center gap-3 text-xs bg-white rounded-lg border border-gray-200 px-4 py-2 shadow-sm h-[42px] flex-shrink-0">
+                  {/* Appointment Statuses Group */}
+                  <div className="flex items-center gap-2.5">
+                    <span className="text-gray-500 font-medium text-[11px] whitespace-nowrap">Lịch hẹn:</span>
+                    <div className="flex items-center gap-2 whitespace-nowrap">
+                      <span className="w-2.5 h-2.5 rounded-full bg-[#F59E0B]"></span>
+                      <span className="text-[#334155] text-[11px]">Chờ XN</span>
+                    </div>
+                    <div className="flex items-center gap-2 whitespace-nowrap">
+                      <span className="w-2.5 h-2.5 rounded-full bg-[#1E75FF]"></span>
+                      <span className="text-[#334155] text-[11px]">Đã XN</span>
+                    </div>
+                    <div className="flex items-center gap-2 whitespace-nowrap">
+                      <span className="w-2.5 h-2.5 rounded-full bg-[#10B981]"></span>
+                      <span className="text-[#334155] text-[11px]">Hoàn thành</span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full bg-[#10B981]"></span>
-                    <span>Hoàn thành</span>
+
+                  {/* Divider */}
+                  <div className="w-px h-5 bg-gray-300"></div>
+
+                  {/* Slot States Group */}
+                  <div className="flex items-center gap-2.5">
+                    <span className="text-gray-500 font-medium text-[11px] whitespace-nowrap">Trạng thái:</span>
+                    <div className="flex items-center gap-2 whitespace-nowrap">
+                      <span className="w-2.5 h-2.5 rounded-full bg-green-500"></span>
+                      <span className="text-[#334155] text-[11px]">Còn trống</span>
+                    </div>
+                    <div className="flex items-center gap-2 whitespace-nowrap">
+                      <span className="w-2.5 h-2.5 rounded-full bg-gray-400"></span>
+                      <span className="text-[#334155] text-[11px]">Chưa ĐK</span>
+                    </div>
                   </div>
                 </div>
 
                 <button
                   onClick={() => setShowScheduleModal(true)}
-                  className="bg-[#1E75FF] hover:bg-[#1659C9] text-white px-6 py-3 rounded-2xl font-medium flex items-center gap-2 transition-colors"
+                  className="bg-[#1E75FF] hover:bg-[#1659C9] text-white px-4 rounded-lg font-medium flex items-center gap-2.5 transition-colors text-sm h-[42px] flex-shrink-0"
                 >
-                  <Plus size={20} />
-                  <span>Đăng ký lịch làm việc</span>
+                  <Plus size={18} />
+                  <span className="whitespace-nowrap">Đăng ký lịch</span>
                 </button>
               </div>
             </div>
           </div>
 
-          {/* Content area */}
-          <div className="p-6">
+          {/* Content area - Optimized padding */}
+          <div className="p-4">
             <div className="overflow-x-auto">
               <div className="min-w-[800px]">
-                {/* Header with day names and dates */}
-                <div className="grid grid-cols-8 gap-4 mb-4">
+                {/* Header with day names and dates - Compact */}
+                <div className="grid grid-cols-8 gap-2 mb-2">
                   <div className="text-right pr-4">
                     <span className="text-sm text-gray-500">Thời gian</span>
                   </div>
@@ -3314,7 +3418,7 @@ export const AppointmentAndConsultationModule = ({
                     return (
                       <div key={day.key} className="text-center">
                         <div
-                          className={`py-3 px-3 rounded-lg transition-all cursor-pointer
+                          className={`py-2 px-2 rounded-lg transition-all cursor-pointer
                           ${isToday ? "bg-blue-600 text-white shadow-md ring-2 ring-blue-200" : "text-gray-600 hover:bg-gray-100 hover:text-gray-800"}`}
                         >
                           <div className="text-sm font-medium">
@@ -3333,38 +3437,80 @@ export const AppointmentAndConsultationModule = ({
 
                 {/* Time slots grid */}
                 {timeSlots.map((time) => (
-                  <div key={time} className="grid grid-cols-8 gap-4 mb-2">
-                    <div className="p-3 text-sm font-medium text-[#334155] text-right">
+                  <div key={time} className="grid grid-cols-8 gap-2 mb-1.5">
+                    <div className="p-2 text-sm font-medium text-[#334155] text-right">
                       {time}
                     </div>
                     {weekDays.map((day, dayIndex) => {
                       const cellDate = weekDates[dayIndex];
+                      const dateStr = cellDate.toISOString().split('T')[0];
+
+                      // Get schedule for this date
+                      const daySchedule = weekSchedulesMap.get(dateStr);
+
+                      // Check if this time slot exists in doctor's schedule
+                      const scheduleHasSlot = daySchedule?.timeSlots?.some(
+                        (slot: any) => slot.startTime.substring(0, 5) === time
+                      );
+
+                      // Get appointment for this slot (if any)
                       const appointment = getAppointmentForSlot(cellDate, time);
+
+                      // Determine slot state
+                      let slotState: 'BOOKED' | 'AVAILABLE' | 'UNAVAILABLE';
+                      if (appointment) {
+                        slotState = 'BOOKED';
+                      } else if (scheduleHasSlot) {
+                        slotState = 'AVAILABLE';
+                      } else {
+                        slotState = 'UNAVAILABLE';
+                      }
 
                       return (
                         <div
                           key={`${time}-${day.key}`}
-                          className="p-2 border border-gray-100 rounded-lg min-h-[60px] hover:bg-gray-50 transition-colors"
+                          className={`rounded-lg min-h-[44px] transition-all ${
+                            slotState === 'BOOKED'
+                              ? 'p-1.5 border border-gray-100'
+                              : slotState === 'AVAILABLE'
+                              ? 'bg-green-50 hover:bg-green-100 border border-green-200 cursor-pointer'
+                              : 'bg-gray-50 border border-gray-200 opacity-60'
+                          }`}
+                          title={
+                            slotState === 'AVAILABLE'
+                              ? 'Khung giờ còn trống - Bệnh nhân có thể đặt lịch'
+                              : slotState === 'UNAVAILABLE'
+                              ? 'Bác sĩ chưa đăng ký khung giờ này'
+                              : undefined
+                          }
                         >
-                          {appointment && (
-                            <div
-                              className={`${getStatusColor(appointment.status)} rounded-lg p-2 text-xs cursor-pointer hover:shadow-sm transition-all relative`}
-                              onClick={() => {
-                                // Handle appointment click - could open details modal
-                              }}
-                              title={`Bệnh nhân: ${appointment.patientName}\nTrạng thái: ${getStatusLabel(appointment.status)}\nGhi chú: ${appointment.note || "Không có"}\nNgày: ${appointment.date}\nGiờ: ${appointment.timeSlot?.startTime} - ${appointment.timeSlot?.endTime}`}
+                          {slotState === 'BOOKED' && appointment && (
+                            <AppointmentTooltip
+                              appointment={appointment}
+                              getStatusLabel={getStatusLabel}
                             >
-                              {/* Removed status indicator dot */}
+                              <div
+                                className={`${getStatusColor(appointment.status)} rounded-lg p-1.5 text-xs cursor-pointer hover:shadow-sm transition-all relative`}
+                                onClick={() => {
+                                  // Handle appointment click - could open details modal
+                                }}
+                              >
+                                <p className="font-medium truncate text-[11px]">
+                                  {appointment.patientName}
+                                </p>
+                              </div>
+                            </AppointmentTooltip>
+                          )}
 
-                              <p className="font-medium truncate pr-3">
-                                {appointment.patientName}
-                              </p>
-                              <p className="text-[#334155] text-[10px] truncate mt-1">
-                                {appointment.note || "Khám tổng quát"}
-                              </p>
-                              <p className="text-[10px] opacity-70 mt-1 font-medium">
-                                {getStatusLabel(appointment.status)}
-                              </p>
+                          {slotState === 'AVAILABLE' && (
+                            <div className="flex items-center justify-center h-full">
+                              <Check size={14} className="text-green-600 opacity-50" />
+                            </div>
+                          )}
+
+                          {slotState === 'UNAVAILABLE' && (
+                            <div className="flex items-center justify-center h-full">
+                              <span className="text-gray-400 text-xs">-</span>
                             </div>
                           )}
                         </div>
