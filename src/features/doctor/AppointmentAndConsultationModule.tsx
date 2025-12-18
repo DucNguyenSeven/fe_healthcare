@@ -3299,7 +3299,7 @@ export const AppointmentAndConsultationModule = ({
           {/* Clean header - only show "Lịch làm việc" */}
           <div className="p-4 border-b border-gray-200">
             <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-4 mr-6">
                 <div className="flex items-center space-x-2">
                   <button
                     onClick={handlePreviousWeek}
@@ -3321,22 +3321,6 @@ export const AppointmentAndConsultationModule = ({
                     <ChevronRight className="w-5 h-5 text-gray-600" />
                   </button>
                 </div>
-
-                {/* Loading indicator */}
-                {doctorAptLoading && (
-                  <div className="flex items-center space-x-2 text-sm text-gray-500">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-                    <span>Đang tải...</span>
-                  </div>
-                )}
-
-                {/* NEW: Schedules loading indicator */}
-                {schedulesLoading && (
-                  <div className="flex items-center space-x-2 text-sm text-blue-600">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-                    <span>Đang tải lịch làm việc...</span>
-                  </div>
-                )}
 
                 {/* Error indicator */}
                 {doctorAptError && (
