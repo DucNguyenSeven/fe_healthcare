@@ -18,19 +18,35 @@ export const LoginForm = ({
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
-  
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
   // Sử dụng useLogin hook để gọi API
   const { mutate: login, isPending, error } = useLogin();
 
+  const validateEmail = (email: string): boolean => {
+    return /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(email);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Validation cơ bản
-    if (!email || !password) {
-      toast.error('Thiếu thông tin', {
-        description: ERROR_MESSAGES.LOGIN.VALIDATION,
-        duration: 3000,
-      });
+
+    // Clear previous errors
+    setErrors({});
+
+    // Validate email
+    if (!email.trim()) {
+      setErrors({ email: 'Vui lòng nhập email' });
+      return;
+    }
+
+    if (!validateEmail(email)) {
+      setErrors({ email: 'Email không hợp lệ' });
+      return;
+    }
+
+    // Validate password - ONLY check if empty, NO length validation
+    if (!password) {
+      setErrors({ password: 'Mật khẩu không được để trống' });
       return;
     }
 
@@ -90,8 +106,24 @@ export const LoginForm = ({
           </label>
           <div className="relative">
             <Mail className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-            <input id="email" type="email" value={email} onChange={e => setEmail(e.target.value)} className="w-full h-12 pl-12 pr-4 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#2563EB] focus:border-transparent transition-all duration-200 text-gray-900 placeholder-gray-400 bg-gray-50/50 hover:bg-white focus:bg-white" placeholder="Nhập email của bạn" />
+            <input id="email" type="email" value={email} onChange={e => {
+              setEmail(e.target.value);
+              if (errors.email) {
+                setErrors(prev => ({ ...prev, email: '' }));
+              }
+            }} className={`w-full h-12 pl-12 pr-4 border rounded-xl focus:ring-2 focus:ring-[#2563EB] focus:border-transparent transition-all duration-200 text-gray-900 placeholder-gray-400 bg-gray-50/50 hover:bg-white focus:bg-white ${
+              errors.email ? 'border-red-400 bg-red-50/50' : 'border-gray-200'
+            }`} placeholder="Nhập email của bạn" />
           </div>
+          {errors.email && (
+            <motion.p
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mt-1 text-xs text-red-600"
+            >
+              {errors.email}
+            </motion.p>
+          )}
         </div>
 
         {/* Password Field */}
@@ -101,8 +133,24 @@ export const LoginForm = ({
           </label>
           <div className="relative">
             <Lock className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-            <input id="password" type="password" value={password} onChange={e => setPassword(e.target.value)} className="w-full h-12 pl-12 pr-4 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#2563EB] focus:border-transparent transition-all duration-200 text-gray-900 placeholder-gray-400 bg-gray-50/50 hover:bg-white focus:bg-white" placeholder="Nhập mật khẩu" />
+            <input id="password" type="password" value={password} onChange={e => {
+              setPassword(e.target.value);
+              if (errors.password) {
+                setErrors(prev => ({ ...prev, password: '' }));
+              }
+            }} className={`w-full h-12 pl-12 pr-4 border rounded-xl focus:ring-2 focus:ring-[#2563EB] focus:border-transparent transition-all duration-200 text-gray-900 placeholder-gray-400 bg-gray-50/50 hover:bg-white focus:bg-white ${
+              errors.password ? 'border-red-400 bg-red-50/50' : 'border-gray-200'
+            }`} placeholder="Nhập mật khẩu" />
           </div>
+          {errors.password && (
+            <motion.p
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mt-1 text-xs text-red-600"
+            >
+              {errors.password}
+            </motion.p>
+          )}
         </div>
 
         {/* Remember Me & Forgot Password */}
