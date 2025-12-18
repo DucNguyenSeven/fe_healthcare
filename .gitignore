@@ -47,11 +47,13 @@ next-env.d.ts
 .env.test.local
 .env.production.local
 
-#cursor
+# Rule 
+.cursor/rules/
+/rules
+
+# Cursor
 .cursorignore
 
-#doc
+#doc 
 /docs
-
-#rule 
-/rules
+*.md

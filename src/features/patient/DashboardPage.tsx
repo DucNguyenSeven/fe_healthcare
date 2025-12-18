@@ -1,0 +1,1591 @@
+import React, { useState, useMemo, useEffect } from "react";
+import { createPortal } from "react-dom";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  Plus,
+  Calendar,
+  MessageCircle,
+  FileText,
+  Clock,
+  Video,
+  CheckCircle2,
+  ArrowRight,
+  AlertTriangle,
+  Activity,
+  Heart,
+  Droplets,
+  Weight,
+  MapPin,
+  Phone,
+  ArrowUp,
+  ArrowDown,
+  Minus,
+  CheckCircle,
+  ChevronDown,
+  Brain,
+  ClipboardList,
+  X,
+  Save,
+} from "lucide-react";
+import type {
+  HealthMetricLatest,
+  HealthMetricWithComparison,
+} from "@/types/dashboard";
+import type { TodayAppointment, PrescriptionGroup } from "@/types/dashboard";
+import type { MedicalRecordWithPrescriptions } from "@/types/medical-record";
+import { format } from "date-fns";
+import { vi } from "date-fns/locale";
+import { PrescriptionGroupModal } from "./PrescriptionGroupModal";
+import { MedicalResultModal } from "@/components/MedicalResultModal";
+import { MedicalHistoryModal } from "@/components/medical-records/MedicalHistoryModal";
+import { usePatientHealthPanels } from "@/hooks/health-metrics/usePatientPanels";
+import { usePanelByDate } from "@/hooks/health-metrics/usePanelByDate";
+import { useCreateHealthMetricPanel } from "@/hooks/health-metrics/useCreatePanel";
+import { toast } from "sonner";
+import {
+  getEGFRAlert,
+  getCreatinineAlert,
+  getBUNAlert,
+  getCalciumAlert,
+  getMetricNormalRange,
+} from "@/types/dashboard";
+
+interface DashboardPageProps {
+  user: {
+    name?: string;
+    fullName?: string;
+    email: string;
+  };
+  healthMetrics: (HealthMetricLatest | HealthMetricWithComparison)[];
+  patientId?: string;
+  todayAppointments: TodayAppointment[];
+  recentConsultations: MedicalRecordWithPrescriptions[];
+  prescriptionGroups: PrescriptionGroup[];
+  onNavigate?: (page: string) => void;
+  isLoading?: boolean;
+}
+
+export function DashboardPage({
+  user,
+  healthMetrics: defaultHealthMetrics,
+  patientId,
+  todayAppointments,
+  recentConsultations,
+  prescriptionGroups,
+  onNavigate = () => {},
+  isLoading = false,
+}: DashboardPageProps) {
+  const [selectedPrescriptionGroup, setSelectedPrescriptionGroup] =
+    useState<PrescriptionGroup | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+
+  // State for medical result modal
+  const [showResultModal, setShowResultModal] = useState(false);
+  const [selectedAppointmentId, setSelectedAppointmentId] =
+    useState<string>("");
+  const [selectedDoctorInfo, setSelectedDoctorInfo] = useState<{
+    name: string;
+    specialty?: string;
+    id?: string;
+  } | null>(null);
+
+  // State for test result modal
+  const [showTestModal, setShowTestModal] = useState(false);
+  const [isAddingTest, setIsAddingTest] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  // State for medical history modal
+  const [showMedicalHistoryModal, setShowMedicalHistoryModal] = useState(false);
+  const { createPanel, isLoading: isCreatingPanel } =
+    useCreateHealthMetricPanel();
+  const { refetchPanels } = usePatientHealthPanels(patientId);
+
+  interface NewTestResult {
+    date: string;
+    creatinine: string;
+    egfr: string;
+    bun: string;
+    serumCalcium: string;
+    ana: string;
+    c3c4: string;
+    hematuria: string;
+    oxalateLevels: string;
+    urinePH: string;
+  }
+
+  const [newTestData, setNewTestData] = useState<NewTestResult>({
+    date: "",
+    creatinine: "",
+    egfr: "",
+    bun: "",
+    serumCalcium: "",
+    ana: "",
+    c3c4: "",
+    hematuria: "",
+    oxalateLevels: "",
+    urinePH: "",
+  });
+
+  useEffect(() => {
+    setMounted(true);
+    return () => setMounted(false);
+  }, []);
+
+  // Lấy tất cả panels để tạo dropdown
+  const { panels, loading: panelsLoading } = usePatientHealthPanels(patientId);
+
+  // Lấy panel theo ngày được chọn (nếu có)
+  const {
+    data: selectedPanelData,
+    isLoading: isLoadingSelectedPanel,
+    error: selectedPanelError,
+  } = usePanelByDate(patientId, selectedDate);
+
+  // Tạo danh sách ngày cho dropdown
+  const availableDates = useMemo(() => {
+    if (!panels || panels.length === 0) return [];
+
+    return panels
+      .map((panel) => ({
+        id: panel.id,
+        date: panel.measuredAt,
+        displayDate: format(new Date(panel.measuredAt), "dd/MM/yyyy", {
+          locale: vi,
+        }),
+        timestamp: new Date(panel.measuredAt).getTime(),
+      }))
+      .sort((a, b) => b.timestamp - a.timestamp)
+      .map((item, index) => ({
+        ...item,
+        isLatest: index === 0,
+      }));
+  }, [panels]);
+
+  // Helper functions để tính toán metrics
+  const getDisplayName = (metricName: string): string => {
+    const mapping: Record<string, string> = {
+      gfr: "eGFR",
+      serum_creatinine: "Creatinine huyết thanh",
+      bun: "Ure máu (BUN)",
+      serum_calcium: "Canxi huyết thanh",
+      eGFR: "eGFR",
+      Creatinine: "Creatinine huyết thanh",
+      BUN: "Ure máu (BUN)",
+      "Canxi máu": "Canxi huyết thanh",
+    };
+    return mapping[metricName] || metricName;
+  };
+
+  const calculateAlert = (metricName: string, value: number) => {
+    const normalized = metricName.toLowerCase();
+    if (normalized.includes("egfr") || normalized === "gfr")
+      return getEGFRAlert(value);
+    if (normalized.includes("creatinine") || normalized === "serum_creatinine")
+      return getCreatinineAlert(value);
+    if (normalized.includes("bun") || normalized.includes("ure"))
+      return getBUNAlert(value);
+    if (normalized.includes("canxi") || normalized.includes("calcium"))
+      return getCalciumAlert(value);
+    return {
+      level: "NORMAL" as const,
+      label: "Bình thường",
+      color: "blue",
+      bgColor: "bg-blue-50",
+      textColor: "text-blue-800",
+      iconColor: "text-blue-500",
+    };
+  };
+
+  const calculateExceedance = (
+    metricName: string,
+    currentValue: number,
+    normalRange: any
+  ) => {
+    const normalized = metricName.toLowerCase();
+
+    if (normalized.includes("egfr") || normalized === "gfr") {
+      if (currentValue >= 90)
+        return { status: "normal" as const, message: "Trong mức bình thường" };
+      const percentage = ((90 - currentValue) / 90) * 100;
+      return {
+        percentage,
+        status: "under" as const,
+        message: `Thấp hơn mức bình thường ${percentage.toFixed(1)}%`,
+      };
+    }
+
+    if (
+      normalized.includes("creatinine") ||
+      normalized === "serum_creatinine"
+    ) {
+      if (currentValue <= 1.3)
+        return { status: "normal" as const, message: "Trong mức bình thường" };
+      const percentage = ((currentValue - 1.3) / 1.3) * 100;
+      return {
+        percentage,
+        status: "over" as const,
+        message: `Vượt mức bình thường ${percentage.toFixed(1)}%`,
+      };
+    }
+
+    if (normalized.includes("bun") || normalized.includes("ure")) {
+      if (currentValue >= 7 && currentValue <= 20)
+        return { status: "normal" as const, message: "Trong mức bình thường" };
+      if (currentValue < 7) {
+        const percentage = ((7 - currentValue) / 7) * 100;
+        return {
+          percentage,
+          status: "under" as const,
+          message: `Thấp hơn mức bình thường ${percentage.toFixed(1)}%`,
+        };
+      }
+      const percentage = ((currentValue - 20) / 20) * 100;
+      return {
+        percentage,
+        status: "over" as const,
+        message: `Vượt mức bình thường ${percentage.toFixed(1)}%`,
+      };
+    }
+
+    if (normalized.includes("canxi") || normalized.includes("calcium")) {
+      if (currentValue >= 8.5 && currentValue <= 10.5)
+        return { status: "normal" as const, message: "Trong mức bình thường" };
+      if (currentValue < 8.5) {
+        const percentage = ((8.5 - currentValue) / 8.5) * 100;
+        return {
+          percentage,
+          status: "under" as const,
+          message: `Thấp hơn mức bình thường ${percentage.toFixed(1)}%`,
+        };
+      }
+      const percentage = ((currentValue - 10.5) / 10.5) * 100;
+      return {
+        percentage,
+        status: "over" as const,
+        message: `Vượt mức bình thường ${percentage.toFixed(1)}%`,
+      };
+    }
+
+    return { status: "normal" as const, message: "Trong mức bình thường" };
+  };
+
+  const determineTrendQuality = (
+    metricName: string,
+    changeDirection: "up" | "down" | "stable",
+    currentValue: number,
+    previousValue?: number
+  ) => {
+    if (changeDirection === "stable") return true;
+    const normalized = metricName.toLowerCase();
+
+    if (normalized.includes("egfr") || normalized === "gfr")
+      return changeDirection === "up";
+    if (normalized.includes("creatinine")) return changeDirection === "down";
+    if (normalized.includes("bun") || normalized.includes("ure"))
+      return changeDirection === "down";
+    if (normalized.includes("canxi") || normalized.includes("calcium")) {
+      if (currentValue >= 8.5 && currentValue <= 10.5) return true;
+      if (currentValue < 8.5) return changeDirection === "up";
+      if (currentValue > 10.5) return changeDirection === "down";
+    }
+    return true;
+  };
+
+  // Tính toán healthMetrics dựa trên ngày được chọn
+  const healthMetrics = useMemo(() => {
+    // Nếu không chọn ngày → Dùng data mặc định (mới nhất)
+    if (!selectedDate || !patientId) {
+      return defaultHealthMetrics;
+    }
+
+    // Nếu đang loading → Giữ data cũ (tránh flicker)
+    if (isLoadingSelectedPanel) {
+      return defaultHealthMetrics;
+    }
+
+    // Nếu có lỗi hoặc không có data → Fallback về default
+    if (selectedPanelError || !selectedPanelData) {
+      return defaultHealthMetrics;
+    }
+
+    // Tìm panel trước đó để so sánh
+    const sortedPanels = panels
+      ? [...panels].sort(
+          (a, b) =>
+            new Date(b.measuredAt).getTime() - new Date(a.measuredAt).getTime()
+        )
+      : [];
+
+    const selectedIndex = sortedPanels.findIndex(
+      (p) => p.measuredAt === selectedDate
+    );
+    const previousPanel =
+      selectedIndex !== -1 && selectedIndex < sortedPanels.length - 1
+        ? sortedPanels[selectedIndex + 1]
+        : null;
+
+    const selectedPanel = selectedPanelData;
+
+    const normalizeMetrics = (panel: any) => {
+      if (!panel?.metrics) return {};
+
+      // Nếu metrics đã là object (từ usePanelByDate) → return luôn
+      if (!Array.isArray(panel.metrics)) {
+        return panel.metrics;
+      }
+
+      // Nếu metrics là array (từ getPanelsByPatient) → normalize
+      return panel.metrics.reduce((acc: any, metric: any) => {
+        acc[metric.name.toLowerCase()] = {
+          value: metric.value,
+          unit: metric.unit,
+        };
+        return acc;
+      }, {});
+    };
+
+    const currentMetrics = normalizeMetrics(selectedPanel);
+    const previousMetrics = previousPanel
+      ? normalizeMetrics(previousPanel)
+      : {};
+
+    const priorityMetrics = [
+      { key: "gfr", altKeys: ["egfr"] },
+      { key: "serum_creatinine", altKeys: ["creatinine"] },
+      { key: "bun", altKeys: ["ure máu"] },
+      { key: "serum_calcium", altKeys: ["canxi máu", "calcium"] },
+    ];
+
+    const results: HealthMetricWithComparison[] = [];
+
+    for (const { key, altKeys } of priorityMetrics) {
+      let metricData = currentMetrics[key];
+      let foundKey = key;
+
+      if (!metricData) {
+        for (const altKey of altKeys) {
+          if (currentMetrics[altKey]) {
+            metricData = currentMetrics[altKey];
+            foundKey = altKey;
+            break;
+          }
+        }
+      }
+
+      if (!metricData) continue;
+
+      const currentValue = Number(metricData.value);
+      const unit = metricData.unit;
+
+      let previousValue: number | undefined;
+      let previousDate: string | undefined;
+
+      if (previousPanel) {
+        let prevMetricData = previousMetrics[key];
+        if (!prevMetricData) {
+          for (const altKey of altKeys) {
+            if (previousMetrics[altKey]) {
+              prevMetricData = previousMetrics[altKey];
+              break;
+            }
+          }
+        }
+        if (prevMetricData) {
+          previousValue = Number(prevMetricData.value);
+          previousDate = previousPanel.measuredAt;
+        }
+      }
+
+      let changePercentage: number | undefined;
+      let changeDirection: "up" | "down" | "stable";
+
+      if (previousValue !== undefined && previousValue !== 0) {
+        changePercentage =
+          ((currentValue - previousValue) / previousValue) * 100;
+        if (Math.abs(changePercentage) < 2) {
+          changeDirection = "stable";
+        } else if (changePercentage > 0) {
+          changeDirection = "up";
+        } else {
+          changeDirection = "down";
+        }
+      } else {
+        changeDirection = "stable";
+      }
+
+      const isTrendGood = determineTrendQuality(
+        foundKey,
+        changeDirection,
+        currentValue,
+        previousValue
+      );
+      const displayName = getDisplayName(foundKey);
+      const alert = calculateAlert(foundKey, currentValue);
+      const normalRange = getMetricNormalRange(foundKey);
+      const exceedance = calculateExceedance(
+        foundKey,
+        currentValue,
+        normalRange
+      );
+
+      results.push({
+        metricId: `${selectedPanel.id}-${foundKey}`,
+        patientId: patientId,
+        metricName: foundKey,
+        metricValue: currentValue,
+        unit: unit,
+        measuredAt: selectedPanel.measuredAt,
+        displayName: displayName,
+        alert: alert,
+        formattedValue: `${currentValue} ${unit}`,
+        previousMonthValue: previousValue,
+        previousMonthDate: previousDate,
+        changePercentage: changePercentage,
+        changeDirection: changeDirection,
+        isTrendGood: isTrendGood,
+        normalRange: normalRange,
+        exceedancePercentage: exceedance.percentage,
+        exceedanceStatus: exceedance.status,
+        exceedanceMessage: exceedance.message,
+      });
+    }
+
+    return results;
+  }, [
+    selectedDate,
+    defaultHealthMetrics,
+    panels,
+    patientId,
+    selectedPanelData,
+    isLoadingSelectedPanel,
+    selectedPanelError,
+  ]);
+
+  const openPrescriptionModal = (group: PrescriptionGroup) => {
+    setSelectedPrescriptionGroup(group);
+    setIsModalOpen(true);
+  };
+
+  const closePrescriptionModal = () => {
+    setIsModalOpen(false);
+    setTimeout(() => setSelectedPrescriptionGroup(null), 300); // Delay to allow modal animation
+  };
+
+  const handleNewTestInputChange = (
+    field: keyof NewTestResult,
+    value: string
+  ) => {
+    setNewTestData((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
+
+  const handleAddTestResult = async () => {
+    if (!patientId) return;
+    setIsAddingTest(true);
+
+    const measuredAtIso = (() => {
+      try {
+        return new Date(newTestData.date).toISOString();
+      } catch {
+        return new Date().toISOString();
+      }
+    })();
+
+    const toNumber = (v: string) => {
+      const n = Number(String(v ?? "").replace(",", "."));
+      return Number.isFinite(n) ? n : NaN;
+    };
+
+    const egfrNum = toNumber(newTestData.egfr);
+    const creaNum = toNumber(newTestData.creatinine);
+    const bunNum = toNumber(newTestData.bun);
+    const caNum = toNumber(newTestData.serumCalcium);
+    const c3c4Num = toNumber(newTestData.c3c4);
+    const oxalateNum = toNumber(newTestData.oxalateLevels);
+    const urinePhNum = toNumber(newTestData.urinePH);
+
+    const invalid = [egfrNum, creaNum, bunNum].some((n) => isNaN(n));
+    if (invalid) {
+      setIsAddingTest(false);
+      alert(
+        "Vui lòng nhập số hợp lệ cho các trường bắt buộc (dùng dấu '.' cho phần thập phân)."
+      );
+      return;
+    }
+
+    const payload = {
+      patientId: patientId,
+      measuredAt: measuredAtIso,
+      metrics: [
+        { name: "gfr", value: egfrNum, unit: "ml/min" },
+        { name: "serum_creatinine", value: creaNum, unit: "mg/dL" },
+        { name: "bun", value: bunNum, unit: "mg/dL" },
+        ...(caNum && !isNaN(caNum)
+          ? [{ name: "serum_calcium", value: caNum, unit: "mg/dL" }]
+          : []),
+        ...(newTestData.ana
+          ? [{ name: "ana", value: Number(newTestData.ana), unit: "0|1" }]
+          : []),
+        ...(c3c4Num && !isNaN(c3c4Num)
+          ? [{ name: "c3_c4", value: c3c4Num, unit: "mg/dL" }]
+          : []),
+        ...(newTestData.hematuria
+          ? [
+              {
+                name: "hematuria",
+                value: Number(newTestData.hematuria),
+                unit: "0|1",
+              },
+            ]
+          : []),
+        ...(oxalateNum && !isNaN(oxalateNum)
+          ? [{ name: "oxalate_levels", value: oxalateNum, unit: "mg/day" }]
+          : []),
+        ...(urinePhNum && !isNaN(urinePhNum)
+          ? [{ name: "urine_ph", value: urinePhNum, unit: "pH" }]
+          : []),
+      ],
+    } as any;
+
+    const ok = await createPanel(payload);
+
+    if (ok) {
+      refetchPanels();
+      setNewTestData({
+        date: "",
+        creatinine: "",
+        egfr: "",
+        bun: "",
+        serumCalcium: "",
+        ana: "",
+        c3c4: "",
+        hematuria: "",
+        oxalateLevels: "",
+        urinePH: "",
+      });
+      setShowTestModal(false);
+      setIsAddingTest(false);
+
+      // Show success toast
+      toast.success("Đã thêm kết quả xét nghiệm thành công!", {
+        description: "Kết quả xét nghiệm đã được lưu vào hồ sơ của bạn",
+        duration: 3000,
+      });
+    } else {
+      setIsAddingTest(false);
+      toast.error("Thêm kết quả xét nghiệm thất bại", {
+        description: "Vui lòng thử lại sau",
+        duration: 3000,
+      });
+    }
+  };
+
+  const handleCancelAddTest = () => {
+    setShowTestModal(false);
+    setNewTestData({
+      date: "",
+      creatinine: "",
+      egfr: "",
+      bun: "",
+      serumCalcium: "",
+      ana: "",
+      c3c4: "",
+      hematuria: "",
+      oxalateLevels: "",
+      urinePH: "",
+    });
+  };
+
+  const quickActions = [
+    {
+      id: "input-metrics",
+      label: "Nhập chỉ số",
+      icon: Plus,
+      color: "bg-blue-500",
+      onClick: () => setShowTestModal(true),
+    },
+    {
+      id: "book-appointment",
+      label: "Đặt lịch",
+      icon: Calendar,
+      color: "bg-green-500",
+      onClick: () => onNavigate("appointments"),
+    },
+    {
+      id: "ai-chat",
+      label: "Dự đoán với AI",
+      icon: Brain,
+      color: "bg-purple-500",
+      onClick: () => onNavigate("ai-assistant"),
+    },
+    {
+      id: "view-results",
+      label: "Xem lịch sử khám",
+      icon: ClipboardList,
+      color: "bg-orange-500",
+      onClick: () => setShowMedicalHistoryModal(true),
+    },
+  ];
+
+  const getMetricIcon = (metricName: string) => {
+    const normalized = metricName.toLowerCase();
+
+    if (normalized.includes("egfr") || normalized === "gfr") {
+      return Activity;
+    }
+    if (normalized.includes("creatinine")) {
+      return Droplets;
+    }
+    if (
+      normalized.includes("blood pressure") ||
+      normalized.includes("huyết áp")
+    ) {
+      return Heart;
+    }
+    if (normalized.includes("weight") || normalized.includes("cân nặng")) {
+      return Weight;
+    }
+    if (normalized.includes("bun") || normalized.includes("ure")) {
+      return Droplets; // Cùng icon với Creatinine vì cùng liên quan đến thận
+    }
+    if (normalized.includes("canxi") || normalized.includes("calcium")) {
+      return Activity; // Có thể thay bằng icon khác nếu cần
+    }
+
+    return Activity; // Default
+  };
+
+  // Helper: Lấy mô tả ngắn cho từng chỉ số
+  const getMetricDescription = (metricName: string): string => {
+    const normalized = metricName.toLowerCase();
+
+    if (normalized.includes("egfr") || normalized === "gfr") {
+      return "Chức năng thận";
+    }
+    if (normalized.includes("creatinine")) {
+      return "Chỉ số thận";
+    }
+    if (normalized.includes("bun") || normalized.includes("ure")) {
+      return "Nitơ ure máu";
+    }
+    if (normalized.includes("canxi") || normalized.includes("calcium")) {
+      return "Canxi máu";
+    }
+    return "";
+  };
+
+  // Helper: Border color theo mức cảnh báo
+  const getBorderColor = (level: string): string => {
+    switch (level) {
+      case "NORMAL":
+        return "border-green-400";
+      case "WARNING":
+        return "border-yellow-400";
+      case "DANGER":
+        return "border-orange-400";
+      case "CRITICAL":
+        return "border-red-500";
+      default:
+        return "border-gray-300";
+    }
+  };
+
+  // Helper: Badge style theo mức cảnh báo
+  const getBadgeStyle = (level: string): string => {
+    switch (level) {
+      case "NORMAL":
+        return "bg-green-100 text-green-800";
+      case "WARNING":
+        return "bg-yellow-100 text-yellow-800";
+      case "DANGER":
+        return "bg-orange-100 text-orange-800";
+      case "CRITICAL":
+        return "bg-red-100 text-red-800";
+      default:
+        return "bg-gray-100 text-gray-800";
+    }
+  };
+
+  // Helper: Icon cho từng mức cảnh báo
+  const getAlertIcon = (level: string) => {
+    switch (level) {
+      case "NORMAL":
+        return "✅";
+      case "WARNING":
+        return "⚠️";
+      case "DANGER":
+        return "🔴";
+      case "CRITICAL":
+        return "🆘";
+      default:
+        return "";
+    }
+  };
+
+  const getConsultationTypeLabel = (type: string) => {
+    switch (type) {
+      case "ONLINE":
+      case "ONLINE_CONSULTATION":
+        return "Tư vấn online";
+      case "OFFLINE":
+      case "DIRECT_CONSULTATION":
+        return "Khám trực tiếp";
+      case "PHONE":
+      case "PHONE_CONSULTATION":
+        return "Tư vấn điện thoại";
+      case "FOLLOW_UP":
+        return "Tái khám";
+      default:
+        return type;
+    }
+  };
+
+  // Helper function to get icon for consultation type
+  const getConsultationIcon = (type: string) => {
+    switch (type) {
+      case "ONLINE":
+      case "ONLINE_CONSULTATION":
+        return Video;
+      case "OFFLINE":
+      case "DIRECT_CONSULTATION":
+        return MapPin;
+      case "PHONE":
+      case "PHONE_CONSULTATION":
+        return Phone;
+      case "FOLLOW_UP":
+        return Calendar;
+      default:
+        return FileText;
+    }
+  };
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case "CONFIRMED":
+        return (
+          <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full font-medium">
+            Có thể vào
+          </span>
+        );
+      case "PENDING":
+        return (
+          <span className="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded-full font-medium">
+            Chờ xác nhận
+          </span>
+        );
+      case "COMPLETED":
+        return (
+          <span className="px-2 py-1 bg-gray-100 text-gray-800 text-xs rounded-full font-medium">
+            Đã hoàn thành
+          </span>
+        );
+      case "CANCELLED":
+        return (
+          <span className="px-2 py-1 bg-red-100 text-red-800 text-xs rounded-full font-medium">
+            Đã hủy
+          </span>
+        );
+      default:
+        return null;
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Đang tải dữ liệu dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-4 lg:p-6 space-y-6">
+      {/* Welcome Section */}
+      <div
+        className="bg-gradient-to-r from-blue-600 to-blue-700 rounded-2xl p-6 text-white"
+        style={{
+          background:
+            "linear-gradient(90deg, oklch(0.546 0.245 262.881) 0%, oklch(0.488 0.243 264.376) 100%)",
+        }}
+      >
+        <h1 className="text-2xl lg:text-3xl font-bold mb-2">
+          Chào mừng trở lại, {user.name || user.fullName || "Bạn"}!
+        </h1>
+        <p className="text-blue-100 mb-4">
+          Hôm nay là ngày tốt để chăm sóc sức khỏe của bạn
+        </p>
+      </div>
+
+      {/* Quick Actions */}
+      <div>
+        <h2 className="text-xl font-semibold text-gray-900 mb-4">
+          Thao tác nhanh
+        </h2>
+        <div className="grid grid-cols-4 gap-4">
+          {quickActions.map((action) => {
+            const Icon = action.icon;
+            return (
+              <button
+                key={action.id}
+                onClick={action.onClick}
+                className="flex flex-col items-center justify-center p-6 bg-white rounded-2xl border border-gray-200 hover:shadow-lg transition-all duration-200 hover:scale-105"
+              >
+                <div
+                  className={`w-12 h-12 ${action.color} rounded-xl flex items-center justify-center mb-3`}
+                >
+                  <Icon className="w-6 h-6 text-white" />
+                </div>
+                <span className="text-sm font-medium text-gray-900">
+                  {action.label}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Health Overview */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* Health Metrics Card - ƯU TIÊN CHỈ SỐ SUY THẬN */}
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <h2 className="text-xl font-semibold text-gray-900">
+                  Chỉ số sức khỏe
+                </h2>
+
+                {/* Dropdown chọn ngày */}
+                {availableDates.length > 0 && patientId && (
+                  <div className="relative">
+                    <select
+                      value={selectedDate || availableDates[0]?.date || ""}
+                      onChange={(e) => setSelectedDate(e.target.value || null)}
+                      className="appearance-none bg-white border border-gray-300 rounded-lg px-3 py-1.5 pr-8 text-sm text-gray-700 hover:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent cursor-pointer"
+                    >
+                      {availableDates.map((dateOption) => (
+                        <option key={dateOption.id} value={dateOption.date}>
+                          {dateOption.isLatest
+                            ? `${dateOption.displayDate} (Mới nhất)`
+                            : dateOption.displayDate}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
+                  </div>
+                )}
+              </div>
+
+              <button
+                onClick={() => onNavigate("monitoring")}
+                className="text-blue-600 hover:text-blue-700 text-sm font-medium flex items-center"
+              >
+                Xem chi tiết <ArrowRight className="w-4 h-4 ml-1" />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              {isLoadingSelectedPanel && selectedDate ? (
+                // Loading skeleton khi đang fetch data cho ngày được chọn
+                [1, 2, 3, 4].map((i) => (
+                  <div
+                    key={i}
+                    className="p-3.5 rounded-xl border-2 border-gray-200 animate-pulse"
+                  >
+                    <div className="h-4 bg-gray-200 rounded mb-2 w-3/4"></div>
+                    <div className="h-8 bg-gray-200 rounded mb-2 w-1/2"></div>
+                    <div className="h-3 bg-gray-200 rounded w-full"></div>
+                  </div>
+                ))
+              ) : healthMetrics.length > 0 ? (
+                healthMetrics.map((metric) => {
+                  const Icon = getMetricIcon(metric.metricName);
+                  const metricWithComparison =
+                    metric as HealthMetricWithComparison;
+                  const hasComparison =
+                    "previousMonthValue" in metricWithComparison &&
+                    metricWithComparison.previousMonthValue !== undefined;
+
+                  return (
+                    <div
+                      key={metric.metricId}
+                      className={`
+                        p-3.5 rounded-xl bg-white
+                        ${metric.alert.level === "NORMAL" ? "border-2" : "border-4"}
+                        ${getBorderColor(metric.alert.level)}
+                        transition-all hover:shadow-md
+                      `}
+                    >
+                      {/* Header: Icon + Tên + Giải thích */}
+                      <div className="flex items-start justify-between mb-2">
+                        <div className="flex items-start gap-1.5 flex-1">
+                          <Icon className="w-4 h-4 text-gray-600 mt-0.5 flex-shrink-0" />
+                          <div className="min-w-0">
+                            <h3 className="font-semibold text-gray-900 text-xs leading-tight">
+                              {metric.displayName}
+                            </h3>
+                            {getMetricDescription(metric.metricName) && (
+                              <p className="text-[11px] text-gray-500 mt-0.5">
+                                {getMetricDescription(metric.metricName)}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Body: Số TO + Badge cảnh báo */}
+                      <div className="flex items-end justify-between mb-2">
+                        <div>
+                          <p className="text-2xl font-bold text-gray-900 leading-none">
+                            {metric.metricValue}
+                          </p>
+                          <p className="text-xs text-gray-600 mt-0.5">
+                            {metric.unit}
+                          </p>
+                        </div>
+                        <span
+                          className={`
+                          px-2.5 py-0.5 rounded-full font-medium whitespace-nowrap
+                          ${metric.alert.level === "NORMAL" ? "text-[10px]" : "text-xs font-bold"}
+                          ${getBadgeStyle(metric.alert.level)}
+                        `}
+                        >
+                          {getAlertIcon(metric.alert.level)}{" "}
+                          {metric.alert.level === "NORMAL"
+                            ? metric.alert.label
+                            : metric.alert.label.toUpperCase()}
+                        </span>
+                      </div>
+
+                      {/* So sánh với mức bình thường */}
+                      {metricWithComparison.exceedanceStatus && (
+                        <div
+                          className={`
+                          mb-2 p-2.5 rounded-lg
+                          ${
+                            metricWithComparison.exceedanceStatus === "normal"
+                              ? "bg-green-50 border border-green-200"
+                              : metricWithComparison.alert.level === "CRITICAL"
+                                ? "bg-red-50 border border-red-200"
+                                : metricWithComparison.alert.level === "DANGER"
+                                  ? "bg-orange-50 border border-orange-200"
+                                  : "bg-yellow-50 border border-yellow-200"
+                          }
+                        `}
+                        >
+                          <div className="flex items-start gap-1.5">
+                            {/* Icon */}
+                            <span className="text-base flex-shrink-0">
+                              {metricWithComparison.exceedanceStatus ===
+                              "normal"
+                                ? "✅"
+                                : metricWithComparison.alert.level ===
+                                    "CRITICAL"
+                                  ? "🆘"
+                                  : "⚠️"}
+                            </span>
+
+                            {/* Nội dung */}
+                            <div className="flex-1 min-w-0">
+                              <p
+                                className={`
+                                text-xs leading-tight
+                                ${
+                                  metricWithComparison.exceedanceStatus ===
+                                  "normal"
+                                    ? "text-green-700 font-medium"
+                                    : metricWithComparison.alert.level ===
+                                        "CRITICAL"
+                                      ? "text-red-700 font-bold"
+                                      : metricWithComparison.alert.level ===
+                                          "DANGER"
+                                        ? "text-orange-700 font-bold"
+                                        : "text-yellow-700 font-semibold"
+                                }
+                              `}
+                              >
+                                {metricWithComparison.exceedanceMessage}
+                              </p>
+                              <p className="text-[10px] text-gray-600 mt-0.5">
+                                (Bình thường:{" "}
+                                {metricWithComparison.normalRange?.description})
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Đường kẻ phân cách - CHỈ hiển thị khi CÓ so sánh tháng trước */}
+                      {hasComparison &&
+                        metricWithComparison.previousMonthValue && (
+                          <div className="border-t border-gray-200 my-2"></div>
+                        )}
+
+                      {/* So sánh với tháng trước */}
+                      {hasComparison &&
+                        metricWithComparison.previousMonthValue && (
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-1.5">
+                              {metricWithComparison.changeDirection === "up" ? (
+                                <ArrowUp
+                                  className={`w-3.5 h-3.5 flex-shrink-0 ${metricWithComparison.isTrendGood ? "text-green-600" : "text-red-600"}`}
+                                />
+                              ) : metricWithComparison.changeDirection ===
+                                "down" ? (
+                                <ArrowDown
+                                  className={`w-3.5 h-3.5 flex-shrink-0 ${metricWithComparison.isTrendGood ? "text-green-600" : "text-red-600"}`}
+                                />
+                              ) : (
+                                <Minus className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+                              )}
+                              <span
+                                className={`text-xs font-medium ${metricWithComparison.isTrendGood ? "text-green-700" : metricWithComparison.changeDirection === "stable" ? "text-gray-600" : "text-red-700"}`}
+                              >
+                                {metricWithComparison.changeDirection === "up"
+                                  ? "Tăng"
+                                  : metricWithComparison.changeDirection ===
+                                      "down"
+                                    ? "Giảm"
+                                    : "Ổn định"}
+                                {metricWithComparison.changePercentage !==
+                                  undefined &&
+                                  metricWithComparison.changeDirection !==
+                                    "stable" &&
+                                  ` ${Math.abs(metricWithComparison.changePercentage).toFixed(1)}%`}{" "}
+                                so với tháng trước
+                              </span>
+                            </div>
+                            <p className="text-[10px] text-gray-500">
+                              {metricWithComparison.previousMonthDate &&
+                                `Tháng ${format(new Date(metricWithComparison.previousMonthDate), "M", { locale: vi })}: `}
+                              {metricWithComparison.previousMonthValue}{" "}
+                              {metric.unit}
+                            </p>
+                          </div>
+                        )}
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="col-span-2 text-center py-8">
+                  <Activity className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+                  <p className="text-gray-500 text-sm">
+                    Chưa có dữ liệu chỉ số sức khỏe
+                  </p>
+                  <button
+                    onClick={() => onNavigate("monitoring")}
+                    className="mt-3 text-blue-600 hover:text-blue-700 text-sm font-medium"
+                  >
+                    Nhập chỉ số ngay
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Recent Consultations */}
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+            <h2 className="text-xl font-semibold text-gray-900 mb-4">
+              Tư vấn gần đây
+            </h2>
+            <div className="space-y-3">
+              {recentConsultations.length > 0 ? (
+                recentConsultations.map((record) => {
+                  // Suy luận icon từ serviceName vì MedicalRecord không có consultationType
+                  const getIconForService = (serviceName?: string) => {
+                    if (!serviceName) return FileText;
+                    const lowerService = serviceName.toLowerCase();
+                    if (
+                      lowerService.includes("online") ||
+                      lowerService.includes("trực tuyến")
+                    ) {
+                      return Video;
+                    } else if (
+                      lowerService.includes("trực tiếp") ||
+                      lowerService.includes("khám")
+                    ) {
+                      return MapPin;
+                    } else if (
+                      lowerService.includes("điện thoại") ||
+                      lowerService.includes("phone")
+                    ) {
+                      return Phone;
+                    }
+                    return FileText;
+                  };
+
+                  const ServiceIcon = getIconForService(record.serviceName);
+
+                  return (
+                    <div
+                      key={record.recordId}
+                      className="flex items-center space-x-3 p-3 bg-gray-50 rounded-xl"
+                    >
+                      <ServiceIcon className="w-5 h-5 text-blue-500 flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-gray-900">
+                          {record.doctorName}
+                        </p>
+                        <p className="text-sm text-gray-600 truncate">
+                          {record.serviceName} -{" "}
+                          {format(
+                            new Date(
+                              record.appointmentDate || record.createdAt
+                            ),
+                            "dd/MM/yyyy",
+                            { locale: vi }
+                          )}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => {
+                          if (record.appointmentId) {
+                            setSelectedAppointmentId(record.appointmentId);
+                            setSelectedDoctorInfo({
+                              name: record.doctorName || "Bác sĩ",
+                              specialty: record.serviceName || undefined,
+                              id: record.doctorId || undefined,
+                            });
+                            setShowResultModal(true);
+                          }
+                        }}
+                        className="text-blue-600 hover:text-blue-700 text-sm font-medium whitespace-nowrap"
+                      >
+                        Xem lại
+                      </button>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="text-center py-8">
+                  <FileText className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+                  <p className="text-gray-500 text-sm">Chưa có tư vấn nào</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Sidebar */}
+        <div className="space-y-6">
+          {/* Today's Schedule */}
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+            <h2 className="text-xl font-semibold text-gray-900 mb-4">
+              Lịch hôm nay
+            </h2>
+            {todayAppointments.length > 0 ? (
+              <div className="space-y-3">
+                {todayAppointments.map((appointment) => (
+                  <div
+                    key={appointment.appointmentId}
+                    className="p-3 bg-blue-50 rounded-xl"
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-medium text-blue-900">
+                        {appointment.timeSlot.startTime}
+                      </span>
+                      {appointment.status === "CONFIRMED" &&
+                        appointment.consultationType === "ONLINE" && (
+                          <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full font-medium">
+                            Có thể vào
+                          </span>
+                        )}
+                    </div>
+                    <p className="font-medium text-gray-900">
+                      {getConsultationTypeLabel(appointment.consultationType)}
+                    </p>
+                    <p className="text-sm text-gray-600">
+                      {appointment.doctor.fullName}
+                    </p>
+                    <div className="mt-2">
+                      {getStatusBadge(appointment.status)}
+                    </div>
+                  </div>
+                ))}
+                <button
+                  onClick={() => onNavigate("appointments")}
+                  className="w-full mt-3 text-blue-600 hover:text-blue-700 text-sm font-medium flex items-center justify-center"
+                >
+                  Xem tất cả <ArrowRight className="w-4 h-4 ml-1" />
+                </button>
+              </div>
+            ) : (
+              <div className="text-center py-4">
+                <Clock className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+                <p className="text-gray-500 text-sm">
+                  Không có lịch hẹn hôm nay
+                </p>
+                <button
+                  onClick={() => onNavigate("appointments")}
+                  className="mt-2 text-blue-600 hover:text-blue-700 text-sm font-medium"
+                >
+                  Đặt lịch mới
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Prescription Groups - CÁC TOA THUỐC */}
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+            <h2 className="text-xl font-semibold text-gray-900 mb-4">
+              Các toa thuốc
+            </h2>
+            <div className="space-y-3">
+              {prescriptionGroups.length > 0 ? (
+                prescriptionGroups.slice(0, 3).map((group) => (
+                  <div
+                    key={group.medicalRecordId}
+                    className="border border-gray-200 rounded-xl p-3 bg-gray-50"
+                  >
+                    <div className="flex items-start justify-between mb-2">
+                      <div className="flex-1">
+                        <p className="font-medium text-gray-900">
+                          {group.serviceName}
+                        </p>
+                        <p className="text-sm text-gray-600">
+                          {group.doctorName} •{" "}
+                          {format(new Date(group.createdDate), "dd/MM/yyyy")}
+                        </p>
+                      </div>
+                      {group.isActive ? (
+                        <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full font-medium whitespace-nowrap">
+                          Đang dùng
+                        </span>
+                      ) : (
+                        <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-full font-medium whitespace-nowrap">
+                          Đã dùng
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-gray-500 mb-3">
+                      {group.totalMedicines} loại thuốc
+                    </p>
+
+                    {/* View Details Button */}
+                    <button
+                      onClick={() => openPrescriptionModal(group)}
+                      className="w-full flex items-center justify-center text-blue-600 hover:text-blue-700 text-sm font-medium py-2 hover:bg-blue-50 rounded-lg transition-colors"
+                    >
+                      Xem chi tiết <ArrowRight className="w-4 h-4 ml-1" />
+                    </button>
+                  </div>
+                ))
+              ) : (
+                <div className="text-center py-8">
+                  <FileText className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+                  <p className="text-gray-500 text-sm">Chưa có toa thuốc nào</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Prescription Group Modal */}
+      <PrescriptionGroupModal
+        isOpen={isModalOpen}
+        onClose={closePrescriptionModal}
+        prescriptionGroup={selectedPrescriptionGroup}
+      />
+
+      {/* Medical Result Modal */}
+      {selectedAppointmentId && (
+        <MedicalResultModal
+          isOpen={showResultModal}
+          onClose={() => {
+            setShowResultModal(false);
+            setSelectedAppointmentId("");
+            setSelectedDoctorInfo(null);
+          }}
+          appointmentId={selectedAppointmentId}
+          patientInfo={{
+            name: user.fullName || user.name || "Bệnh nhân",
+            id: patientId || "",
+            email: user.email || "",
+          }}
+          doctorInfo={selectedDoctorInfo ?? undefined}
+        />
+      )}
+
+      {/* Medical History Modal */}
+      <MedicalHistoryModal
+        isOpen={showMedicalHistoryModal}
+        onClose={() => setShowMedicalHistoryModal(false)}
+        patientId={patientId || ""}
+        patientName={user.fullName || user.name}
+      />
+
+      {/* Add Test Result Modal */}
+      {mounted &&
+        createPortal(
+          <AnimatePresence>
+            {showTestModal && (
+              <>
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="fixed inset-0 bg-black/60 z-[9998]"
+                  onClick={handleCancelAddTest}
+                />
+                <motion.div
+                  initial={{ scale: 0.95, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{ scale: 0.95, opacity: 0 }}
+                  className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl">
+                    {/* Header - Fixed */}
+                    <div className="flex items-center justify-between p-8 pb-6 flex-shrink-0">
+                      <h2 className="text-2xl font-semibold text-[#0F172A]">
+                        Thêm kết quả xét nghiệm mới
+                      </h2>
+                      <button
+                        onClick={handleCancelAddTest}
+                        className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                      >
+                        <X size={20} className="text-gray-500" />
+                      </button>
+                    </div>
+
+                    {/* Scrollable Content */}
+                    <div className="overflow-y-auto px-8 pb-8 flex-1">
+                      <form
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        handleAddTestResult();
+                      }}
+                      className="space-y-6"
+                    >
+                      <div className="space-y-6">
+                        <div>
+                          <label className="block text-sm font-medium text-[#334155] mb-2">
+                            Ngày xét nghiệm{" "}
+                            <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="date"
+                            value={newTestData.date}
+                            onChange={(e) =>
+                              handleNewTestInputChange("date", e.target.value)
+                            }
+                            className="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent transition-all"
+                            required
+                          />
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          <div>
+                            <label className="block text-sm font-medium text-[#334155] mb-2">
+                              Creatinin huyết thanh (mg/dL){" "}
+                              <span className="text-red-500">*</span>
+                            </label>
+                            <input
+                              type="number"
+                              step="0.1"
+                              value={newTestData.creatinine}
+                              onChange={(e) =>
+                                handleNewTestInputChange(
+                                  "creatinine",
+                                  e.target.value
+                                )
+                              }
+                              className="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent transition-all"
+                              placeholder="1.0"
+                              required
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-medium text-[#334155] mb-2">
+                              eGFR (ml/min){" "}
+                              <span className="text-red-500">*</span>
+                            </label>
+                            <input
+                              type="number"
+                              step="0.1"
+                              value={newTestData.egfr}
+                              onChange={(e) =>
+                                handleNewTestInputChange("egfr", e.target.value)
+                              }
+                              className="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent transition-all"
+                              placeholder="95.0"
+                              required
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-medium text-[#334155] mb-2">
+                              Ure máu (BUN) (mg/dL){" "}
+                              <span className="text-red-500">*</span>
+                            </label>
+                            <input
+                              type="number"
+                              step="0.1"
+                              value={newTestData.bun}
+                              onChange={(e) =>
+                                handleNewTestInputChange("bun", e.target.value)
+                              }
+                              className="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent transition-all"
+                              placeholder="15.0"
+                              required
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-medium text-[#334155] mb-2">
+                              Canxi huyết thanh (mg/dL)
+                            </label>
+                            <input
+                              type="number"
+                              step="0.1"
+                              value={newTestData.serumCalcium}
+                              onChange={(e) =>
+                                handleNewTestInputChange(
+                                  "serumCalcium",
+                                  e.target.value
+                                )
+                              }
+                              className="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent transition-all"
+                              placeholder="10.0"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-medium text-[#334155] mb-2">
+                              ANA
+                            </label>
+                            <select
+                              value={newTestData.ana}
+                              onChange={(e) =>
+                                handleNewTestInputChange("ana", e.target.value)
+                              }
+                              className="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent transition-all"
+                            >
+                              <option value="">Chọn kết quả</option>
+                              <option value="1">Dương tính</option>
+                              <option value="0">Âm tính</option>
+                            </select>
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-medium text-[#334155] mb-2">
+                              Bổ thể C3/C4 (mg/dL)
+                            </label>
+                            <input
+                              type="number"
+                              step="0.1"
+                              value={newTestData.c3c4}
+                              onChange={(e) =>
+                                handleNewTestInputChange("c3c4", e.target.value)
+                              }
+                              className="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent transition-all"
+                              placeholder="130.0"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-medium text-[#334155] mb-2">
+                              Đái máu
+                            </label>
+                            <select
+                              value={newTestData.hematuria}
+                              onChange={(e) =>
+                                handleNewTestInputChange(
+                                  "hematuria",
+                                  e.target.value
+                                )
+                              }
+                              className="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent transition-all"
+                            >
+                              <option value="">Chọn kết quả</option>
+                              <option value="1">Dương tính</option>
+                              <option value="0">Âm tính</option>
+                            </select>
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-medium text-[#334155] mb-2">
+                              Nồng độ oxalat (mg/day)
+                            </label>
+                            <input
+                              type="number"
+                              step="0.1"
+                              value={newTestData.oxalateLevels}
+                              onChange={(e) =>
+                                handleNewTestInputChange(
+                                  "oxalateLevels",
+                                  e.target.value
+                                )
+                              }
+                              className="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent transition-all"
+                              placeholder="2.0"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-medium text-[#334155] mb-2">
+                              pH nước tiểu
+                            </label>
+                            <input
+                              type="number"
+                              step="0.1"
+                              value={newTestData.urinePH}
+                              onChange={(e) =>
+                                handleNewTestInputChange(
+                                  "urinePH",
+                                  e.target.value
+                                )
+                              }
+                              className="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#1E75FF] focus:border-transparent transition-all"
+                              placeholder="7.0"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex gap-4 pt-4">
+                        <button
+                          type="button"
+                          onClick={handleCancelAddTest}
+                          className="flex-1 px-6 py-3 border border-gray-200 text-gray-700 rounded-2xl hover:bg-gray-50 transition-colors font-medium"
+                        >
+                          Hủy
+                        </button>
+                        <button
+                          type="submit"
+                          disabled={isAddingTest || isCreatingPanel}
+                          className="flex-1 px-6 py-3 bg-[#1E75FF] text-white rounded-2xl hover:bg-[#1659C9] transition-colors font-medium flex items-center justify-center gap-2 disabled:opacity-50"
+                        >
+                          {isAddingTest || isCreatingPanel ? (
+                            <>
+                              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                              <span>Đang lưu...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Save size={16} />
+                              <span>Lưu kết quả</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </form>
+                    </div>
+                  </div>
+                </motion.div>
+              </>
+            )}
+          </AnimatePresence>,
+          document.body
+        )}
+    </div>
+  );
+}
