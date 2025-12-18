@@ -1,12 +1,12 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect } from 'react';
-import { Loader2, AlertCircle, Calendar } from 'lucide-react';
-import { getFullTimeline } from '@/lib/api/medical-records';
-import type { MedicalRecordFullTimelineResponse } from '@/types/medical-record';
-import { EpisodeHeader } from './EpisodeHeader';
-import { VisitCard } from './VisitCard';
-import { TimelineConnector } from './TimelineConnector';
+import React, { useState, useEffect, useCallback } from "react";
+import { Loader2, AlertCircle, Calendar } from "lucide-react";
+import { getFullTimeline } from "@/lib/api/medical-records";
+import type { MedicalRecordFullTimelineResponse } from "@/types/medical-record";
+import { EpisodeHeader } from "./EpisodeHeader";
+import { VisitCard } from "./VisitCard";
+import { TimelineConnector } from "./TimelineConnector";
 
 interface FullTimelineTabProps {
   recordId: string;
@@ -16,17 +16,19 @@ interface FullTimelineTabProps {
  * Main container component for full timeline display
  * Fetches data and renders episode list with visits
  */
-export const FullTimelineTab: React.FC<FullTimelineTabProps> = ({ recordId }) => {
+export const FullTimelineTab: React.FC<FullTimelineTabProps> = ({
+  recordId,
+}) => {
   const [loading, setLoading] = useState(true);
-  const [data, setData] = useState<MedicalRecordFullTimelineResponse | null>(null);
+  const [data, setData] = useState<MedicalRecordFullTimelineResponse | null>(
+    null
+  );
   const [error, setError] = useState<string | null>(null);
-  const [expandedEpisodes, setExpandedEpisodes] = useState<Set<string>>(new Set());
+  const [expandedEpisodes, setExpandedEpisodes] = useState<Set<string>>(
+    new Set()
+  );
 
-  useEffect(() => {
-    fetchData();
-  }, [recordId]);
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -37,23 +39,29 @@ export const FullTimelineTab: React.FC<FullTimelineTabProps> = ({ recordId }) =>
         setData(response.data);
 
         // Auto-expand current episode
-        const currentEpisode = response.data.episodes.find(ep => ep.isCurrentEpisode);
+        const currentEpisode = response.data.episodes.find(
+          (ep) => ep.isCurrentEpisode
+        );
         if (currentEpisode) {
           setExpandedEpisodes(new Set([currentEpisode.episodeId]));
         }
       } else {
-        setError(response.message || 'Không thể tải lịch sử khám');
+        setError(response.message || "Không thể tải lịch sử khám");
       }
     } catch (err: any) {
-      console.error('❌ [FullTimelineTab] Error fetching timeline:', err);
-      setError(err.message || 'Có lỗi xảy ra khi tải lịch sử khám');
+      console.error("❌ [FullTimelineTab] Error fetching timeline:", err);
+      setError(err.message || "Có lỗi xảy ra khi tải lịch sử khám");
     } finally {
       setLoading(false);
     }
-  };
+  }, [recordId]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   const toggleEpisode = (episodeId: string) => {
-    setExpandedEpisodes(prev => {
+    setExpandedEpisodes((prev) => {
       const newSet = new Set(prev);
       if (newSet.has(episodeId)) {
         newSet.delete(episodeId);
