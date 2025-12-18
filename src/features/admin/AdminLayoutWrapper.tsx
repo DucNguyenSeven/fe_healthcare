@@ -1,67 +1,69 @@
-'use client'
+"use client";
 
-import React, { useState } from 'react'
-import { useRouter, usePathname } from 'next/navigation'
-import { AdminAppLayout } from './AdminAppLayout'
-import { NavigationItem } from './types'
-import { useAuthContext } from '@/contexts/AuthContext'
+import React, { useState } from "react";
+import { useRouter, usePathname } from "next/navigation";
+import { AdminAppLayout } from "./AdminAppLayout";
+import { NavigationItem } from "./types";
+import { useAuthContext } from "@/contexts/AuthContext";
 
 interface AdminLayoutWrapperProps {
-  children: React.ReactNode
+  children: React.ReactNode;
 }
 
 export function AdminLayoutWrapper({ children }: AdminLayoutWrapperProps) {
-  const router = useRouter()
-  const pathname = usePathname()
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false)
+  const router = useRouter();
+  const pathname = usePathname();
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // Get user data from AuthContext
-  const { user, loading } = useAuthContext()
+  const { user, loading } = useAuthContext();
 
   // Determine current page from pathname
   const getCurrentPage = (): NavigationItem => {
-    if (pathname.includes('/dashboard')) return 'dashboard'
-    if (pathname.includes('/users')) return 'users'
-    if (pathname.includes('/appointments')) return 'appointments'
-    if (pathname.includes('/revenue')) return 'revenue'
-    if (pathname.includes('/payments')) return 'payments'
-    return 'dashboard' // default
-  }
+    if (pathname.includes("/dashboard")) return "dashboard";
+    if (pathname.includes("/users")) return "users";
+    if (pathname.includes("/appointments")) return "appointments";
+    if (pathname.includes("/revenue")) return "revenue";
+    if (pathname.includes("/payments")) return "payments";
+    return "dashboard"; // default
+  };
 
   // Navigate using Next.js router
   const handleNavigate = (page: NavigationItem) => {
     const routes = {
-      dashboard: '/admin/dashboard',
-      users: '/admin/users',
-      appointments: '/admin/appointments',
-      revenue: '/admin/revenue',
-      payments: '/admin/payments',
-    }
+      dashboard: "/admin/dashboard",
+      users: "/admin/users",
+      appointments: "/admin/appointments",
+      revenue: "/admin/revenue",
+      payments: "/admin/payments",
+    };
 
-    router.push(routes[page])
-  }
+    router.push(routes[page]);
+  };
 
   const handleToggleSidebar = () => {
-    setIsSidebarOpen(!isSidebarOpen)
-  }
+    setIsSidebarOpen(!isSidebarOpen);
+  };
 
   // Count unread notifications
-  const notificationCount = 2 // TODO: Replace với real data
+  const notificationCount = 2; // TODO: Replace với real data
 
   // Transform user data from context
-  const transformedUser = user ? {
-    id: user.userId,
-    name: user.name || 'Admin',
-    avatar: user.avatar || null, // null để trigger fallback icon trong AdminAppLayout
-    email: user.email || '',
-    role: user.role || 'ADMIN'
-  } : {
-    id: '1',
-    name: 'Admin',
-    avatar: null, // null để trigger fallback icon trong AdminAppLayout
-    email: '',
-    role: 'ADMIN'
-  }
+  const transformedUser = user
+    ? {
+        id: user.userId,
+        name: user.name || "Admin",
+        avatar: user.avatar || null,
+        email: user.email || "",
+        role: user.role || "ADMIN",
+      }
+    : {
+        id: "1",
+        name: "Admin",
+        avatar: null,
+        email: "",
+        role: "ADMIN",
+      };
 
   // Loading state
   if (loading) {
@@ -72,7 +74,7 @@ export function AdminLayoutWrapper({ children }: AdminLayoutWrapperProps) {
           <p className="text-gray-600">Đang tải...</p>
         </div>
       </div>
-    )
+    );
   }
 
   return (
@@ -86,5 +88,5 @@ export function AdminLayoutWrapper({ children }: AdminLayoutWrapperProps) {
     >
       {children}
     </AdminAppLayout>
-  )
+  );
 }

@@ -70,7 +70,11 @@ import { webSocketAppointmentService } from "@/services/websocket-appointment";
 import { MedicalResultModal } from "@/components/MedicalResultModal";
 import { SignaturePad } from "@/components/SignaturePad";
 import type { MedicalRecordWithPrescriptions } from "@/types/medical-record";
-import { filterPastTimeSlots, isTimeSlotPast, getTimeSlotDisabledReason } from "@/utils/timeSlot";
+import {
+  filterPastTimeSlots,
+  isTimeSlotPast,
+  getTimeSlotDisabledReason,
+} from "@/utils/timeSlot";
 import { AppointmentTooltip } from "@/components/AppointmentTooltip";
 // Sample patient data for examination modal
 const patientData = {
@@ -265,7 +269,9 @@ export const AppointmentAndConsultationModule = ({
     useDoctorSchedule();
 
   // NEW: State for week schedules (available time slots)
-  const [weekSchedulesMap, setWeekSchedulesMap] = useState<Map<string, any>>(new Map());
+  const [weekSchedulesMap, setWeekSchedulesMap] = useState<Map<string, any>>(
+    new Map()
+  );
   const [schedulesLoading, setSchedulesLoading] = useState(false);
   const [schedulesError, setSchedulesError] = useState<string | null>(null);
 
@@ -508,7 +514,7 @@ export const AppointmentAndConsultationModule = ({
 
   // NEW: Fetch week schedules when currentWeek changes (for schedule page)
   React.useEffect(() => {
-    if (!me?.userId || activeView !== 'schedule') return;
+    if (!me?.userId || activeView !== "schedule") return;
 
     const fetchWeekSchedules = async () => {
       setSchedulesLoading(true);
@@ -534,11 +540,11 @@ export const AppointmentAndConsultationModule = ({
         const weekDates = getWeekDates();
 
         // Fetch all 7 days in parallel
-        const schedulePromises = weekDates.map(date => {
-          const dateStr = date.toISOString().split('T')[0];
+        const schedulePromises = weekDates.map((date) => {
+          const dateStr = date.toISOString().split("T")[0];
           return getDoctorScheduleByDoctorIdAndDate({
             doctorId: me.userId,
-            date: dateStr
+            date: dateStr,
           }).catch(() => null); // Handle gracefully if no schedule exists
         });
 
@@ -547,7 +553,7 @@ export const AppointmentAndConsultationModule = ({
         // Build map: date string -> schedule data
         const newMap = new Map<string, any>();
         weekDates.forEach((date, index) => {
-          const dateStr = date.toISOString().split('T')[0];
+          const dateStr = date.toISOString().split("T")[0];
           if (schedules[index]?.data) {
             newMap.set(dateStr, schedules[index].data);
           }
@@ -555,7 +561,7 @@ export const AppointmentAndConsultationModule = ({
 
         setWeekSchedulesMap(newMap);
       } catch (error) {
-        setSchedulesError('Không thể tải lịch làm việc');
+        setSchedulesError("Không thể tải lịch làm việc");
       } finally {
         setSchedulesLoading(false);
       }
@@ -1057,10 +1063,8 @@ export const AppointmentAndConsultationModule = ({
         followUpScheduleId
       ) {
         try {
-          // Dùng API mới scheduleFollowUpByDoctor
-          // Backend tự động set consultationType = FOLLOW_UP, status = CONFIRMED
           const followUpAppointmentData = {
-            medicalRecordId: recordId, // ← QUAN TRỌNG: Link đến Medical Record vừa tạo
+            medicalRecordId: recordId,
             patientId: patientId,
             doctorId: me.userId,
             scheduleId: followUpScheduleId,
@@ -1068,8 +1072,8 @@ export const AppointmentAndConsultationModule = ({
             appointmentDate: followUpDate,
             note:
               followUpNote ||
-              `Tái khám theo chỉ định của bác sĩ - ${followUpType}`, // Optional
-            payment_method: "CASH" as const, // Default to CASH for doctor-scheduled follow-ups
+              `Tái khám theo chỉ định của bác sĩ - ${followUpType}`,
+            payment_method: "CASH" as const,
           };
 
           const followUpResult = await scheduleFollowUp(
@@ -2398,34 +2402,49 @@ export const AppointmentAndConsultationModule = ({
                                     );
 
                                     // Lọc bỏ các slot đã qua giờ cho ngày hôm nay (buffer 30 phút)
-                                    const filteredTimeStrings = filterPastTimeSlots(
-                                      timeStrings,
-                                      followUpDate,
-                                      30 // 30-minute buffer
-                                    );
+                                    const filteredTimeStrings =
+                                      filterPastTimeSlots(
+                                        timeStrings,
+                                        followUpDate,
+                                        30 // 30-minute buffer
+                                      );
 
                                     return followUpTimeSlots.map((slot) => {
-                                      const timeString = slot.startTime.substring(0, 5);
-                                      const isAvailable = filteredTimeStrings.includes(timeString);
-                                      const isPast = isTimeSlotPast(timeString, followUpDate, 30);
-                                      const isSelected = followUpTimeSlot === slot.slotId;
+                                      const timeString =
+                                        slot.startTime.substring(0, 5);
+                                      const isAvailable =
+                                        filteredTimeStrings.includes(
+                                          timeString
+                                        );
+                                      const isPast = isTimeSlotPast(
+                                        timeString,
+                                        followUpDate,
+                                        30
+                                      );
+                                      const isSelected =
+                                        followUpTimeSlot === slot.slotId;
 
                                       // Xác định slot có bị disable không
                                       const isDisabled = !isAvailable || isPast;
 
                                       // Lấy lý do disable để hiển thị tooltip
-                                      const disabledReason = getTimeSlotDisabledReason(
-                                        timeString,
-                                        timeStrings.includes(timeString),
-                                        isPast
-                                      );
+                                      const disabledReason =
+                                        getTimeSlotDisabledReason(
+                                          timeString,
+                                          timeStrings.includes(timeString),
+                                          isPast
+                                        );
 
                                       return (
-                                        <div key={slot.slotId} className="relative group">
+                                        <div
+                                          key={slot.slotId}
+                                          className="relative group"
+                                        >
                                           <button
                                             type="button"
                                             onClick={() =>
-                                              !isDisabled && setFollowUpTimeSlot(slot.slotId)
+                                              !isDisabled &&
+                                              setFollowUpTimeSlot(slot.slotId)
                                             }
                                             disabled={isDisabled}
                                             className={`w-full px-3 py-2 rounded-lg text-sm font-medium transition-all ${
@@ -3343,7 +3362,9 @@ export const AppointmentAndConsultationModule = ({
                 <div className="hidden lg:flex items-center gap-3 text-xs bg-white rounded-lg border border-gray-200 px-4 py-2 shadow-sm h-[42px] flex-shrink-0">
                   {/* Appointment Statuses Group */}
                   <div className="flex items-center gap-2.5">
-                    <span className="text-gray-500 font-medium text-[11px] whitespace-nowrap">Lịch hẹn:</span>
+                    <span className="text-gray-500 font-medium text-[11px] whitespace-nowrap">
+                      Lịch hẹn:
+                    </span>
                     <div className="flex items-center gap-2 whitespace-nowrap">
                       <span className="w-2.5 h-2.5 rounded-full bg-[#F59E0B]"></span>
                       <span className="text-[#334155] text-[11px]">Chờ XN</span>
@@ -3354,7 +3375,9 @@ export const AppointmentAndConsultationModule = ({
                     </div>
                     <div className="flex items-center gap-2 whitespace-nowrap">
                       <span className="w-2.5 h-2.5 rounded-full bg-[#10B981]"></span>
-                      <span className="text-[#334155] text-[11px]">Hoàn thành</span>
+                      <span className="text-[#334155] text-[11px]">
+                        Hoàn thành
+                      </span>
                     </div>
                   </div>
 
@@ -3363,14 +3386,20 @@ export const AppointmentAndConsultationModule = ({
 
                   {/* Slot States Group */}
                   <div className="flex items-center gap-2.5">
-                    <span className="text-gray-500 font-medium text-[11px] whitespace-nowrap">Trạng thái:</span>
+                    <span className="text-gray-500 font-medium text-[11px] whitespace-nowrap">
+                      Trạng thái:
+                    </span>
                     <div className="flex items-center gap-2 whitespace-nowrap">
                       <span className="w-2.5 h-2.5 rounded-full bg-green-500"></span>
-                      <span className="text-[#334155] text-[11px]">Còn trống</span>
+                      <span className="text-[#334155] text-[11px]">
+                        Còn trống
+                      </span>
                     </div>
                     <div className="flex items-center gap-2 whitespace-nowrap">
                       <span className="w-2.5 h-2.5 rounded-full bg-gray-400"></span>
-                      <span className="text-[#334155] text-[11px]">Chưa ĐK</span>
+                      <span className="text-[#334155] text-[11px]">
+                        Chưa ĐK
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -3427,7 +3456,7 @@ export const AppointmentAndConsultationModule = ({
                     </div>
                     {weekDays.map((day, dayIndex) => {
                       const cellDate = weekDates[dayIndex];
-                      const dateStr = cellDate.toISOString().split('T')[0];
+                      const dateStr = cellDate.toISOString().split("T")[0];
 
                       // Get schedule for this date
                       const daySchedule = weekSchedulesMap.get(dateStr);
@@ -3441,34 +3470,34 @@ export const AppointmentAndConsultationModule = ({
                       const appointment = getAppointmentForSlot(cellDate, time);
 
                       // Determine slot state
-                      let slotState: 'BOOKED' | 'AVAILABLE' | 'UNAVAILABLE';
+                      let slotState: "BOOKED" | "AVAILABLE" | "UNAVAILABLE";
                       if (appointment) {
-                        slotState = 'BOOKED';
+                        slotState = "BOOKED";
                       } else if (scheduleHasSlot) {
-                        slotState = 'AVAILABLE';
+                        slotState = "AVAILABLE";
                       } else {
-                        slotState = 'UNAVAILABLE';
+                        slotState = "UNAVAILABLE";
                       }
 
                       return (
                         <div
                           key={`${time}-${day.key}`}
                           className={`rounded-lg min-h-[44px] transition-all ${
-                            slotState === 'BOOKED'
-                              ? 'p-1.5 border border-gray-100'
-                              : slotState === 'AVAILABLE'
-                              ? 'bg-green-50 hover:bg-green-100 border border-green-200 cursor-pointer'
-                              : 'bg-gray-50 border border-gray-200 opacity-60'
+                            slotState === "BOOKED"
+                              ? "p-1.5 border border-gray-100"
+                              : slotState === "AVAILABLE"
+                                ? "bg-green-50 hover:bg-green-100 border border-green-200 cursor-pointer"
+                                : "bg-gray-50 border border-gray-200 opacity-60"
                           }`}
                           title={
-                            slotState === 'AVAILABLE'
-                              ? 'Khung giờ còn trống - Bệnh nhân có thể đặt lịch'
-                              : slotState === 'UNAVAILABLE'
-                              ? 'Bác sĩ chưa đăng ký khung giờ này'
-                              : undefined
+                            slotState === "AVAILABLE"
+                              ? "Khung giờ còn trống - Bệnh nhân có thể đặt lịch"
+                              : slotState === "UNAVAILABLE"
+                                ? "Bác sĩ chưa đăng ký khung giờ này"
+                                : undefined
                           }
                         >
-                          {slotState === 'BOOKED' && appointment && (
+                          {slotState === "BOOKED" && appointment && (
                             <AppointmentTooltip
                               appointment={appointment}
                               getStatusLabel={getStatusLabel}
@@ -3486,13 +3515,16 @@ export const AppointmentAndConsultationModule = ({
                             </AppointmentTooltip>
                           )}
 
-                          {slotState === 'AVAILABLE' && (
+                          {slotState === "AVAILABLE" && (
                             <div className="flex items-center justify-center h-full">
-                              <Check size={14} className="text-green-600 opacity-50" />
+                              <Check
+                                size={14}
+                                className="text-green-600 opacity-50"
+                              />
                             </div>
                           )}
 
-                          {slotState === 'UNAVAILABLE' && (
+                          {slotState === "UNAVAILABLE" && (
                             <div className="flex items-center justify-center h-full">
                               <span className="text-gray-400 text-xs">-</span>
                             </div>

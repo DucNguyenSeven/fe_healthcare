@@ -186,6 +186,7 @@ export interface ScheduleFollowUpByDoctorRequest {
   appointmentDate: string;   // Appointment date YYYY-MM-DD (REQUIRED)
   note?: string;             // Optional note (default: "Tái khám theo chỉ định của bác sĩ")
   payment_method?: 'CASH' | 'BANK';  // Payment method (default: CASH for doctor-scheduled follow-ups)
+  // Backend tự động set payment_status dựa vào payment_method, frontend KHÔNG gửi payment_status
 }
 
 /**
