@@ -40,6 +40,17 @@ export function getVietnameseErrorMessage(apiMessage: string, defaultMessage: st
     return 'Mật khẩu quá yếu. Vui lòng chọn mật khẩu mạnh hơn.';
   }
 
+  // Doctor registration errors
+  if (lowerMessage.includes('doctor already exists') ||
+      lowerMessage.includes('doctor email exists') ||
+      lowerMessage.includes('email already in use')) {
+    return 'Email bác sĩ đã tồn tại trong hệ thống.';
+  }
+
+  if (lowerMessage.includes('invalid email')) {
+    return 'Email không hợp lệ.';
+  }
+
   // OTP errors
   if (lowerMessage.includes('invalid otp') ||
       lowerMessage.includes('wrong otp')) {
@@ -90,6 +101,10 @@ export const ERROR_MESSAGES = {
   FORGOT_PASSWORD: {
     DEFAULT: 'Gửi yêu cầu thất bại. Vui lòng thử lại.',
     VALIDATION: 'Vui lòng nhập email hợp lệ.',
+  },
+  REGISTER_DOCTOR: {
+    DEFAULT: 'Không thể tạo tài khoản bác sĩ. Vui lòng thử lại.',
+    VALIDATION: 'Vui lòng nhập đầy đủ thông tin email.',
   },
   NETWORK: {
     DEFAULT: 'Lỗi kết nối. Vui lòng kiểm tra internet và thử lại.',

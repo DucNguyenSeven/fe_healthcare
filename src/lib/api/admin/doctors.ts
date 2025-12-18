@@ -16,3 +16,15 @@ export async function getDoctorsByIds(doctorIds: string[]): Promise<Doctor[]> {
   });
   return response.data;
 }
+
+/**
+ * Register Doctor Account (Admin)
+ * Endpoint: POST /api/v1/auth/register-doctor
+ */
+export async function registerDoctorAccount(payload: {
+  email: string;
+  password: string;
+}): Promise<{ message: string; doctorId?: string }> {
+  const response = await api.post('/api/v1/auth/register-doctor', payload);
+  return response.data;
+}

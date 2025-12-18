@@ -1,6 +1,6 @@
 'use client'
 
-import React from 'react';
+import React, { useState } from 'react';
 import {
   DollarSign,
   Calendar,
@@ -11,9 +11,12 @@ import {
   ArrowDown,
   AlertCircle,
   RefreshCw,
-  Star
+  Star,
+  UserPlus
 } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { useDashboardOverview } from '@/hooks/admin/useDashboard';
+import { CreateDoctorAccountModal } from './CreateDoctorAccountModal';
 import {
   LineChart,
   Line,
@@ -48,6 +51,9 @@ const formatNumber = (num: number): string => {
 export function AdminDashboardPage({
   onNavigate = () => { },
 }: AdminDashboardPageProps) {
+  // State for create doctor modal
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+
   // Fetch dashboard data from API
   const { data, isLoading, error, refetch } = useDashboardOverview();
 
@@ -162,10 +168,25 @@ export function AdminDashboardPage({
           background: 'linear-gradient(90deg, oklch(0.546 0.245 262.881) 0%, oklch(0.488 0.243 264.376) 100%)'
         }}
       >
-        <h1 className="text-2xl lg:text-3xl font-bold mb-2">
-          Admin Dashboard
-        </h1>
-        <p className="text-blue-100 mb-4">Quản lý hệ thống HealthCare+ toàn diện</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl lg:text-3xl font-bold mb-2">
+              Admin Dashboard
+            </h1>
+            <p className="text-blue-100">Quản lý hệ thống HealthCare+ toàn diện</p>
+          </div>
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={() => setIsCreateModalOpen(true)}
+            className="flex items-center gap-2 px-4 py-2.5 bg-white text-blue-600
+                       rounded-xl font-semibold hover:shadow-lg transition-all duration-200
+                       border border-blue-200 hover:border-blue-300"
+          >
+            <UserPlus className="w-5 h-5" />
+            <span className="hidden sm:inline">Tạo tài khoản BS</span>
+          </motion.button>
+        </div>
       </div>
 
       {/* Statistics Cards */}
@@ -349,6 +370,12 @@ export function AdminDashboardPage({
           </div>
         </div>
       </div>
+
+      {/* Create Doctor Account Modal */}
+      <CreateDoctorAccountModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+      />
     </div>
   );
 }
