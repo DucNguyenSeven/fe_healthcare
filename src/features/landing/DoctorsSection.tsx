@@ -1,5 +1,8 @@
+'use client';
+
 import React from 'react';
 import { motion } from 'framer-motion';
+import { useAuthenticatedBooking } from '@/hooks/useAuthenticatedBooking';
 const doctors = [{
   id: 'doctor-1',
   name: 'BS. Nguyễn Văn An',
@@ -25,6 +28,8 @@ const doctors = [{
 
 // @component: DoctorsSection
 export const DoctorsSection = () => {
+  const { handleBookingClick } = useAuthenticatedBooking();
+
   // @return
   return <section id="doctors" className="py-20 bg-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -60,7 +65,10 @@ export const DoctorsSection = () => {
                 <p className="text-sm text-gray-500 mb-6">
                   <span>{doctor.experience}</span>
                 </p>
-                <button className="w-full bg-blue-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors">
+                <button
+                  onClick={() => handleBookingClick(doctor)}
+                  className="w-full bg-blue-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors"
+                >
                   <span>Đặt lịch khám</span>
                 </button>
               </div>

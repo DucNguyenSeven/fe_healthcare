@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Menu, X, Heart, Shield, Clock, Users, Award, Phone, Star, ChevronDown, ChevronUp, Facebook, Twitter, Instagram, Mail, MapPin } from 'lucide-react';
 import { HealthcareNavbarLogo } from '../../shared/ui/HealthcareNavbarLogo';
 import { MobileSlider } from './MobileSlider';
+import { useAuthenticatedBooking } from '@/hooks/useAuthenticatedBooking';
 const services = [{
   id: 'service-1',
   icon: Heart,
@@ -100,6 +101,8 @@ export const HealthcarePlusLandingPage = ({
 }: HealthcarePlusLandingPageProps) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [openFaq, setOpenFaq] = useState<string | null>(null);
+  const { handleBookingClick } = useAuthenticatedBooking();
+
   const scrollToSection = (sectionId: string) => {
     const element = document.getElementById(sectionId);
     if (element) {
@@ -435,7 +438,10 @@ export const HealthcarePlusLandingPage = ({
                   <p className="text-sm text-gray-500 mb-6">
                     <span>{doctor.experience}</span>
                   </p>
-                  <button className="w-full bg-blue-600 text-white px-6 py-3 rounded-xl font-medium hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2">
+                  <button
+                    onClick={() => handleBookingClick(doctor)}
+                    className="w-full bg-blue-600 text-white px-6 py-3 rounded-xl font-medium hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2"
+                  >
                     <span>Đặt lịch khám</span>
                   </button>
                 </div>
@@ -468,7 +474,10 @@ export const HealthcarePlusLandingPage = ({
                     <p className="text-sm text-gray-500 mb-6">
                       <span>{doctor.experience}</span>
                     </p>
-                    <button className="w-full bg-blue-600 text-white px-6 py-3 rounded-xl font-medium hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2">
+                    <button
+                      onClick={() => handleBookingClick(doctor)}
+                      className="w-full bg-blue-600 text-white px-6 py-3 rounded-xl font-medium hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2"
+                    >
                       <span>Đặt lịch khám</span>
                     </button>
                   </div>
@@ -557,26 +566,61 @@ export const HealthcarePlusLandingPage = ({
       {/* FAQ Section */}
       <section id="faq" className="py-24 bg-white">
         <div className="max-w-4xl mx-auto px-6">
-          <div className="text-center mb-16">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            className="text-center mb-16"
+          >
             <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-              <span>Câu hỏi thường gặp</span>
+              Câu hỏi thường gặp
             </h2>
-            <p className="text-lg text-gray-600">
-              <span>Những câu hỏi phổ biến về dịch vụ của Healthcare+</span>
+            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+              Những câu hỏi phổ biến về dịch vụ của Healthcare+
             </p>
-          </div>
-          <div className="space-y-4">
-            {faqs.map(faq => <div key={faq.id} className="border border-gray-200 rounded-2xl">
-                <button onClick={() => setOpenFaq(openFaq === faq.id ? null : faq.id)} className="w-full px-8 py-6 text-left flex justify-between items-center hover:bg-gray-50 rounded-2xl transition-colors focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2">
-                  <span className="font-semibold text-gray-900">{faq.question}</span>
-                  {openFaq === faq.id ? <ChevronUp className="h-5 w-5 text-gray-500" /> : <ChevronDown className="h-5 w-5 text-gray-500" />}
+          </motion.div>
+          <div className="space-y-3">
+            {faqs.map((faq, index) => <motion.div
+              key={faq.id}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: index * 0.1 }}
+              className="border border-gray-200 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow"
+            >
+                <button
+                  onClick={() => setOpenFaq(openFaq === faq.id ? null : faq.id)}
+                  className="w-full px-8 py-6 text-left flex justify-between items-center hover:bg-blue-50 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2"
+                  aria-expanded={openFaq === faq.id}
+                  aria-controls={`faq-answer-${faq.id}`}
+                >
+                  <span className="text-lg font-semibold text-gray-900 pr-8">{faq.question}</span>
+                  <motion.div
+                    animate={{ rotate: openFaq === faq.id ? 180 : 0 }}
+                    transition={{ duration: 0.3, ease: "easeInOut" }}
+                    className="flex-shrink-0"
+                  >
+                    <ChevronDown className="h-5 w-5 text-blue-600" />
+                  </motion.div>
                 </button>
-                {openFaq === faq.id && <div className="px-8 pb-6">
-                    <p className="text-gray-600">
-                      <span>{faq.answer}</span>
-                    </p>
-                  </div>}
-              </div>)}
+                <AnimatePresence>
+                  {openFaq === faq.id && (
+                    <motion.div
+                      id={`faq-answer-${faq.id}`}
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.3, ease: "easeInOut" }}
+                      className="overflow-hidden"
+                    >
+                      <div className="px-8 pb-6 pt-2 border-t border-gray-100">
+                        <p className="text-gray-600 leading-relaxed">
+                          {faq.answer}
+                        </p>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </motion.div>)}
           </div>
         </div>
       </section>
