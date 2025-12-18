@@ -175,7 +175,7 @@ export function generateSinglePanelAssessment(
   });
 
   // Determine status
-  let overallStatus: HealthStatusAssessment['overallStatus'] = 'first_test';
+  const overallStatus: HealthStatusAssessment['overallStatus'] = 'first_test';
   let riskLevel: HealthStatusAssessment['riskLevel'];
 
   if (criticalCount >= 1 || dangerCount >= 3) {
