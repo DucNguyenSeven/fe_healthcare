@@ -3,10 +3,7 @@
 import React from 'react';
 import {
   LayoutDashboard,
-  Users,
-  Calendar,
   DollarSign,
-  CreditCard,
   Menu,
   X,
   ChevronRight,
@@ -36,10 +33,7 @@ interface NavigationItemConfig {
 
 const navigationItems: NavigationItemConfig[] = [
   { id: 'dashboard', label: 'Tổng quan', icon: LayoutDashboard },
-  { id: 'users', label: 'Quản lý người dùng', icon: Users },
-  { id: 'appointments', label: 'Quản lý lịch hẹn', icon: Calendar },
   { id: 'revenue', label: 'Quản lý doanh thu', icon: DollarSign },
-  { id: 'payments', label: 'Quản lý thanh toán', icon: CreditCard },
 ];
 
 export function AdminAppLayout({
