@@ -4,7 +4,7 @@
  */
 
 import React from 'react';
-import { AlertTriangle, CheckCircle, Info, TrendingDown, TrendingUp, Calendar, MessageCircle } from 'lucide-react';
+import { AlertTriangle, CheckCircle, Info, TrendingDown, TrendingUp, Calendar, Sparkles } from 'lucide-react';
 import type { HealthStatusAssessment } from '@/lib/health-assessment/healthAssessment';
 import { getUrgencyDescription } from '@/lib/health-assessment/recommendations';
 
@@ -210,8 +210,8 @@ export function HealthStatusCard({
             onClick={onAIConsult}
             className="flex items-center gap-2 px-4 py-2 bg-purple-100 border-2 border-purple-300 text-purple-700 rounded-lg hover:bg-purple-200 transition-colors font-medium text-sm"
           >
-            <MessageCircle className="w-4 h-4" />
-            Tư vấn với AI
+            <Sparkles className="w-4 h-4" />
+            Dự đoán với AI
           </button>
         )}
       </div>
