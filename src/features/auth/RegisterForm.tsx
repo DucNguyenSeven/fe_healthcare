@@ -206,7 +206,7 @@ export const RegisterForm = ({
       </form>
 
       {/* Social Login Divider */}
-      <div className="mt-6">
+      {/* <div className="mt-6">
         <div className="relative">
           <div className="absolute inset-0 flex items-center">
             <div className="w-full border-t border-gray-200"></div>
@@ -217,7 +217,7 @@ export const RegisterForm = ({
         </div>
 
         {/* Social Buttons */}
-        <div className="mt-3 grid grid-cols-2 gap-3">
+        {/* <div className="mt-3 grid grid-cols-2 gap-3">
           <motion.button whileHover={{
           scale: 1.02
         }} whileTap={{
@@ -243,7 +243,7 @@ export const RegisterForm = ({
             Facebook
           </motion.button>
         </div>
-      </div>
+      </div> */}
 
       {/* Footer Link */}
       <div className="mt-6 text-center">
