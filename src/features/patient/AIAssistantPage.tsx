@@ -339,54 +339,22 @@ export function AIAssistantPage({ user, onNavigate }: AIAssistantPageProps) {
     return metrics;
   };
 
-  // Validate complete 21-field data structure for backend
+  // Validate only 3 essential fields for backend (allow testing with incomplete data)
   const validateCompleteFormData = (): {
     isValid: boolean;
     errors: string[];
   } => {
     const errors: string[] = [];
 
-    // Required numerical fields
+    // Required essential fields (backend will return 422 if missing)
     if (!ckdFormData.serum_creatinine || ckdFormData.serum_creatinine <= 0) {
-      errors.push("Creatinin huyết thanh không hợp lệ");
+      errors.push("Creatinin huyết thanh là bắt buộc");
     }
     if (!ckdFormData.gfr || ckdFormData.gfr <= 0) {
-      errors.push("eGFR không hợp lệ");
+      errors.push("eGFR là bắt buộc");
     }
-    if (!ckdFormData.bun || ckdFormData.bun <= 0) {
-      errors.push("BUN không hợp lệ");
-    }
-    if (!ckdFormData.serum_calcium || ckdFormData.serum_calcium <= 0) {
-      errors.push("Canxi huyết thanh không hợp lệ");
-    }
-    if (
-      !ckdFormData.blood_pressure_systolic ||
-      ckdFormData.blood_pressure_systolic <= 0
-    ) {
-      errors.push("Huyết áp tâm thu không hợp lệ");
-    }
-    if (
-      !ckdFormData.blood_pressure_diastolic ||
-      ckdFormData.blood_pressure_diastolic <= 0
-    ) {
-      errors.push("Huyết áp tâm trương không hợp lệ");
-    }
-    if (!ckdFormData.water_intake || ckdFormData.water_intake <= 0) {
-      errors.push("Lượng nước uống không hợp lệ");
-    }
-
-    // Required categorical fields
     if (!ckdFormData.physical_activity) {
-      errors.push("Chưa chọn mức độ hoạt động thể chất");
-    }
-    if (!ckdFormData.diet) {
-      errors.push("Chưa chọn chế độ ăn uống");
-    }
-    if (!ckdFormData.alcohol) {
-      errors.push("Chưa chọn tình trạng uống rượu");
-    }
-    if (!ckdFormData.weight_changes) {
-      errors.push("Chưa chọn thay đổi cân nặng");
+      errors.push("Mức độ hoạt động thể chất là bắt buộc");
     }
 
     return {
@@ -395,34 +363,37 @@ export function AIAssistantPage({ user, onNavigate }: AIAssistantPageProps) {
     };
   };
 
-  // Format data for backend API (21 fields matching Swagger schema)
+  // Format data for backend API - send null for missing/empty fields
   const formatDataForBackend = () => {
     return {
-      // Make sure all values are proper types based on schema
-      serum_creatinine: Number(ckdFormData.serum_creatinine) || 1.0,
-      gfr: Number(ckdFormData.gfr) || 95.0,
-      bun: Number(ckdFormData.bun) || 15.0,
-      serum_calcium: Number(ckdFormData.serum_calcium) || 10.0,
-      ana: ckdFormData.ana ? 1 : 0,
-      c3_c4: Number(ckdFormData.c3_c4) || 130.0,
-      hematuria: ckdFormData.hematuria ? 1 : 0,
-      oxalate_levels: Number(ckdFormData.oxalate_levels) || 2.0,
-      urine_ph: Number(ckdFormData.urine_ph) || 7.0,
-      blood_pressure: Number(ckdFormData.blood_pressure_systolic) || 120.0,
-      water_intake: Number(ckdFormData.water_intake) || 2.5,
-      physical_activity: ckdFormData.physical_activity || "daily",
-      diet: ckdFormData.diet || "balanced",
-      smoking: ckdFormData.smoking ? "yes" : "no",
-      alcohol: ckdFormData.alcohol || "never",
-      painkiller_usage: ckdFormData.painkiller_usage ? "yes" : "no",
-      family_history: ckdFormData.family_history ? "yes" : "no",
-      weight_changes: ckdFormData.weight_changes || "stable",
-      stress_level:
-        ckdFormData.stress_level === 1
-          ? "low"
-          : ckdFormData.stress_level === 2
-            ? "moderate"
-            : "high",
+      // Essential fields (required - validated before this point, so never null)
+      serum_creatinine: Number(ckdFormData.serum_creatinine),
+      gfr: Number(ckdFormData.gfr),
+      physical_activity: ckdFormData.physical_activity,
+
+      // Optional numerical fields - send null if empty/0
+      bun: ckdFormData.bun > 0 ? Number(ckdFormData.bun) : null,
+      serum_calcium: ckdFormData.serum_calcium > 0 ? Number(ckdFormData.serum_calcium) : null,
+      c3_c4: ckdFormData.c3_c4 > 0 ? Number(ckdFormData.c3_c4) : null,
+      oxalate_levels: ckdFormData.oxalate_levels > 0 ? Number(ckdFormData.oxalate_levels) : null,
+      urine_ph: ckdFormData.urine_ph > 0 ? Number(ckdFormData.urine_ph) : null,
+      blood_pressure: ckdFormData.blood_pressure_systolic > 0 ? Number(ckdFormData.blood_pressure_systolic) : null,
+      water_intake: ckdFormData.water_intake > 0 ? Number(ckdFormData.water_intake) : null,
+
+      // Binary fields - send null if not checked (false = not set)
+      ana: ckdFormData.ana ? 1 : null,
+      hematuria: ckdFormData.hematuria ? 1 : null,
+      smoking: ckdFormData.smoking ? "yes" : null,
+      painkiller_usage: ckdFormData.painkiller_usage ? "yes" : null,
+      family_history: ckdFormData.family_history ? "yes" : null,
+
+      // Optional categorical fields - send null if not selected
+      diet: ckdFormData.diet || null,
+      alcohol: ckdFormData.alcohol || null,
+      weight_changes: ckdFormData.weight_changes || null,
+      stress_level: ckdFormData.stress_level
+        ? (ckdFormData.stress_level === 1 ? "low" : ckdFormData.stress_level === 2 ? "moderate" : "high")
+        : null,
     };
   };
 
@@ -626,28 +597,8 @@ export function AIAssistantPage({ user, onNavigate }: AIAssistantPageProps) {
     setCurrentTab(1);
   };
   const validateCurrentTab = (): boolean => {
-    switch (currentTab) {
-      case 1:
-        return (
-          ckdFormData.serum_creatinine > 0 &&
-          ckdFormData.gfr > 0 &&
-          ckdFormData.bun > 0 &&
-          ckdFormData.serum_calcium > 0 &&
-          ckdFormData.blood_pressure_systolic > 0 &&
-          ckdFormData.blood_pressure_diastolic > 0 &&
-          ckdFormData.water_intake > 0
-        );
-      case 2:
-        return (
-          ckdFormData.physical_activity !== "" &&
-          ckdFormData.diet !== "" &&
-          ckdFormData.alcohol !== ""
-        );
-      case 3:
-        return ckdFormData.weight_changes !== "";
-      default:
-        return true;
-    }
+    // Validation disabled - allow navigation between all tabs
+    return true;
   };
   const renderCKDPrediction = () => (
     <div className="max-w-6xl mx-auto space-y-4 px-6 pb-6 pt-2">
@@ -815,7 +766,7 @@ export function AIAssistantPage({ user, onNavigate }: AIAssistantPageProps) {
                         onChange={(e) =>
                           setCkdFormData({
                             ...ckdFormData,
-                            serum_creatinine: parseFloat(e.target.value),
+                            serum_creatinine: e.target.value === '' ? 0 : parseFloat(e.target.value),
                           })
                         }
                         placeholder="VD: 1.8"
@@ -837,7 +788,7 @@ export function AIAssistantPage({ user, onNavigate }: AIAssistantPageProps) {
                         onChange={(e) =>
                           setCkdFormData({
                             ...ckdFormData,
-                            gfr: parseInt(e.target.value),
+                            gfr: e.target.value === '' ? 0 : parseInt(e.target.value),
                           })
                         }
                         placeholder="VD: 45"
@@ -851,7 +802,7 @@ export function AIAssistantPage({ user, onNavigate }: AIAssistantPageProps) {
 
                     <div className="p-3 bg-gray-50 rounded-lg">
                       <label className="block text-xs font-medium text-gray-700 mb-1.5">
-                        Ure máu (BUN) (mg/dL) *
+                        Ure máu (BUN) (mg/dL)
                       </label>
                       <input
                         type="number"
@@ -859,7 +810,7 @@ export function AIAssistantPage({ user, onNavigate }: AIAssistantPageProps) {
                         onChange={(e) =>
                           setCkdFormData({
                             ...ckdFormData,
-                            bun: parseInt(e.target.value),
+                            bun: e.target.value === '' ? 0 : parseInt(e.target.value),
                           })
                         }
                         placeholder="VD: 28"
@@ -873,7 +824,7 @@ export function AIAssistantPage({ user, onNavigate }: AIAssistantPageProps) {
 
                     <div className="p-3 bg-gray-50 rounded-lg">
                       <label className="block text-xs font-medium text-gray-700 mb-1.5">
-                        Canxi huyết thanh (mg/dL) *
+                        Canxi huyết thanh (mg/dL)
                       </label>
                       <input
                         type="number"
@@ -882,7 +833,7 @@ export function AIAssistantPage({ user, onNavigate }: AIAssistantPageProps) {
                         onChange={(e) =>
                           setCkdFormData({
                             ...ckdFormData,
-                            serum_calcium: parseFloat(e.target.value),
+                            serum_calcium: e.target.value === '' ? 0 : parseFloat(e.target.value),
                           })
                         }
                         placeholder="VD: 9.5"
@@ -896,7 +847,7 @@ export function AIAssistantPage({ user, onNavigate }: AIAssistantPageProps) {
 
                     <div className="p-3 bg-gray-50 rounded-lg">
                       <label className="block text-xs font-medium text-gray-700 mb-1.5">
-                        Huyết áp (mmHg) *
+                        Huyết áp (mmHg)
                       </label>
                       <div className="grid grid-cols-2 gap-2 mb-1">
                         <div>
@@ -957,7 +908,7 @@ export function AIAssistantPage({ user, onNavigate }: AIAssistantPageProps) {
                         onChange={(e) =>
                           setCkdFormData({
                             ...ckdFormData,
-                            c3_c4: parseInt(e.target.value),
+                            c3_c4: e.target.value === '' ? 0 : parseInt(e.target.value),
                           })
                         }
                         placeholder="VD: 120"
@@ -979,7 +930,7 @@ export function AIAssistantPage({ user, onNavigate }: AIAssistantPageProps) {
                         onChange={(e) =>
                           setCkdFormData({
                             ...ckdFormData,
-                            oxalate_levels: parseFloat(e.target.value),
+                            oxalate_levels: e.target.value === '' ? 0 : parseFloat(e.target.value),
                           })
                         }
                         placeholder="VD: 2.5"
@@ -1000,7 +951,7 @@ export function AIAssistantPage({ user, onNavigate }: AIAssistantPageProps) {
                         onChange={(e) =>
                           setCkdFormData({
                             ...ckdFormData,
-                            urine_ph: parseFloat(e.target.value),
+                            urine_ph: e.target.value === '' ? 0 : parseFloat(e.target.value),
                           })
                         }
                         placeholder="VD: 6.0"
@@ -1013,7 +964,7 @@ export function AIAssistantPage({ user, onNavigate }: AIAssistantPageProps) {
 
                     <div className="p-3 bg-gray-50 rounded-lg">
                       <label className="block text-xs font-medium text-gray-700 mb-1.5">
-                        Lượng nước uống hàng ngày (L) *
+                        Lượng nước uống hàng ngày (L)
                       </label>
                       <input
                         type="number"
@@ -1024,7 +975,7 @@ export function AIAssistantPage({ user, onNavigate }: AIAssistantPageProps) {
                         onChange={(e) =>
                           setCkdFormData({
                             ...ckdFormData,
-                            water_intake: parseFloat(e.target.value),
+                            water_intake: e.target.value === '' ? 0 : parseFloat(e.target.value),
                           })
                         }
                         placeholder="2.0"
@@ -1147,7 +1098,7 @@ export function AIAssistantPage({ user, onNavigate }: AIAssistantPageProps) {
 
                   <div className="p-4 bg-gray-50 rounded-xl">
                     <label className="block text-sm font-medium text-gray-700 mb-3">
-                      Chế độ ăn uống *
+                      Chế độ ăn uống
                     </label>
                     <div className="space-y-2">
                       {[
@@ -1221,7 +1172,7 @@ export function AIAssistantPage({ user, onNavigate }: AIAssistantPageProps) {
 
                   <div className="p-4 bg-gray-50 rounded-xl">
                     <label className="block text-sm font-medium text-gray-700 mb-3">
-                      Tình trạng uống rượu *
+                      Tình trạng uống rượu
                     </label>
                     <div className="space-y-2">
                       {[
@@ -1313,7 +1264,7 @@ export function AIAssistantPage({ user, onNavigate }: AIAssistantPageProps) {
 
                   <div className="p-4 bg-gray-50 rounded-xl">
                     <label className="block text-sm font-medium text-gray-700 mb-3">
-                      Thay đổi cân nặng gần đây *
+                      Thay đổi cân nặng gần đây
                     </label>
                     <div className="space-y-2">
                       {[
@@ -1370,7 +1321,7 @@ export function AIAssistantPage({ user, onNavigate }: AIAssistantPageProps) {
                 <div className="space-y-4">
                   <div className="p-4 bg-gray-50 rounded-xl">
                     <label className="block text-sm font-medium text-gray-700 mb-3">
-                      Mức độ stress hiện tại *
+                      Mức độ stress hiện tại
                     </label>
                     <div className="space-y-2">
                       {[
@@ -1402,7 +1353,7 @@ export function AIAssistantPage({ user, onNavigate }: AIAssistantPageProps) {
                             onChange={(e) =>
                               setCkdFormData({
                                 ...ckdFormData,
-                                stress_level: parseInt(e.target.value),
+                                stress_level: e.target.value === '' ? 0 : parseInt(e.target.value),
                               })
                             }
                             className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
