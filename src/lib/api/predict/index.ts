@@ -13,26 +13,37 @@ import type { PredictCurrentTrendsResponse } from "@/types/predict";
 const aiClient = createAIClient();
 
 // Request/Response types for CKD prediction
+// 3 essential fields (required): serum_creatinine, gfr, physical_activity
+// All other fields are optional and can be null
 export interface CKDPredictionRequest {
+  // Essential fields (required - non-nullable)
   serum_creatinine: number;
   gfr: number;
-  bun: number;
-  serum_calcium: number;
-  ana: number; // 0 or 1
-  c3_c4: number;
-  hematuria: number; // 0 or 1
-  oxalate_levels: number;
-  urine_ph: number;
-  blood_pressure: number;
-  water_intake: number;
   physical_activity: string; // 'daily' | 'weekly' | 'rarely'
-  diet: string; // 'high protein' | 'low salt' | 'balanced'
-  smoking: string; // 'yes' | 'no'
-  alcohol: string; // 'daily' | 'occasionally' | 'never'
-  painkiller_usage: string; // 'yes' | 'no'
-  family_history: string; // 'yes' | 'no'
-  weight_changes: string; // 'stable' | 'loss' | 'gain'
-  stress_level: string; // 'low' | 'moderate' | 'high'
+
+  // Optional numerical fields (can be null)
+  bun: number | null;
+  serum_calcium: number | null;
+  c3_c4: number | null;
+  oxalate_levels: number | null;
+  urine_ph: number | null;
+  blood_pressure: number | null;
+  water_intake: number | null;
+
+  // Optional binary fields (send null if not checked/set)
+  ana: number | null; // 1 or null (not 0)
+  hematuria: number | null; // 1 or null (not 0)
+
+  // Optional binary string fields (send null if not checked/set)
+  smoking: string | null; // 'yes' | null (not 'no')
+  painkiller_usage: string | null; // 'yes' | null (not 'no')
+  family_history: string | null; // 'yes' | null (not 'no')
+
+  // Optional categorical fields (can be null)
+  diet: string | null; // 'high protein' | 'low salt' | 'balanced' | null
+  alcohol: string | null; // 'daily' | 'occasionally' | 'never' | null
+  weight_changes: string | null; // 'stable' | 'loss' | 'gain' | null
+  stress_level: string | null; // 'low' | 'moderate' | 'high' | null
 }
 
 export interface CKDPredictionResponse {

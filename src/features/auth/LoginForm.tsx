@@ -17,7 +17,6 @@ export const LoginForm = ({
 }: LoginFormProps) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [rememberMe, setRememberMe] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   // Sử dụng useLogin hook để gọi API
@@ -154,11 +153,18 @@ export const LoginForm = ({
         </div>
 
         {/* Remember Me & Forgot Password */}
-        <div className="flex items-center justify-between pt-1">
+        {/* <div className="flex items-center justify-between pt-1">
           <label className="flex items-center cursor-pointer">
             <input type="checkbox" checked={rememberMe} onChange={e => setRememberMe(e.target.checked)} className="w-4 h-4 text-[#2563EB] border-gray-300 rounded focus:ring-[#2563EB] focus:ring-2" />
             <span className="ml-3 text-sm font-medium text-gray-700">Nhớ tôi</span>
           </label>
+          <button type="button" onClick={() => onNavigate('forgot-password')} className="text-sm font-semibold text-[#2563EB] hover:text-blue-700 transition-colors">
+            Quên mật khẩu?
+          </button>
+        </div> */}
+        
+        {/* Forgot Password Only */}
+        <div className="flex items-center justify-end pt-1">
           <button type="button" onClick={() => onNavigate('forgot-password')} className="text-sm font-semibold text-[#2563EB] hover:text-blue-700 transition-colors">
             Quên mật khẩu?
           </button>
@@ -181,7 +187,7 @@ export const LoginForm = ({
       </form>
 
       {/* Social Login Divider */}
-      <div className="mt-6">
+      {/* <div className="mt-6">
         <div className="relative">
           <div className="absolute inset-0 flex items-center">
             <div className="w-full border-t border-gray-200"></div>
@@ -192,7 +198,7 @@ export const LoginForm = ({
         </div>
 
         {/* Social Buttons */}
-        <div className="mt-3 grid grid-cols-2 gap-3">
+        {/* <div className="mt-3 grid grid-cols-2 gap-3">
           <motion.button whileHover={{
           scale: 1.02
         }} whileTap={{
@@ -218,7 +224,7 @@ export const LoginForm = ({
             Facebook
           </motion.button>
         </div>
-      </div>
+      </div> */}
 
       {/* Footer Link */}
       <div className="mt-6 text-center">
